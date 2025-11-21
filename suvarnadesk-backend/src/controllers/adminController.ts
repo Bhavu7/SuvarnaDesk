@@ -1,8 +1,9 @@
 import Admin from '../models/Admin';
 import { hashPassword, comparePassword } from '../utils/hashPassword';
 import jwt from 'jsonwebtoken';
+import { Request, Response } from 'express';
 
-export const loginAdmin = async (req, res) => {
+export const loginAdmin = async (req: Request, res: Response) => {
     const { email, password } = req.body;
     const admin = await Admin.findOne({ email });
     if (!admin) return res.status(401).json({ message: 'Invalid credentials' });
@@ -14,7 +15,7 @@ export const loginAdmin = async (req, res) => {
     res.json({ token, admin });
 };
 
-export const registerAdmin = async (req, res) => {
+export const registerAdmin = async (req: Request, res: Response) => {
     const { name, email, password, phone } = req.body;
     const hash = await hashPassword(password);
     const admin = new Admin({ name, email, password: hash, phone });
