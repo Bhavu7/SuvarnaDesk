@@ -1,14 +1,9 @@
-import React from "react";
-import QRCode from "qrcode.react";
+import { QRCodeSVG } from "qrcode.react";
 
-interface Props {
-  data: string;
-}
-
-export default function InvoiceQRCode({ data }: Props) {
+export default function InvoiceQRCode({ data }: { data: string }) {
   return (
     <div className="p-2 border rounded">
-      <QRCode value={data} size={150} />
+      <QRCodeSVG value={data} size={150} />
     </div>
   );
 }
