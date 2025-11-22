@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { useCustomers } from "../hooks/useCustomers";
-import { useLabourCharges } from "../hooks/useLabourCharges";
-import { useMetalRates } from "../hooks/useMetalRates";
-import { useCreateInvoice } from "../hooks/useBilling";
+import { useCustomers, Customer } from "../hooks/useCustomers";
+import { useLabourCharges, LabourCharge } from "../hooks/useLabourCharges";
+import { useMetalRates, MetalRate } from "../hooks/useMetalRates";
+import { useCreateInvoice, LineItem } from "../hooks/useBilling";
 import InvoiceQRCode from "../components/InvoiceQRCode";
 
 export default function Billing() {
@@ -11,11 +11,11 @@ export default function Billing() {
   const { data: metalRates } = useMetalRates();
   const createInvoice = useCreateInvoice();
 
-  const [invoiceDate, setInvoiceDate] = useState(
+  const [invoiceDate, setInvoiceDate] = useState<string>(
     new Date().toISOString().substring(0, 10)
   );
-  const [selectedCustomer, setSelectedCustomer] = useState("");
-  const [lineItems, setLineItems] = useState([
+  const [selectedCustomer, setSelectedCustomer] = useState<string>("");
+  const [lineItems, setLineItems] = useState<LineItem[]>([
     {
       itemType: "gold",
       purity: "24K",
@@ -29,12 +29,11 @@ export default function Billing() {
       itemTotal: 0,
     },
   ]);
-  const [GSTPercent, setGSTPercent] = useState(3.0);
-  const [paymentMode, setPaymentMode] = useState("cash");
-  const [amountPaid, setAmountPaid] = useState(0);
+  const [GSTPercent, setGSTPercent] = useState<number>(3.0);
+  const [paymentMode, setPaymentMode] = useState<string>("cash");
+  const [amountPaid, setAmountPaid] = useState<number>(0);
 
-  // Helper: Convert weight units internally to grams
-  const convertToGrams = (value: number, unit: string) => {
+  const convertToGrams = (value: number, unit: string): number => {
     switch (unit) {
       case "kg":
         return value * 1000;
@@ -43,48 +42,57 @@ export default function Billing() {
       case "mg":
         return value / 1000;
       case "tola":
-        return value * 11.66; // approx
+        return value * 11.66;
       default:
         return value;
     }
   };
 
-  // Calculate totals based on line items
-  const subtotal = lineItems.reduce((acc, item) => acc + item.itemTotal, 0);
+  const subtotal: number = lineItems.reduce(
+    (acc, item) => acc + item.itemTotal,
+    0
+  );
   const GSTAmount = (subtotal * GSTPercent) / 100;
   const grandTotal = subtotal + GSTAmount;
   const balanceDue = grandTotal - amountPaid;
 
-  const handleLineItemChange = (index: number, field: string, value: any) => {
+  const handleLineItemChange = (
+    index: number,
+    field:
+      | keyof LineItem
+      | "weightValue"
+      | "weightUnit"
+      | "labourChargeReferenceId",
+    value: string | number | null
+  ) => {
     const updatedItems = [...lineItems];
     const item = updatedItems[index];
 
     if (field === "weightValue" || field === "weightUnit") {
-      if (field === "weightValue") item.weight.value = parseFloat(value) || 0;
-      else item.weight.unit = value;
+      if (field === "weightValue") item.weight.value = Number(value) || 0;
+      else if (typeof value === "string") item.weight.unit = value;
 
-      // Update ratePerGram auto from live rates
       const rateEntry = metalRates?.find(
-        (rate) =>
+        (rate: MetalRate) =>
           rate.metalType === item.itemType &&
           rate.purity === item.purity &&
           rate.isActive
       );
       if (rateEntry) item.ratePerGram = rateEntry.ratePerGram;
 
-      // Calculate metal price and labour charge
       const weightInGrams = convertToGrams(item.weight.value, item.weight.unit);
       const metalPrice = weightInGrams * item.ratePerGram;
 
       const labourCharge = labourCharges?.find(
-        (lc) => lc._id === item.labourChargeReferenceId
+        (lc: LabourCharge) => lc._id === item.labourChargeReferenceId
       );
 
       let labourChargeAmount = 0;
       if (labourCharge) {
-        if (labourCharge.chargeType === "perGram")
-          labourChargeAmount = weightInGrams * labourCharge.amount;
-        else labourChargeAmount = labourCharge.amount;
+        labourChargeAmount =
+          labourCharge.chargeType === "perGram"
+            ? weightInGrams * labourCharge.amount
+            : labourCharge.amount;
       }
 
       item.labourChargeAmount = labourChargeAmount;
@@ -92,23 +100,49 @@ export default function Billing() {
       item.itemTotal = metalPrice + labourChargeAmount;
     }
 
-    if (field === "labourChargeReferenceId") {
+    if (field === "labourChargeReferenceId" && typeof value === "string") {
       item.labourChargeReferenceId = value;
-      // Same computation as above...
+
+      const labourCharge = labourCharges?.find(
+        (lc: LabourCharge) => lc._id === value
+      );
+      const weightInGrams = convertToGrams(item.weight.value, item.weight.unit);
+      let labourChargeAmount = 0;
+      if (labourCharge) {
+        labourChargeAmount =
+          labourCharge.chargeType === "perGram"
+            ? weightInGrams * labourCharge.amount
+            : labourCharge.amount;
+      }
+      item.labourChargeAmount = labourChargeAmount;
+      item.makingChargesTotal = labourChargeAmount;
+      item.itemTotal = weightInGrams * item.ratePerGram + labourChargeAmount;
+    }
+
+    if (
+      !["weightValue", "weightUnit", "labourChargeReferenceId"].includes(field)
+    ) {
+      // @ts-ignore
+      item[field] = value;
     }
 
     setLineItems(updatedItems);
   };
 
   const handleSubmit = () => {
-    if (!selectedCustomer) return alert("Select customer");
+    if (!selectedCustomer) {
+      alert("Select customer");
+      return;
+    }
+
+    if (createInvoice.isLoading) return;
 
     createInvoice.mutate({
       invoiceNumber: `INV-${Date.now()}`,
       date: invoiceDate,
       customerId: selectedCustomer,
       customerSnapshot:
-        customers?.find((c) => c._id === selectedCustomer) || {},
+        customers?.find((c: Customer) => c._id === selectedCustomer) || {},
       lineItems,
       totals: { subtotal, GSTPercent, GSTAmount, grandTotal },
       paymentDetails: { paymentMode, amountPaid, balanceDue },
@@ -120,22 +154,28 @@ export default function Billing() {
     <div className="p-6">
       <h2 className="text-xl font-semibold mb-4">Create Invoice</h2>
 
-      <label>Date: </label>
+      <label htmlFor="invoice-date" className="block mb-1">
+        Date:
+      </label>
       <input
+        id="invoice-date"
         type="date"
         value={invoiceDate}
         onChange={(e) => setInvoiceDate(e.target.value)}
         className="border rounded p-1 mb-4"
       />
 
-      <label>Customer:</label>
+      <label htmlFor="customer-select" className="block mb-1">
+        Customer:
+      </label>
       <select
+        id="customer-select"
         value={selectedCustomer}
         onChange={(e) => setSelectedCustomer(e.target.value)}
         className="border rounded p-1 mb-4"
       >
         <option value="">Select Customer</option>
-        {customers?.map((c) => (
+        {customers?.map((c: Customer) => (
           <option key={c._id} value={c._id}>
             {c.name} - {c.phone}
           </option>
@@ -147,8 +187,9 @@ export default function Billing() {
       {lineItems.map((item, i) => (
         <div key={i} className="border p-4 mb-3 rounded space-y-2 bg-white">
           <div>
-            <label>Item Type:</label>
+            <label htmlFor={`itemType-${i}`}>Item Type:</label>
             <select
+              id={`itemType-${i}`}
               value={item.itemType}
               onChange={(e) =>
                 handleLineItemChange(i, "itemType", e.target.value)
@@ -162,15 +203,15 @@ export default function Billing() {
           </div>
 
           <div>
-            <label>Purity:</label>
+            <label htmlFor={`purity-${i}`}>Purity:</label>
             <select
+              id={`purity-${i}`}
               value={item.purity}
               onChange={(e) =>
                 handleLineItemChange(i, "purity", e.target.value)
               }
               className="border rounded p-1"
             >
-              {/* Purity options */}
               {item.itemType === "gold" ? (
                 <>
                   <option value="24K">24K</option>
@@ -187,17 +228,19 @@ export default function Billing() {
           </div>
 
           <div>
-            <label>Weight:</label>
+            <label htmlFor={`weightValue-${i}`}>Weight:</label>
             <input
+              id={`weightValue-${i}`}
               type="number"
+              min={0}
               value={item.weight.value}
-              min="0"
               onChange={(e) =>
                 handleLineItemChange(i, "weightValue", e.target.value)
               }
               className="border rounded p-1 w-24"
             />
             <select
+              aria-label={`Weight unit for item ${i + 1}`}
               value={item.weight.unit}
               onChange={(e) =>
                 handleLineItemChange(i, "weightUnit", e.target.value)
@@ -212,8 +255,9 @@ export default function Billing() {
           </div>
 
           <div>
-            <label>Labour Charge:</label>
+            <label htmlFor={`labourCharge-${i}`}>Labour Charge:</label>
             <select
+              id={`labourCharge-${i}`}
               value={item.labourChargeReferenceId || ""}
               onChange={(e) =>
                 handleLineItemChange(
@@ -227,7 +271,7 @@ export default function Billing() {
               <option value="">None</option>
               {labourCharges
                 ?.filter((lc) => lc.isActive)
-                .map((lc) => (
+                .map((lc: LabourCharge) => (
                   <option key={lc._id} value={lc._id}>
                     {lc.name} (
                     {lc.chargeType === "perGram" ? "per gram" : "fixed"})
@@ -270,18 +314,21 @@ export default function Billing() {
       <hr className="my-4" />
 
       <div>
-        <label>GST %:</label>
+        <label htmlFor="gstPercent">GST %:</label>
         <input
+          id="gstPercent"
           type="number"
           value={GSTPercent}
           onChange={(e) => setGSTPercent(Number(e.target.value))}
           className="border rounded p-1 w-20"
+          placeholder="GST %"
         />
       </div>
 
       <div>
-        <label>Payment Mode:</label>
+        <label htmlFor="paymentMode">Payment Mode:</label>
         <select
+          id="paymentMode"
           value={paymentMode}
           onChange={(e) => setPaymentMode(e.target.value)}
           className="border rounded p-1"
@@ -295,13 +342,15 @@ export default function Billing() {
       </div>
 
       <div>
-        <label>Amount Paid:</label>
+        <label htmlFor="amountPaid">Amount Paid:</label>
         <input
+          id="amountPaid"
           type="number"
+          min={0}
           value={amountPaid}
-          min="0"
           onChange={(e) => setAmountPaid(Number(e.target.value))}
           className="border rounded p-1"
+          placeholder="Amount Paid"
         />
       </div>
 
@@ -313,7 +362,6 @@ export default function Billing() {
         <strong>Grand Total:</strong> ₹{grandTotal.toFixed(2)}
         <br />
         <strong>Balance Due:</strong> ₹{balanceDue.toFixed(2)}
-        <br />
       </div>
 
       <button
