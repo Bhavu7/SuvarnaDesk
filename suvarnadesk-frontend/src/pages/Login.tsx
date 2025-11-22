@@ -30,6 +30,7 @@ export default function Login() {
         <h2 className="text-2xl font-bold mb-6 text-center">Admin Login</h2>
         <label className="block mb-2">Email</label>
         <input
+          title="inputs"
           type="email"
           required
           value={email}
@@ -38,6 +39,7 @@ export default function Login() {
         />
         <label className="block mb-2">Password</label>
         <input
+          title="inputs"
           type="password"
           required
           value={password}
