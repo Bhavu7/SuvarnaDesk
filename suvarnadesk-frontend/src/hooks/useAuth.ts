@@ -1,26 +1,18 @@
-import { useMutation } from '@tanstack/react-query';
-import apiClient from '../api/apiClient';
-import { setToken, removeToken } from '../utils/auth';
+import { useMutation } from "@tanstack/react-query";
+import apiClient from "../api/apiClient";
 
 interface LoginData {
     email: string;
     password: string;
 }
 
-export const useLogin = () => {
-    return useMutation(
-        (data: LoginData) => apiClient.post('/admin/login', data),
-        {
-            onSuccess: (res) => {
-                setToken(res.data.token);
-            },
-        }
-    );
-};
+interface LoginResponse {
+    token: string;
+    // Add more fields if backend returns more data
+}
 
-export const useLogout = () => {
-    return () => {
-        removeToken();
-        window.location.href = '/login';
-    };
+export const useLogin = () => {
+    return useMutation<LoginResponse, Error, LoginData>(
+        (data) => apiClient.post("/admin/login", data).then(res => res.data)
+    );
 };
