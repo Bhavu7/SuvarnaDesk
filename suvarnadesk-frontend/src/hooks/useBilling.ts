@@ -1,4 +1,4 @@
-import { UseQueryResult, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import apiClient from "../api/apiClient";
 
 export interface LineItem {
@@ -14,19 +14,22 @@ export interface LineItem {
     itemTotal: number;
 }
 
-export interface Invoice {
-    _id?: string;
+export interface InvoiceInput {
     invoiceNumber: string;
     date: string;
     customerId: string;
     customerSnapshot: object;
     lineItems: LineItem[];
     totals: { subtotal: number; GSTPercent: number; GSTAmount: number; grandTotal: number };
-    paymentDetails: { paymentMode: string; amountPaid: number; balanceDue: number; notes?: string };
+    paymentDetails: { paymentMode: string; amountPaid: number; balanceDue: number };
     QRCodeData?: string;
 }
 
-export const useInvoices = (): UseQueryResult<Invoice[], Error> =>
+export interface Invoice extends InvoiceInput {
+    _id: string;
+}
+
+export const useInvoices = () =>
     useQuery<Invoice[], Error>({
         queryKey: ["invoices"],
         queryFn: () => apiClient.get("/invoices").then(res => res.data),
@@ -34,10 +37,8 @@ export const useInvoices = (): UseQueryResult<Invoice[], Error> =>
 
 export const useCreateInvoice = () => {
     const queryClient = useQueryClient();
-    return useMutation<void, Error, Invoice>({
+    return useMutation<Invoice, Error, InvoiceInput>({
         mutationFn: (data) => apiClient.post("/invoices", data).then(res => res.data),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["invoices"] });
-        },
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["invoices"] }),
     });
 };
