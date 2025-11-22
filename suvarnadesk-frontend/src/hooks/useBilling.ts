@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { UseQueryResult, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "../api/apiClient";
 
 export interface LineItem {
@@ -26,18 +26,18 @@ export interface Invoice {
     QRCodeData?: string;
 }
 
-export const useInvoices = () =>
-    useQuery<Invoice[], Error>(
-        ["invoices"],
-        () => apiClient.get("/invoices").then(res => res.data)
-    );
+export const useInvoices = (): UseQueryResult<Invoice[], Error> =>
+    useQuery<Invoice[], Error>({
+        queryKey: ["invoices"],
+        queryFn: () => apiClient.get("/invoices").then(res => res.data),
+    });
 
 export const useCreateInvoice = () => {
     const queryClient = useQueryClient();
-    return useMutation<void, Error, Invoice>(
-        (data) => apiClient.post("/invoices", data).then(res => res.data),
-        {
-            onSuccess: () => queryClient.invalidateQueries(["invoices"]),
-        }
-    );
+    return useMutation<void, Error, Invoice>({
+        mutationFn: (data) => apiClient.post("/invoices", data).then(res => res.data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["invoices"] });
+        },
+    });
 };
