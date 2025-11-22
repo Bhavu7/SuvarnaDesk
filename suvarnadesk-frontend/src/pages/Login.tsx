@@ -14,7 +14,7 @@ export default function Login() {
       { email, password },
       {
         onSuccess: (res) => {
-          localStorage.setItem("token", res.data.token);
+          localStorage.setItem("token", res.token);
           navigate("/dashboard");
         },
       }
