@@ -12,7 +12,7 @@ interface LoginResponse {
 }
 
 export const useLogin = () => {
-    return useMutation<LoginResponse, Error, LoginData>(
-        (data) => apiClient.post("/admin/login", data).then(res => res.data)
-    );
+    return useMutation<LoginResponse, Error, LoginData>({
+        mutationFn: (data: LoginData) => apiClient.post("/admin/login", data).then(res => res.data)
+    });
 };
