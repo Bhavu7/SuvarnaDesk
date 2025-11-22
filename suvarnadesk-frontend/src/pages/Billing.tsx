@@ -135,7 +135,8 @@ export default function Billing() {
       return;
     }
 
-    if (createInvoice.isLoading) return;
+    // FIX: Use isPending instead of isLoading
+    if (createInvoice.isPending) return;
 
     createInvoice.mutate({
       invoiceNumber: `INV-${Date.now()}`,
@@ -364,12 +365,13 @@ export default function Billing() {
         <strong>Balance Due:</strong> ₹{balanceDue.toFixed(2)}
       </div>
 
+      {/* FIX: Use isPending instead of isLoading */}
       <button
         onClick={handleSubmit}
-        disabled={createInvoice.isLoading}
+        disabled={createInvoice.isPending}
         className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
       >
-        {createInvoice.isLoading ? "Saving..." : "Finalize Invoice"}
+        {createInvoice.isPending ? "Saving..." : "Finalize Invoice"}
       </button>
 
       {createInvoice.data && (
