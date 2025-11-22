@@ -35,6 +35,7 @@ export default function LabourCharges() {
       <div className="mb-6 p-4 border rounded bg-white">
         <label className="block mb-1 font-semibold">Name</label>
         <input
+          title="title"
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -43,6 +44,7 @@ export default function LabourCharges() {
 
         <label className="block mb-1 font-semibold">Charge Type</label>
         <select
+          title="title"
           value={chargeType}
           onChange={(e) => setChargeType(e.target.value as any)}
           className="border p-2 mb-3 rounded w-full"
@@ -53,6 +55,7 @@ export default function LabourCharges() {
 
         <label className="block mb-1 font-semibold">Amount</label>
         <input
+          title="title"
           type="number"
           value={amount}
           onChange={(e) => setAmount(Number(e.target.value))}
@@ -63,6 +66,7 @@ export default function LabourCharges() {
           Description (optional)
         </label>
         <textarea
+          title="title"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           className="border p-2 mb-3 rounded w-full"
