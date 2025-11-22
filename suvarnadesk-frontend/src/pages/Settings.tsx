@@ -38,6 +38,7 @@ export default function Settings() {
         <div>
           <label className="block mb-1 font-semibold">Shop Name</label>
           <input
+            title="input"
             type="text"
             value={shopName}
             onChange={(e) => setShopName(e.target.value)}
@@ -47,6 +48,7 @@ export default function Settings() {
         <div>
           <label className="block mb-1 font-semibold">Owner Name</label>
           <input
+            title="input"
             type="text"
             value={ownerName}
             onChange={(e) => setOwnerName(e.target.value)}
@@ -56,6 +58,7 @@ export default function Settings() {
         <div>
           <label className="block mb-1 font-semibold">GST Number</label>
           <input
+            title="input"
             type="text"
             value={GSTNumber}
             onChange={(e) => setGSTNumber(e.target.value)}
@@ -65,6 +68,7 @@ export default function Settings() {
         <div>
           <label className="block mb-1 font-semibold">Address</label>
           <textarea
+            title="input"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             className="border p-2 rounded w-full"
@@ -73,6 +77,7 @@ export default function Settings() {
         <div>
           <label className="block mb-1 font-semibold">Contact Number</label>
           <input
+            title="input"
             type="text"
             value={contactNumber}
             onChange={(e) => setContactNumber(e.target.value)}
