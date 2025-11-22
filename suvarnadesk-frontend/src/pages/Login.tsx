@@ -48,10 +48,10 @@ export default function Login() {
         />
         <button
           type="submit"
-          disabled={loginMutation.isLoading}
+          disabled={loginMutation.isPending}
           className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
         >
-          {loginMutation.isLoading ? "Logging in..." : "Login"}
+          {loginMutation.isPending ? "Logging in..." : "Login"}
         </button>
         {loginMutation.isError && (
           <p className="text-red-600 mt-4">Invalid credentials</p>
