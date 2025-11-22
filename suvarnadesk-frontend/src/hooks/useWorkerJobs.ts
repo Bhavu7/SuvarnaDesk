@@ -1,9 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "../api/apiClient";
 
-export interface WorkerJob {
-    _id: string;
-    jobNumber: string;
+export interface WorkerJobInput {
+    jobNumber?: string;
     customerId?: string;
     customerName?: string;
     customerPhone?: string;
@@ -25,18 +24,24 @@ export interface WorkerJob {
     attachments?: string[];
 }
 
+export interface WorkerJob extends WorkerJobInput {
+    _id: string;
+}
+
 export const useWorkerJobs = () =>
-    useQuery<WorkerJob[], Error>(
-        ["workerJobs"],
-        () => apiClient.get("/worker-jobs").then(res => res.data)
-    );
+    useQuery<WorkerJob[], Error>({
+        queryKey: ["workerJobs"],
+        queryFn: () => apiClient.get("/worker-jobs").then((res) => res.data),
+    });
 
 export const useCreateWorkerJob = () => {
     const queryClient = useQueryClient();
-    return useMutation<void, Error, WorkerJob>(
-        (data) => apiClient.post("/worker-jobs", data).then(res => res.data),
-        {
-            onSuccess: () => queryClient.invalidateQueries(["workerJobs"]),
-        }
-    );
+
+    return useMutation<void, Error, WorkerJobInput>({
+        mutationFn: (data: WorkerJobInput) =>
+            apiClient.post("/worker-jobs", data).then((res) => res.data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["workerJobs"] });
+        },
+    });
 };
