@@ -9,14 +9,18 @@ export default function WorkerJobs() {
   // form fields for job creation omitted for brevity
 
   const handleAddJob = () => {
-    // collect form data and submit
-    // example minimal:
+    // Provide all required fields
     createJobMutation.mutate({
       description,
       jobType: "repair",
       status: "received",
       estimatedCharges: 0,
       paymentStatus: "unpaid",
+      metalType: "gold", // default, change as needed
+      estimatedWeightBefore: { value: 0, unit: "g" },
+      estimatedWeightAfter: { value: 0, unit: "g" },
+      receivedDate: new Date().toISOString(),
+      promisedDeliveryDate: new Date().toISOString(),
     });
   };
 
