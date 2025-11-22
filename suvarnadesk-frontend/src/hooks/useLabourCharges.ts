@@ -1,8 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "../api/apiClient";
 
-export interface LabourCharge {
-    _id: string;
+export interface LabourChargeInput {
     name: string;
     chargeType: "perGram" | "fixedPerItem";
     amount: number;
@@ -10,18 +9,25 @@ export interface LabourCharge {
     isActive: boolean;
 }
 
+export interface LabourCharge extends LabourChargeInput {
+    _id: string;
+}
+
 export const useLabourCharges = () =>
-    useQuery<LabourCharge[], Error>(
-        ["labourCharges"],
-        () => apiClient.get("/labour-charges").then(res => res.data)
-    );
+    useQuery<LabourCharge[], Error>({
+        queryKey: ["labourCharges"],
+        queryFn: () => apiClient.get("/labour-charges").then(res => res.data),
+    });
 
 export const useCreateLabourCharge = () => {
     const queryClient = useQueryClient();
-    return useMutation<void, Error, LabourCharge>(
-        (data) => apiClient.post("/labour-charges", data).then(res => res.data),
-        {
-            onSuccess: () => queryClient.invalidateQueries(["labourCharges"]),
-        }
-    );
+
+    return useMutation<void, Error, LabourChargeInput>({
+        mutationFn: (data: LabourChargeInput) =>
+            apiClient.post("/labour-charges", data).then(res => res.data),
+
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["labourCharges"] });
+        },
+    });
 };
