@@ -12,17 +12,15 @@ export interface Customer {
 }
 
 export const useCustomers = () =>
-    useQuery<Customer[], Error>(
-        ["customers"],
-        () => apiClient.get("/customers").then(res => res.data)
-    );
+    useQuery<Customer[], Error>({
+        queryKey: ["customers"],
+        queryFn: () => apiClient.get("/customers").then(res => res.data),
+    });
 
 export const useCreateCustomer = () => {
     const queryClient = useQueryClient();
-    return useMutation<void, Error, Customer>(
-        (data) => apiClient.post("/customers", data).then(res => res.data),
-        {
-            onSuccess: () => queryClient.invalidateQueries(["customers"]),
-        }
-    );
+    return useMutation<void, Error, Customer>({
+        mutationFn: (data: Customer) => apiClient.post("/customers", data).then(res => res.data),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["customers"] }),
+    });
 };
