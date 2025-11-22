@@ -1,8 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "../api/apiClient";
 
-export interface MetalRate {
-    _id: string;
+export interface MetalRateInput {
     metalType: "gold" | "silver";
     purity: string;
     ratePerGram: number;
@@ -11,18 +10,25 @@ export interface MetalRate {
     isActive: boolean;
 }
 
+export interface MetalRate extends MetalRateInput {
+    _id: string;
+}
+
 export const useMetalRates = () =>
-    useQuery<MetalRate[], Error>(
-        ["metalRates"],
-        () => apiClient.get("/metal-rates").then(res => res.data)
-    );
+    useQuery<MetalRate[], Error>({
+        queryKey: ["metalRates"], // Use object with queryKey, not just array
+        queryFn: () => apiClient.get("/metal-rates").then(res => res.data),
+    });
 
 export const useUpdateMetalRate = () => {
     const queryClient = useQueryClient();
-    return useMutation<void, Error, MetalRate>(
-        (data) => apiClient.post("/metal-rates", data).then(res => res.data),
-        {
-            onSuccess: () => queryClient.invalidateQueries(["metalRates"]),
-        }
-    );
+
+    return useMutation<void, Error, MetalRateInput>({
+        mutationFn: (data: MetalRateInput) =>
+            apiClient.post("/metal-rates", data).then(res => res.data),
+        onSuccess: () => {
+            // Pass invalidateQueries with object containing queryKey
+            queryClient.invalidateQueries({ queryKey: ["metalRates"] });
+        },
+    });
 };
