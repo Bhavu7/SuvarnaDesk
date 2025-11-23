@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { MdDashboard } from "react-icons/md";
-import apiClient from "../apiClient";
+import apiClient from "../api/apiClient";
 
 const Dashboard = () => {
   const [stats, setStats] = useState<any>({});
