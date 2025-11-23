@@ -1,16 +1,17 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import { Schema, model, Document } from "mongoose";
+
 export interface ILabourCharge extends Document {
     name: string;
     chargeType: "perGram" | "fixedPerItem";
     amount: number;
-    description?: string;
     isActive: boolean;
 }
-const LabourChargeSchema: Schema = new Schema({
+
+const labourChargeSchema = new Schema<ILabourCharge>({
     name: { type: String, required: true },
     chargeType: { type: String, enum: ["perGram", "fixedPerItem"], required: true },
     amount: { type: Number, required: true },
-    description: { type: String },
     isActive: { type: Boolean, default: true }
 });
-export default mongoose.model<ILabourCharge>('LabourCharge', LabourChargeSchema);
+
+export default model<ILabourCharge>("LabourCharge", labourChargeSchema);
