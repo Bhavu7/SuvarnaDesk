@@ -1,20 +1,19 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import { Schema, model, Document } from "mongoose";
+
 export interface IShopSettings extends Document {
     shopName: string;
-    ownerName: string;
-    GSTNumber: string;
     address: string;
-    contactNumber: string;
+    phone: string;
+    gstNumber?: string;
     logoUrl?: string;
-    defaultCurrency: string;
 }
-const ShopSettingsSchema: Schema = new Schema({
+
+const shopSettingsSchema = new Schema<IShopSettings>({
     shopName: { type: String, required: true },
-    ownerName: { type: String, required: true },
-    GSTNumber: { type: String, required: true },
     address: { type: String, required: true },
-    contactNumber: { type: String, required: true },
-    logoUrl: { type: String },
-    defaultCurrency: { type: String, default: 'INR' }
+    phone: { type: String, required: true },
+    gstNumber: { type: String },
+    logoUrl: { type: String }
 });
-export default mongoose.model<IShopSettings>('ShopSettings', ShopSettingsSchema);
+
+export default model<IShopSettings>("ShopSettings", shopSettingsSchema);
