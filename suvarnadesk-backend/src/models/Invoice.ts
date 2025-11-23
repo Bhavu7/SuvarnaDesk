@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import { Schema, model, Document, Types } from "mongoose";
 
 const LineItemSchema = new Schema({
     itemType: { type: String, enum: ["gold", "silver", "other"], required: true },
@@ -9,7 +9,7 @@ const LineItemSchema = new Schema({
         unit: { type: String, required: true }
     },
     ratePerGram: { type: Number, required: true },
-    labourChargeReferenceId: { type: Schema.Types.ObjectId, ref: 'LabourCharge' },
+    labourChargeReferenceId: { type: Types.ObjectId, ref: "LabourCharge" },
     labourChargeType: { type: String, enum: ["perGram", "fixedPerItem", null] },
     labourChargeAmount: { type: Number },
     makingChargesTotal: { type: Number },
@@ -19,36 +19,34 @@ const LineItemSchema = new Schema({
 export interface IInvoice extends Document {
     invoiceNumber: string;
     date: Date;
-    customerId: mongoose.Types.ObjectId;
-    customerSnapshot: object;
-    lineItems: object[];
-    totals: object;
-    paymentDetails: object;
-    QRCodeData: string;
-    createdBy: mongoose.Types.ObjectId;
-    updatedAt: Date;
+    customerId: Types.ObjectId;
+    customerSnapshot: any;
+    lineItems: typeof LineItemSchema[];
+    totals: {
+        subtotal: number;
+        GSTPercent: number;
+        GSTAmount: number;
+        grandTotal: number;
+    };
+    paymentDetails: {
+        paymentMode: string;
+        amountPaid: number;
+        balanceDue: number;
+    };
+    QRCodeData?: string;
+    createdBy?: Types.ObjectId;
 }
 
-const InvoiceSchema: Schema = new Schema({
+const invoiceSchema = new Schema<IInvoice>({
     invoiceNumber: { type: String, required: true, unique: true },
     date: { type: Date, required: true },
-    customerId: { type: Schema.Types.ObjectId, ref: 'Customer', required: true },
-    customerSnapshot: { type: Object, required: true },
+    customerId: { type: Types.ObjectId, ref: "Customer", required: true },
+    customerSnapshot: { type: Schema.Types.Mixed, required: true },
     lineItems: [LineItemSchema],
-    totals: {
-        subtotal: { type: Number },
-        GSTPercent: { type: Number },
-        GSTAmount: { type: Number },
-        grandTotal: { type: Number }
-    },
-    paymentDetails: {
-        paymentMode: { type: String },
-        amountPaid: { type: Number },
-        balanceDue: { type: Number },
-        notes: { type: String }
-    },
+    totals: { type: Schema.Types.Mixed, required: true },
+    paymentDetails: { type: Schema.Types.Mixed, required: true },
     QRCodeData: { type: String },
-    createdBy: { type: Schema.Types.ObjectId, ref: 'Admin' },
-    updatedAt: { type: Date, default: Date.now }
-});
-export default mongoose.model<IInvoice>('Invoice', InvoiceSchema);
+    createdBy: { type: Types.ObjectId, ref: "Admin" }
+}, { timestamps: true });
+
+export default model<IInvoice>("Invoice", invoiceSchema);
