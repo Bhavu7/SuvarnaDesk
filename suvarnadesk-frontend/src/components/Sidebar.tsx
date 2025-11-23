@@ -1,31 +1,46 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
+import {
+  MdDashboard,
+  MdWork,
+  MdMoney,
+  MdList,
+  MdSettings,
+  MdReport,
+} from "react-icons/md";
 import { motion } from "framer-motion";
 
-export default function Sidebar() {
-  return (
-    <motion.nav
-      className="flex flex-col w-64 bg-white border-r shadow-lg"
-      initial={{ x: -80, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={{ duration: 0.6 }}
-    >
-      <div className="p-6 text-2xl font-bold">SuvarnaDesk</div>
-      <NavLink to="/billing" className="px-6 py-3 hover:bg-blue-100">
-        Billing
+const links = [
+  { path: "/", label: "Dashboard", icon: <MdDashboard /> },
+  { path: "/billing", label: "Billing", icon: <MdMoney /> },
+  { path: "/worker-jobs", label: "Worker Jobs", icon: <MdWork /> },
+  { path: "/rates", label: "Rates", icon: <MdList /> },
+  { path: "/labour-charges", label: "Labour Charges", icon: <MdMoney /> },
+  { path: "/reports", label: "Reports", icon: <MdReport /> },
+  { path: "/settings", label: "Settings", icon: <MdSettings /> },
+];
+
+const Sidebar = () => (
+  <motion.div
+    initial={{ x: -80, opacity: 0 }}
+    animate={{ x: 0, opacity: 1 }}
+    className="flex-col hidden w-64 min-h-screen bg-white border-r shadow-lg md:flex"
+  >
+    <div className="py-6 text-2xl font-bold text-center text-blue-600 border-b">
+      SuvarnaDesk
+    </div>
+    {links.map(({ path, label, icon }) => (
+      <NavLink
+        key={path}
+        to={path}
+        className="flex items-center gap-3 px-6 py-3 transition-colors hover:bg-blue-100"
+        activeClassName="bg-blue-200 font-bold"
+      >
+        {icon}
+        <span>{label}</span>
       </NavLink>
-      <NavLink to="/worker-jobs" className="px-6 py-3 hover:bg-blue-100">
-        Worker Jobs
-      </NavLink>
-      <NavLink to="/rates" className="px-6 py-3 hover:bg-blue-100">
-        Rates
-      </NavLink>
-      <NavLink to="/settings" className="px-6 py-3 hover:bg-blue-100">
-        Settings
-      </NavLink>
-      <NavLink to="/profile" className="px-6 py-3 mt-auto hover:bg-blue-100">
-        Profile
-      </NavLink>
-    </motion.nav>
-  );
-}
+    ))}
+  </motion.div>
+);
+
+export default Sidebar;
