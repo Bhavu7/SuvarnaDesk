@@ -1,36 +1,31 @@
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
-
-const menuItems = [
-  { label: "Dashboard", path: "/dashboard" },
-  { label: "Billing", path: "/billing" },
-  { label: "Worker Jobs", path: "/worker-jobs" },
-  { label: "Rates", path: "/rates" },
-  { label: "Labour Charges", path: "/labour-charges" },
-  { label: "Reports", path: "/reports" },
-  { label: "Settings", path: "/settings" },
-];
+import { NavLink } from "react-router-dom";
+import { motion } from "framer-motion";
 
 export default function Sidebar() {
-  const location = useLocation();
-
   return (
-    <aside className="w-64 bg-white border-r hidden md:block">
-      <nav className="flex flex-col p-4 space-y-4">
-        {menuItems.map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`px-3 py-2 rounded hover:bg-gray-100 ${
-              location.pathname.startsWith(item.path)
-                ? "bg-gray-200 font-semibold"
-                : ""
-            }`}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-    </aside>
+    <motion.nav
+      className="flex flex-col w-64 bg-white border-r shadow-lg"
+      initial={{ x: -80, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ duration: 0.6 }}
+    >
+      <div className="p-6 text-2xl font-bold">SuvarnaDesk</div>
+      <NavLink to="/billing" className="px-6 py-3 hover:bg-blue-100">
+        Billing
+      </NavLink>
+      <NavLink to="/worker-jobs" className="px-6 py-3 hover:bg-blue-100">
+        Worker Jobs
+      </NavLink>
+      <NavLink to="/rates" className="px-6 py-3 hover:bg-blue-100">
+        Rates
+      </NavLink>
+      <NavLink to="/settings" className="px-6 py-3 hover:bg-blue-100">
+        Settings
+      </NavLink>
+      <NavLink to="/profile" className="px-6 py-3 mt-auto hover:bg-blue-100">
+        Profile
+      </NavLink>
+    </motion.nav>
   );
 }
