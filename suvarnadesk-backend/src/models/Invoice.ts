@@ -40,7 +40,7 @@ export interface IInvoice extends Document {
 const invoiceSchema = new Schema<IInvoice>({
     invoiceNumber: { type: String, required: true, unique: true },
     date: { type: Date, required: true },
-    customerId: { type: Types.ObjectId, ref: "Customer", required: true },
+    customerId: { type: Schema.Types.ObjectId, ref: "Customer", required: true },
     customerSnapshot: { type: Schema.Types.Mixed, required: true },
     lineItems: [LineItemSchema],
     totals: { type: Schema.Types.Mixed, required: true },
