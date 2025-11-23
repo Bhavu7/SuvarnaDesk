@@ -1,50 +1,37 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import { Schema, model, Document, Types } from "mongoose";
+
 export interface IWorkerJob extends Document {
-    jobNumber: string;
-    customerId?: mongoose.Types.ObjectId;
-    customerName?: string;
-    customerPhone?: string;
-    jobType: "repair" | "modification" | "custom";
     description: string;
-    metalType: string;
-    purity?: string;
-    estimatedWeightBefore: object;
-    estimatedWeightAfter: object;
-    receivedDate: Date;
-    promisedDeliveryDate: Date;
-    actualDeliveryDate?: Date;
+    jobType: string;
     status: string;
     estimatedCharges: number;
-    finalCharges?: number;
-    labourChargesDetail: object;
-    paymentStatus: "unpaid" | "partial" | "paid";
-    takenReceiptNumber: string;
-    givenReceiptNumber: string;
-    notes?: string;
-    attachments?: string[];
+    paymentStatus: string;
+    metalType: string;
+    estimatedWeightBefore?: { value: number; unit: string };
+    estimatedWeightAfter?: { value: number; unit: string };
+    receivedDate: Date;
+    promisedDeliveryDate: Date;
+    createdBy?: Types.ObjectId;
 }
-const WorkerJobSchema: Schema = new Schema({
-    jobNumber: { type: String, required: true, unique: true },
-    customerId: { type: Schema.Types.ObjectId, ref: 'Customer' },
-    customerName: { type: String },
-    customerPhone: { type: String },
-    jobType: { type: String, enum: ["repair", "modification", "custom"], required: true },
+
+const workerJobSchema = new Schema<IWorkerJob>({
     description: { type: String, required: true },
+    jobType: { type: String, required: true },
+    status: { type: String, required: true },
+    estimatedCharges: { type: Number, default: 0 },
+    paymentStatus: { type: String, required: true },
     metalType: { type: String, required: true },
-    purity: { type: String },
-    estimatedWeightBefore: { type: Object },
-    estimatedWeightAfter: { type: Object },
-    receivedDate: { type: Date, required: true },
-    promisedDeliveryDate: { type: Date, required: true },
-    actualDeliveryDate: { type: Date },
-    status: { type: String, enum: ["received", "inProgress", "ready", "delivered", "cancelled"], required: true },
-    estimatedCharges: { type: Number, required: true },
-    finalCharges: { type: Number },
-    labourChargesDetail: { type: Object },
-    paymentStatus: { type: String, enum: ["unpaid", "partial", "paid"], required: true },
-    takenReceiptNumber: { type: String },
-    givenReceiptNumber: { type: String },
-    notes: { type: String },
-    attachments: [{ type: String }]
-});
-export default mongoose.model<IWorkerJob>('WorkerJob', WorkerJobSchema);
+    estimatedWeightBefore: {
+        value: { type: Number },
+        unit: { type: String }
+    },
+    estimatedWeightAfter: {
+        value: { type: Number },
+        unit: { type: String }
+    },
+    receivedDate: { type: Date },
+    promisedDeliveryDate: { type: Date },
+    createdBy: { type: Types.ObjectId, ref: "Admin" }
+}, { timestamps: true });
+
+export default model<IWorkerJob>("WorkerJob", workerJobSchema);
