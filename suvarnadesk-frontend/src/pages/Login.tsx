@@ -1,62 +1,63 @@
 import React, { useState } from "react";
-import { useLogin } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { MdLockOutline, MdPerson } from "react-icons/md";
+import { motion } from "framer-motion";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const loginMutation = useLogin();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Replace with actual authentication logic
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    loginMutation.mutate(
-      { email, password },
-      {
-        onSuccess: (res) => {
-          localStorage.setItem("token", res.token);
-          navigate("/dashboard");
-        },
-      }
-    );
+    localStorage.setItem("token", "dummy-token");
+    navigate("/");
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="flex items-center justify-center min-h-[70vh]"
+    >
       <form
-        onSubmit={handleSubmit}
-        className="bg-white p-8 rounded shadow-md w-full max-w-sm"
+        className="bg-white rounded shadow p-8 min-w-[320px]"
+        onSubmit={handleLogin}
       >
-        <h2 className="text-2xl font-bold mb-6 text-center">Admin Login</h2>
-        <label className="block mb-2">Email</label>
-        <input
-          title="inputs"
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="border p-2 rounded mb-4 w-full"
-        />
-        <label className="block mb-2">Password</label>
-        <input
-          title="inputs"
-          type="password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="border p-2 rounded mb-6 w-full"
-        />
+        <div className="flex justify-center mb-4">
+          <MdPerson className="text-4xl text-blue-500" />
+        </div>
+        <h2 className="mb-4 text-xl font-bold text-center">Admin Login</h2>
+        <div className="mb-4">
+          <label className="block mb-1 text-sm font-medium">Email</label>
+          <input
+            title="auth inputs"
+            className="w-full p-2 border rounded"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            type="email"
+            required
+          />
+        </div>
+        <div className="mb-6">
+          <label className="block mb-1 text-sm font-medium">Password</label>
+          <input
+            title="auth inputs"
+            className="w-full p-2 border rounded"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            type="password"
+            required
+          />
+        </div>
         <button
           type="submit"
-          disabled={loginMutation.isPending}
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+          className="flex items-center justify-center w-full gap-1 py-2 text-white transition bg-blue-600 rounded hover:bg-blue-700"
         >
-          {loginMutation.isPending ? "Logging in..." : "Login"}
+          <MdLockOutline /> Login
         </button>
-        {loginMutation.isError && (
-          <p className="text-red-600 mt-4">Invalid credentials</p>
-        )}
       </form>
-    </div>
+    </motion.div>
   );
 }
