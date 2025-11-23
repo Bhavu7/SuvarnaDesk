@@ -13,7 +13,7 @@ const rateChangeLogSchema = new Schema<IRateChangeLog>({
     oldRate: { type: Number, required: true },
     newRate: { type: Number, required: true },
     changedAt: { type: Date, default: Date.now },
-    changedBy: { type: Types.ObjectId, ref: "Admin" }
+    changedBy: { type: Schema.Types.ObjectId, ref: "Admin" }
 });
 
 export default model<IRateChangeLog>("RateChangeLog", rateChangeLogSchema);
