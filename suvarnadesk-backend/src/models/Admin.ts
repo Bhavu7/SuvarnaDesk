@@ -1,7 +1,14 @@
-import { Schema, model } from "mongoose";
-import bcrypt from "bcrypt";
+import { Schema, model, Document } from "mongoose";
 
-const adminSchema = new Schema({
+export interface IAdmin extends Document {
+    name?: string;
+    email: string;
+    password: string;
+    phone?: string;
+    role: string;
+}
+
+const adminSchema = new Schema<IAdmin>({
     name: { type: String },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
@@ -9,13 +16,4 @@ const adminSchema = new Schema({
     role: { type: String, default: "admin" }
 });
 
-// Hash password before save
-adminSchema.pre("save", async function (next) {
-    if (this.isModified("password")) {
-        const salt = await bcrypt.genSalt(10);
-        this.password = await bcrypt.hash(this.password, salt);
-    }
-    next();
-});
-
-export default model("Admin", adminSchema);
+export default model<IAdmin>("Admin", adminSchema);
