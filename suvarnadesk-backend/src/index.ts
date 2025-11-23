@@ -2,15 +2,46 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
+
 dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Import routes
 import adminRoutes from "./routes/adminRoutes";
-app.use("/api/admin", adminRoutes);
+import customerRoutes from "./routes/customerRoutes";
+import invoiceRoutes from "./routes/invoiceRoutes";
+import labourChargeRoutes from "./routes/labourChargeRoutes";
+import metalRateRoutes from "./routes/metalRateRoutes";
+import workerJobRoutes from "./routes/workerJobRoutes";
+import shopSettingsRoutes from "./routes/shopSettingsRoutes";
 
-mongoose.connect(process.env.MONGO_URI!)
-    .then(() => app.listen(4000, () => console.log("Server started on port 4000")))
-    .catch(err => console.error("DB connection error:", err));
+// Connect to MongoDB
+mongoose
+    .connect(process.env.MONGO_URI!, {})
+    .then(() => {
+        console.log("MongoDB connected");
+        // Start server
+        const PORT = process.env.PORT || 4000;
+        app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+    })
+    .catch((err) => {
+        console.error("DB connection error:", err);
+        process.exit(1);
+    });
+
+// Mount all routes
+app.use("/api/admin", adminRoutes);
+app.use("/api/customers", customerRoutes);
+app.use("/api/invoices", invoiceRoutes);
+app.use("/api/labour-charges", labourChargeRoutes);
+app.use("/api/metal-rates", metalRateRoutes);
+app.use("/api/worker-jobs", workerJobRoutes);
+app.use("/api/shop-settings", shopSettingsRoutes);
+
+// Basic healthcheck route
+app.get("/", (req, res) => {
+    res.send("SuvarnaDesk API running!");
+});
