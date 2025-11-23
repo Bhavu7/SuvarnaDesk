@@ -1,18 +1,19 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import { Schema, model, Document, Types } from "mongoose";
+
 export interface IRateChangeLog extends Document {
-    metalType: string;
-    purity: string;
-    oldRatePerGram: number;
-    newRatePerGram: number;
-    changedBy: mongoose.Types.ObjectId;
-    timestamp: Date;
+    metalType: "gold" | "silver";
+    oldRate: number;
+    newRate: number;
+    changedAt: Date;
+    changedBy: Types.ObjectId;
 }
-const RateChangeLogSchema: Schema = new Schema({
-    metalType: { type: String, required: true },
-    purity: { type: String, required: true },
-    oldRatePerGram: { type: Number, required: true },
-    newRatePerGram: { type: Number, required: true },
-    changedBy: { type: Schema.Types.ObjectId, ref: 'Admin', required: true },
-    timestamp: { type: Date, default: Date.now }
+
+const rateChangeLogSchema = new Schema<IRateChangeLog>({
+    metalType: { type: String, enum: ["gold", "silver"], required: true },
+    oldRate: { type: Number, required: true },
+    newRate: { type: Number, required: true },
+    changedAt: { type: Date, default: Date.now },
+    changedBy: { type: Types.ObjectId, ref: "Admin" }
 });
-export default mongoose.model<IRateChangeLog>('RateChangeLog', RateChangeLogSchema);
+
+export default model<IRateChangeLog>("RateChangeLog", rateChangeLogSchema);
