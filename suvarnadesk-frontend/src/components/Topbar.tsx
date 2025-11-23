@@ -1,24 +1,20 @@
-import React from "react";
+import React, { useState } from "react";
+import { MdMenu, MdPerson } from "react-icons/md";
 
-interface TopbarProps {
-  shopName: string;
-  adminName: string;
-  onLogout: () => void;
-}
+const Topbar = ({ onMenuClick }: { onMenuClick: () => void }) => (
+  <div className="flex items-center justify-between px-4 bg-white border-b shadow-sm md:hidden h-14">
+    <button
+      title="menu"
+      onClick={onMenuClick}
+      className="mr-2 text-3xl text-blue-600"
+    >
+      <MdMenu />
+    </button>
+    <span className="text-lg font-bold text-blue-700">SuvarnaDesk</span>
+    <span className="flex items-center gap-1 text-gray-700">
+      <MdPerson className="text-lg" /> Admin
+    </span>
+  </div>
+);
 
-export default function Topbar({ shopName, adminName, onLogout }: TopbarProps) {
-  return (
-    <header className="flex items-center justify-between bg-gray-50 px-6 py-3 border-b">
-      <h1 className="text-xl font-bold">{shopName || "SuvarnaDesk"}</h1>
-      <div className="flex items-center space-x-4">
-        <span>{adminName}</span>
-        <button
-          onClick={onLogout}
-          className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-        >
-          Logout
-        </button>
-      </div>
-    </header>
-  );
-}
+export default Topbar;
