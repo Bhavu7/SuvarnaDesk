@@ -2,13 +2,16 @@ import { Schema, model } from "mongoose";
 import bcrypt from "bcrypt";
 
 const adminSchema = new Schema({
+    name: { type: String },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
+    phone: { type: String },
+    role: { type: String, default: "admin" }
 });
 
 // Hash password before save
-adminSchema.pre('save', async function (next) {
-    if (this.isModified('password')) {
+adminSchema.pre("save", async function (next) {
+    if (this.isModified("password")) {
         const salt = await bcrypt.genSalt(10);
         this.password = await bcrypt.hash(this.password, salt);
     }
