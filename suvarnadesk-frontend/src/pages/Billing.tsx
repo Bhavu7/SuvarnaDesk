@@ -12,8 +12,9 @@ import { useCustomers, Customer } from "../hooks/useCustomers";
 import { useLabourCharges, LabourCharge } from "../hooks/useLabourCharges";
 import { useMetalRates, MetalRate } from "../hooks/useMetalRates";
 import { useCreateInvoice, LineItem } from "../hooks/useBilling";
+import CustomDropdown from "../components/CustomDropdown";
 import InvoiceQRCode from "../components/InvoiceQRCode";
-import toast from "react-hot-toast";
+import { showToast } from "../components/CustomToast";
 
 export default function Billing() {
   const { data: customers } = useCustomers();
@@ -43,6 +44,41 @@ export default function Billing() {
   const [paymentMode, setPaymentMode] = useState<string>("cash");
   const [amountPaid, setAmountPaid] = useState<number>(0);
   const [showQRCode, setShowQRCode] = useState<boolean>(false);
+
+  // Custom dropdown options
+  const itemTypeOptions = [
+    { value: "gold", label: "Gold" },
+    { value: "silver", label: "Silver" },
+    { value: "other", label: "Other" },
+  ];
+
+  const purityOptions = {
+    gold: [
+      { value: "24K", label: "24K" },
+      { value: "22K", label: "22K" },
+      { value: "18K", label: "18K" },
+    ],
+    silver: [
+      { value: "Standard", label: "Standard" },
+      { value: "Sterling", label: "Sterling" },
+    ],
+    other: [{ value: "Standard", label: "Standard" }],
+  };
+
+  const weightUnitOptions = [
+    { value: "kg", label: "kg" },
+    { value: "g", label: "g" },
+    { value: "mg", label: "mg" },
+    { value: "tola", label: "tola" },
+  ];
+
+  const paymentModeOptions = [
+    { value: "cash", label: "Cash" },
+    { value: "upi", label: "UPI" },
+    { value: "card", label: "Card" },
+    { value: "bankTransfer", label: "Bank Transfer" },
+    { value: "other", label: "Other" },
+  ];
 
   const convertToGrams = (value: number, unit: string): number => {
     switch (unit) {
@@ -162,20 +198,20 @@ export default function Billing() {
     if (lineItems.length > 1) {
       const updatedItems = lineItems.filter((_, i) => i !== index);
       setLineItems(updatedItems);
-      toast.success("Item removed");
+      showToast.success("Item removed");
     } else {
-      toast.error("At least one item is required");
+      showToast.error("At least one item is required");
     }
   };
 
   const handleSubmit = () => {
     if (!selectedCustomer) {
-      toast.error("Please select a customer");
+      showToast.error("Please select a customer");
       return;
     }
 
     if (lineItems.some((item) => item.weight.value === 0)) {
-      toast.error("Please enter weight for all items");
+      showToast.error("Please enter weight for all items");
       return;
     }
 
@@ -197,11 +233,11 @@ export default function Billing() {
       },
       {
         onSuccess: () => {
-          toast.success("Invoice created successfully!");
+          showToast.success("Invoice created successfully!");
           setShowQRCode(true);
         },
         onError: (error: any) => {
-          toast.error(
+          showToast.error(
             error.response?.data?.error || "Failed to create invoice"
           );
         },
@@ -271,19 +307,18 @@ export default function Billing() {
                   >
                     Select Customer
                   </label>
-                  <select
-                    id="customer-select"
+                  <CustomDropdown
+                    options={
+                      customers?.map((c: Customer) => ({
+                        value: c._id,
+                        label: `${c.name} - ${c.phone}`,
+                      })) || []
+                    }
                     value={selectedCustomer}
-                    onChange={(e) => setSelectedCustomer(e.target.value)}
-                    className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Choose a customer...</option>
-                    {customers?.map((c: Customer) => (
-                      <option key={c._id} value={c._id}>
-                        {c.name} - {c.phone}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setSelectedCustomer}
+                    placeholder="Choose a customer..."
+                    aria-label="Select customer"
+                  />
                 </div>
               </div>
 
@@ -375,22 +410,14 @@ export default function Billing() {
                         <label className="block mb-1 text-sm font-medium text-gray-700">
                           Item Type
                         </label>
-                        <select
-                        title="form elements"
+                        <CustomDropdown
+                          options={itemTypeOptions}
                           value={item.itemType}
-                          onChange={(e) =>
-                            handleLineItemChange(
-                              index,
-                              "itemType",
-                              e.target.value
-                            )
+                          onChange={(value) =>
+                            handleLineItemChange(index, "itemType", value)
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="gold">Gold</option>
-                          <option value="silver">Silver</option>
-                          <option value="other">Other</option>
-                        </select>
+                          aria-label="Select item type"
+                        />
                       </div>
 
                       {/* Purity */}
@@ -398,31 +425,18 @@ export default function Billing() {
                         <label className="block mb-1 text-sm font-medium text-gray-700">
                           Purity
                         </label>
-                        <select
-                        title="form elements"
-                          value={item.purity}
-                          onChange={(e) =>
-                            handleLineItemChange(
-                              index,
-                              "purity",
-                              e.target.value
-                            )
+                        <CustomDropdown
+                          options={
+                            purityOptions[
+                              item.itemType as keyof typeof purityOptions
+                            ] || purityOptions.other
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          {item.itemType === "gold" ? (
-                            <>
-                              <option value="24K">24K</option>
-                              <option value="22K">22K</option>
-                              <option value="18K">18K</option>
-                            </>
-                          ) : (
-                            <>
-                              <option value="Standard">Standard</option>
-                              <option value="Sterling">Sterling</option>
-                            </>
-                          )}
-                        </select>
+                          value={item.purity}
+                          onChange={(value) =>
+                            handleLineItemChange(index, "purity", value)
+                          }
+                          aria-label="Select purity"
+                        />
                       </div>
 
                       {/* Weight */}
@@ -445,24 +459,17 @@ export default function Billing() {
                             }
                             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="0.00"
+                            aria-label="Enter weight value"
                           />
-                          <select
-                          title="form elements"
+                          <CustomDropdown
+                            options={weightUnitOptions}
                             value={item.weight.unit}
-                            onChange={(e) =>
-                              handleLineItemChange(
-                                index,
-                                "weightUnit",
-                                e.target.value
-                              )
+                            onChange={(value) =>
+                              handleLineItemChange(index, "weightUnit", value)
                             }
-                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          >
-                            <option value="g">g</option>
-                            <option value="kg">kg</option>
-                            <option value="mg">mg</option>
-                            <option value="tola">tola</option>
-                          </select>
+                            className="w-24"
+                            aria-label="Select weight unit"
+                          />
                         </div>
                       </div>
 
@@ -471,31 +478,30 @@ export default function Billing() {
                         <label className="block mb-1 text-sm font-medium text-gray-700">
                           Labour Charge
                         </label>
-                        <select
-                        title="form elements"
+                        <CustomDropdown
+                          options={[
+                            { value: "", label: "No Labour Charge" },
+                            ...(labourCharges
+                              ?.filter((lc) => lc.isActive)
+                              .map((lc: LabourCharge) => ({
+                                value: lc._id,
+                                label: `${lc.name} (${
+                                  lc.chargeType === "perGram"
+                                    ? "per gram"
+                                    : "fixed"
+                                })`,
+                              })) || []),
+                          ]}
                           value={item.labourChargeReferenceId || ""}
-                          onChange={(e) =>
+                          onChange={(value) =>
                             handleLineItemChange(
                               index,
                               "labourChargeReferenceId",
-                              e.target.value
+                              value
                             )
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="">No Labour Charge</option>
-                          {labourCharges
-                            ?.filter((lc) => lc.isActive)
-                            .map((lc: LabourCharge) => (
-                              <option key={lc._id} value={lc._id}>
-                                {lc.name} (
-                                {lc.chargeType === "perGram"
-                                  ? "per gram"
-                                  : "fixed"}
-                                )
-                              </option>
-                            ))}
-                        </select>
+                          aria-label="Select labour charge"
+                        />
                       </div>
                     </div>
 
@@ -544,7 +550,6 @@ export default function Billing() {
                   </label>
                   <div className="relative">
                     <input
-                    title="form elements"
                       type="number"
                       min={0}
                       max={100}
@@ -552,6 +557,7 @@ export default function Billing() {
                       value={GSTPercent}
                       onChange={(e) => setGSTPercent(Number(e.target.value))}
                       className="w-full px-4 py-3 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      aria-label="Enter GST percentage"
                     />
                     <span className="absolute text-gray-500 transform -translate-y-1/2 right-3 top-1/2">
                       %
@@ -563,18 +569,12 @@ export default function Billing() {
                   <label className="block mb-2 text-sm font-medium text-gray-700">
                     Payment Mode
                   </label>
-                  <select
-                  title="form elements"
+                  <CustomDropdown
+                    options={paymentModeOptions}
                     value={paymentMode}
-                    onChange={(e) => setPaymentMode(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="cash">Cash</option>
-                    <option value="upi">UPI</option>
-                    <option value="card">Card</option>
-                    <option value="bankTransfer">Bank Transfer</option>
-                    <option value="other">Other</option>
-                  </select>
+                    onChange={setPaymentMode}
+                    aria-label="Select payment mode"
+                  />
                 </div>
 
                 <div>
@@ -593,6 +593,7 @@ export default function Billing() {
                       onChange={(e) => setAmountPaid(Number(e.target.value))}
                       className="w-full px-4 py-3 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="0.00"
+                      aria-label="Enter amount paid"
                     />
                   </div>
                 </div>

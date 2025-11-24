@@ -1,10 +1,8 @@
-import React, { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import Sidebar from "./components/Sidebar";
-import Navbar from "./components/Navbar";
-import Topbar from "./components/Topbar";
+import { AuthProvider } from "./contexts/AuthContext";
+import Layout from "./components/Layout";
+import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Billing from "./pages/Billing";
 import WorkerJobs from "./pages/WorkerJobs";
@@ -13,90 +11,13 @@ import LabourCharges from "./pages/LabourCharges";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
-import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
-
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
-};
-
-const Layout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const { isAuthenticated } = useAuth();
-
-  if (!isAuthenticated) {
-    return <Login />;
-  }
-
+function App() {
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Desktop Sidebar */}
-      <div
-        className="relative z-30 hidden md:block"
-        onMouseEnter={() => setSidebarCollapsed(false)}
-        onMouseLeave={() => setSidebarCollapsed(true)}
-      >
-        <Sidebar collapsed={sidebarCollapsed} />
-      </div>
-
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Mobile Sidebar */}
-      <div
-        className={`
-        fixed top-0 left-0 z-50 w-64 h-full bg-white transform transition-transform duration-300 ease-in-out md:hidden
-        ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-      `}
-      >
-        <Sidebar collapsed={false} />
-      </div>
-
-      {/* Main Content */}
-      <div className="flex flex-col flex-1 min-w-0">
-        <Topbar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
-        <Navbar />
-        <main className="flex-1 p-4 overflow-auto md:p-6">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/billing" element={<Billing />} />
-            <Route path="/worker-jobs" element={<WorkerJobs />} />
-            <Route path="/rates" element={<Rates />} />
-            <Route path="/labour-charges" element={<LabourCharges />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </main>
-      </div>
-    </div>
-  );
-};
-
-export default function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <BrowserRouter>
-          <Layout />
+    <AuthProvider>
+      <Router>
+        <div className="App">
           <Toaster
             position="top-right"
             toastOptions={{
@@ -104,25 +25,55 @@ export default function App() {
               style: {
                 background: "#363636",
                 color: "#fff",
+                borderRadius: "12px",
+                fontSize: "14px",
+                fontWeight: "500",
+                padding: "12px 20px",
+                boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.36)",
+                maxWidth: "400px",
+                wordBreak: "break-word",
               },
               success: {
-                duration: 3000,
-                iconTheme: {
-                  primary: "#10B981",
-                  secondary: "#fff",
+                style: {
+                  background: "rgba(16, 185, 129, 0.95)",
+                  backdropFilter: "blur(20px)",
+                  border: "1px solid rgba(16, 185, 129, 0.4)",
                 },
               },
               error: {
-                duration: 5000,
-                iconTheme: {
-                  primary: "#EF4444",
-                  secondary: "#fff",
+                style: {
+                  background: "rgba(239, 68, 68, 0.95)",
+                  backdropFilter: "blur(20px)",
+                  border: "1px solid rgba(239, 68, 68, 0.4)",
+                },
+              },
+              loading: {
+                style: {
+                  background: "rgba(59, 130, 246, 0.95)",
+                  backdropFilter: "blur(20px)",
+                  border: "1px solid rgba(59, 130, 246, 0.4)",
                 },
               },
             }}
           />
-        </BrowserRouter>
-      </AuthProvider>
-    </QueryClientProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="billing" element={<Billing />} />
+              <Route path="worker-jobs" element={<WorkerJobs />} />
+              <Route path="rates" element={<Rates />} />
+              <Route path="labour-charges" element={<LabourCharges />} />
+              <Route path="reports" element={<Reports />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="profile" element={<Profile />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </div>
+      </Router>
+    </AuthProvider>
   );
 }
+
+export default App;

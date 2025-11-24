@@ -10,7 +10,7 @@ import {
   MdPhone,
 } from "react-icons/md";
 import apiClient from "../api/apiClient";
-import toast from "react-hot-toast";
+import { showToast } from '../components/CustomToast';
 
 interface ShopSettings {
   shopName: string;
@@ -48,9 +48,9 @@ export default function Settings() {
       console.error("Failed to fetch shop settings:", error);
       // If no settings exist, use defaults
       if (error.response?.status === 404) {
-        toast("No existing settings found. Creating new ones...");
+        showToast.error("No existing settings found. Creating new ones...");
       } else {
-        toast.error("Failed to load shop settings");
+        showToast.error("Failed to load shop settings");
       }
     } finally {
       setIsLoading(false);
@@ -64,11 +64,11 @@ export default function Settings() {
       // Use PUT request for shop-settings (not POST)
       const response = await apiClient.put("/shop-settings", settings);
 
-      toast.success("Shop settings saved successfully!");
+      showToast.success("Shop settings saved successfully!");
       console.log("Settings saved:", response.data);
     } catch (error: any) {
       console.error("Failed to save settings:", error);
-      toast.error(error.response?.data?.error || "Failed to save settings");
+      showToast.error(error.response?.data?.error || "Failed to save settings");
     } finally {
       setIsSaving(false);
     }
