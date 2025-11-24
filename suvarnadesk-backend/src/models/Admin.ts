@@ -8,6 +8,13 @@ export interface IAdmin extends Document {
     password: string;
     memberSince: Date;
     lastLogin: Date;
+
+    // Shop Settings fields
+    shopName?: string;
+    address?: string;
+    gstNumber?: string;
+    logoUrl?: string;
+    ownerName?: string;
 }
 
 const AdminSchema: Schema = new Schema({
@@ -18,6 +25,13 @@ const AdminSchema: Schema = new Schema({
     password: { type: String, required: true },
     memberSince: { type: Date, default: Date.now },
     lastLogin: { type: Date, default: Date.now },
+
+    // Shop Settings fields
+    shopName: { type: String },
+    address: { type: String },
+    gstNumber: { type: String },
+    logoUrl: { type: String },
+    ownerName: { type: String },
 });
 
 const Admin = mongoose.model<IAdmin>("Admin", AdminSchema);

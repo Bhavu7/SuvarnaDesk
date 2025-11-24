@@ -90,3 +90,46 @@ export const changePassword = async (req: Request, res: Response) => {
 
     res.json({ message: "Password changed successfully" });
 };
+
+// GET /api/admin/shop-settings
+export const getShopSettings = async (req: Request, res: Response) => {
+    try {
+        const adminId = (req as any).admin.adminId;
+        const admin = await Admin.findById(adminId).select("shopName address phone gstNumber logoUrl ownerName");
+        if (!admin) {
+            return res.status(404).json({ error: "Admin not found" });
+        }
+        res.json({
+            shopName: admin.shopName || "",
+            address: admin.address || "",
+            phone: admin.phone || "",
+            gstNumber: admin.gstNumber || "",
+            logoUrl: admin.logoUrl || "",
+            ownerName: admin.ownerName || "",
+        });
+    } catch (error) {
+        res.status(500).json({ error: "Server error" });
+    }
+};
+
+// PUT /api/admin/shop-settings
+export const updateShopSettings = async (req: Request, res: Response) => {
+    try {
+        const adminId = (req as any).admin.adminId;
+        const { shopName, address, phone, gstNumber, logoUrl, ownerName } = req.body;
+
+        const admin = await Admin.findByIdAndUpdate(
+            adminId,
+            { shopName, address, phone, gstNumber, logoUrl, ownerName },
+            { new: true }
+        ).select("shopName address phone gstNumber logoUrl ownerName");
+
+        if (!admin) {
+            return res.status(404).json({ error: "Admin not found" });
+        }
+
+        res.json(admin);
+    } catch (error) {
+        res.status(500).json({ error: "Server error" });
+    }
+};

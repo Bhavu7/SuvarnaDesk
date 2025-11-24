@@ -38,7 +38,6 @@ export default function Settings() {
       }
     } catch (error: any) {
       console.error("Failed to fetch shop settings:", error);
-      // If no settings exist, use defaults
       if (error.response?.status === 404) {
         showToast.error("No existing settings found. Creating new ones...");
       } else {
@@ -52,10 +51,7 @@ export default function Settings() {
   const handleSave = async () => {
     try {
       setIsSaving(true);
-
-      // Use PUT request for shop-settings (not POST)
       const response = await apiClient.put("/shop-settings", settings);
-
       showToast.success("Shop settings saved successfully!");
       console.log("Settings saved:", response.data);
     } catch (error: any) {
