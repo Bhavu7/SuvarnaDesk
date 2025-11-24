@@ -12,6 +12,7 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import PrivateRoute from "./components/PrivateRoute";
 
 function App() {
   return (
@@ -58,15 +59,17 @@ function App() {
           />
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/" element={<Layout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="billing" element={<Billing />} />
-              <Route path="worker-jobs" element={<WorkerJobs />} />
-              <Route path="rates" element={<Rates />} />
-              <Route path="labour-charges" element={<LabourCharges />} />
-              <Route path="reports" element={<Reports />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="profile" element={<Profile />} />
+            <Route element={<PrivateRoute />}>
+              <Route path="/" element={<Layout />}>
+                <Route index element={<Dashboard />} />
+                <Route path="billing" element={<Billing />} />
+                <Route path="worker-jobs" element={<WorkerJobs />} />
+                <Route path="rates" element={<Rates />} />
+                <Route path="labour-charges" element={<LabourCharges />} />
+                <Route path="reports" element={<Reports />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="profile" element={<Profile />} />
+              </Route>
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
