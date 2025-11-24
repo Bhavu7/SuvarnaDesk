@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
-import Sidebar from "../components/Sidebar";
-import Topbar from "../components/Topbar";
-import Navbar from "../components/Navbar";
+import Sidebar from "./Sidebar";
+import Topbar from "./Topbar";
+import Navbar from "./Navbar";
 import { useAuth } from "../contexts/AuthContext";
-import LoadingSpinner from "../components/LoadingSpinner";
+import LoadingSpinner from "./LoadingSpinner";
 
 const Layout: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -55,7 +55,7 @@ const Layout: React.FC = () => {
       />
 
       {/* Main Content */}
-      <div className="flex flex-col flex-1 min-h-screen lg:ml-0">
+      <div className="flex flex-col flex-1 min-h-screen transition-all duration-300 lg:ml-0">
         {/* Topbar for mobile */}
         <Topbar
           onMenuClick={() => setMobileSidebarOpen(true)}
@@ -71,7 +71,7 @@ const Layout: React.FC = () => {
         </div>
 
         {/* Main Content Area */}
-        <main className="flex-1 p-4 overflow-auto lg:p-6">
+        <main className="flex-1 p-4 overflow-auto transition-all duration-300 lg:p-6">
           <div className="w-full mx-auto max-w-7xl">
             <Outlet />
           </div>

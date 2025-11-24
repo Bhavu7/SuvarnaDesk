@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import {
   MdDashboard,
   MdWork,
@@ -33,22 +33,18 @@ const Sidebar: React.FC<SidebarProps> = ({
   mobileOpen = false,
   onClose,
 }) => {
-  const location = useLocation();
-
   return (
     <>
       {/* Mobile Overlay */}
       <AnimatePresence>
         {mobileOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
-              onClick={onClose}
-            />
-          </>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
+            onClick={onClose}
+          />
         )}
       </AnimatePresence>
 
@@ -56,8 +52,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       <motion.aside
         initial={false}
         animate={{
-          x: mobileOpen ? 0 : collapsed ? 0 : -320,
-          opacity: mobileOpen ? 1 : 1,
+          x: mobileOpen ? 0 : window.innerWidth < 1024 ? -320 : 0,
         }}
         className={`fixed lg:sticky top-0 flex flex-col min-h-screen bg-gradient-to-b from-blue-900 to-blue-800 shadow-xl z-50 ${
           collapsed ? "w-20" : "w-64"

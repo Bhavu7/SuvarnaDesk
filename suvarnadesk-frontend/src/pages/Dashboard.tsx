@@ -42,8 +42,16 @@ const Dashboard = () => {
     pendingInvoices: 0,
   });
 
+  interface ChartDataItem {
+  name: string;
+  revenue: number;
+  invoices: number;
+  customers: number;
+  jobs: number;
+}
+
   const [loading, setLoading] = useState(true);
-  const [chartData, setChartData] = useState([]);
+  const [chartData, setChartData] = useState<ChartDataItem[]>([]);
   const [timeRange, setTimeRange] = useState("monthly");
 
   useEffect(() => {
