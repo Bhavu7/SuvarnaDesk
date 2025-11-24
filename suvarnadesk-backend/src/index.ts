@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
+import pdfRoutes from "./routes/pdfRoutes";
 
 dotenv.config();
 
@@ -40,6 +41,7 @@ app.use("/api/labour-charges", labourChargeRoutes);
 app.use("/api/metal-rates", metalRateRoutes);
 app.use("/api/worker-jobs", workerJobRoutes);
 app.use("/api/shop-settings", shopSettingsRoutes);
+app.use("/api/pdf", pdfRoutes);
 
 // Basic healthcheck route
 app.get("/", (req, res) => {
