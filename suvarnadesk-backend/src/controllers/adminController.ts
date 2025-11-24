@@ -19,7 +19,16 @@ export const loginAdmin = async (req: Request, res: Response) => {
         { expiresIn: "12h" }
     );
 
-    res.json({ token, admin: { name: admin.name, email: admin.email, phone: admin.phone, role: admin.role } });
+    res.json({
+        token,
+        admin: {
+            _id: admin._id,
+            name: admin.name,
+            email: admin.email,
+            phone: admin.phone,
+            role: admin.role
+        }
+    });
 };
 
 // POST /api/admin/register (only for initial setup)
