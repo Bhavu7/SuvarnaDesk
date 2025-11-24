@@ -8,6 +8,7 @@ import LoadingSpinner from "./LoadingSpinner";
 
 const Layout: React.FC = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [desktopSidebarExpanded, setDesktopSidebarExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
 
@@ -32,6 +33,9 @@ const Layout: React.FC = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Determine if sidebar is currently expanded
+  const isSidebarExpanded = mobileSidebarOpen || desktopSidebarExpanded;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -51,6 +55,9 @@ const Layout: React.FC = () => {
         <Sidebar
           mobileOpen={mobileSidebarOpen}
           onClose={() => setMobileSidebarOpen(false)}
+          onDesktopExpand={(expanded: boolean) =>
+            setDesktopSidebarExpanded(expanded)
+          }
         />
       </div>
 
@@ -67,7 +74,7 @@ const Layout: React.FC = () => {
 
         {/* Navbar for desktop - Made sticky */}
         <div className="sticky top-0 z-30 hidden lg:block">
-          <Navbar />
+          <Navbar sidebarExpanded={isSidebarExpanded} />
         </div>
 
         {/* Main Content Area */}

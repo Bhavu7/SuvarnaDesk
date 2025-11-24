@@ -4,7 +4,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
 import { showToast } from "../components/CustomToast";
 
-const Navbar = () => {
+interface NavbarProps {
+  sidebarExpanded?: boolean;
+}
+
+const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
   const { logout, user } = useAuth();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -117,16 +121,27 @@ const Navbar = () => {
     <motion.div
       initial={{ y: -32, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      className="sticky top-0 z-40 flex items-center justify-between h-16 px-6 border-b border-gray-200 shadow-sm bg-white/95 backdrop-blur-md"
+      className="sticky top-0 z-40 flex items-center justify-between h-20 px-6 border-b border-gray-200 shadow-sm bg-white/95 backdrop-blur-md"
     >
-      {/* Left Section */}
+      {/* Left Section - Show logo only when sidebar is collapsed */}
       <div className="flex items-center gap-2">
-        <span className="text-xl font-bold text-blue-600 lg:text-2xl">
-          SuvarnaDesk
-        </span>
-        <span className="hidden px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded md:inline">
-          v1.0
-        </span>
+        <AnimatePresence>
+          {!sidebarExpanded && (
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              className="flex items-center gap-2"
+            >
+              <span className="text-xl font-bold text-blue-600 lg:text-2xl">
+                SuvarnaDesk
+              </span>
+              <span className="hidden px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded md:inline">
+                v1.0
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Right Section */}

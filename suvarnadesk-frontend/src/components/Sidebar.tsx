@@ -18,6 +18,7 @@ interface SidebarProps {
   mobileOpen?: boolean;
   onClose?: () => void;
   onToggle?: () => void;
+  onDesktopExpand?: (expanded: boolean) => void;
 }
 
 const links = [
@@ -31,10 +32,11 @@ const links = [
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({
-  collapsed = true, // Default to collapsed
+  collapsed = true,
   mobileOpen = false,
   onClose,
   onToggle,
+  onDesktopExpand,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -54,7 +56,14 @@ const Sidebar: React.FC<SidebarProps> = ({
   }, []);
 
   const shouldExpand = isMobile ? mobileOpen : isHovered;
-  const sidebarWidth = shouldExpand ? 256 : 80; // 64 for collapsed, 256 for expanded
+  const sidebarWidth = shouldExpand ? 280 : 80; // Increased from 256 to 280
+
+  // Notify parent when desktop sidebar expands/collapses
+  useEffect(() => {
+    if (!isMobile && onDesktopExpand) {
+      onDesktopExpand(shouldExpand);
+    }
+  }, [shouldExpand, isMobile, onDesktopExpand]);
 
   return (
     <>
@@ -100,14 +109,14 @@ const Sidebar: React.FC<SidebarProps> = ({
       >
         {/* Logo & Close Button */}
         <div
-          className={`py-6 border-b border-blue-700 ${
+          className={`py-5 border-b border-blue-700 ${
             shouldExpand ? "px-6" : "px-4"
           } relative`}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center flex-1 gap-3">
               <motion.div
-                whileHover={{ scale: 1.1, rotate: 5 }}
+                // whileHover={{ scale: 1.1, rotate: 5 }}
                 className="flex items-center gap-3"
               >
                 <div className="p-2 bg-white rounded-lg shadow-lg">
@@ -115,14 +124,21 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
                 <AnimatePresence>
                   {shouldExpand && (
-                    <motion.span
+                    <motion.div
                       initial={{ opacity: 0, width: 0 }}
                       animate={{ opacity: 1, width: "auto" }}
                       exit={{ opacity: 0, width: 0 }}
-                      className="overflow-hidden text-xl font-bold text-white whitespace-nowrap"
+                      className="flex items-center gap-3 overflow-hidden"
                     >
-                      SuvarnaDesk
-                    </motion.span>
+                      <span className="text-xl font-bold text-white whitespace-nowrap">
+                        SuvarnaDesk
+                      </span>
+                      <span className="px-2.5 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-md whitespace-nowrap">
+                        {" "}
+                        {/* Added whitespace-nowrap and increased padding */}
+                        v1.0
+                      </span>
+                    </motion.div>
                   )}
                 </AnimatePresence>
               </motion.div>
@@ -215,8 +231,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                       <div className="absolute transform -translate-y-1/2 border-4 border-transparent right-full top-1/2 border-r-gray-900" />
                     </motion.div>
                   )}
-
-                  {/* Active indicator */}
                 </>
               )}
             </NavLink>
