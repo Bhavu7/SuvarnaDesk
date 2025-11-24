@@ -6,9 +6,17 @@ interface LoginData {
     password: string;
 }
 
+interface Admin {
+    _id: string;
+    name: string;
+    email: string;
+    phone?: string;
+    role: string;
+}
+
 interface LoginResponse {
     token: string;
-    // Add more fields if backend returns more data
+    admin: Admin;
 }
 
 export const useLogin = () => {

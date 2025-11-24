@@ -1,9 +1,19 @@
 import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  MdAdd,
+  MdDelete,
+  MdReceipt,
+  MdQrCode,
+  MdAttachMoney,
+  MdCalculate,
+} from "react-icons/md";
 import { useCustomers, Customer } from "../hooks/useCustomers";
 import { useLabourCharges, LabourCharge } from "../hooks/useLabourCharges";
 import { useMetalRates, MetalRate } from "../hooks/useMetalRates";
 import { useCreateInvoice, LineItem } from "../hooks/useBilling";
 import InvoiceQRCode from "../components/InvoiceQRCode";
+import toast from "react-hot-toast";
 
 export default function Billing() {
   const { data: customers } = useCustomers();
@@ -32,6 +42,7 @@ export default function Billing() {
   const [GSTPercent, setGSTPercent] = useState<number>(3.0);
   const [paymentMode, setPaymentMode] = useState<string>("cash");
   const [amountPaid, setAmountPaid] = useState<number>(0);
+  const [showQRCode, setShowQRCode] = useState<boolean>(false);
 
   const convertToGrams = (value: number, unit: string): number => {
     switch (unit) {
@@ -129,257 +140,569 @@ export default function Billing() {
     setLineItems(updatedItems);
   };
 
+  const addLineItem = () => {
+    setLineItems([
+      ...lineItems,
+      {
+        itemType: "gold",
+        purity: "24K",
+        description: "",
+        weight: { value: 0, unit: "g" },
+        ratePerGram: 0,
+        labourChargeReferenceId: "",
+        labourChargeType: null,
+        labourChargeAmount: 0,
+        makingChargesTotal: 0,
+        itemTotal: 0,
+      },
+    ]);
+  };
+
+  const removeLineItem = (index: number) => {
+    if (lineItems.length > 1) {
+      const updatedItems = lineItems.filter((_, i) => i !== index);
+      setLineItems(updatedItems);
+      toast.success("Item removed");
+    } else {
+      toast.error("At least one item is required");
+    }
+  };
+
   const handleSubmit = () => {
     if (!selectedCustomer) {
-      alert("Select customer");
+      toast.error("Please select a customer");
       return;
     }
 
-    // FIX: Use isPending instead of isLoading
+    if (lineItems.some((item) => item.weight.value === 0)) {
+      toast.error("Please enter weight for all items");
+      return;
+    }
+
     if (createInvoice.isPending) return;
 
-    createInvoice.mutate({
-      invoiceNumber: `INV-${Date.now()}`,
-      date: invoiceDate,
-      customerId: selectedCustomer,
-      customerSnapshot:
-        customers?.find((c: Customer) => c._id === selectedCustomer) || {},
-      lineItems,
-      totals: { subtotal, GSTPercent, GSTAmount, grandTotal },
-      paymentDetails: { paymentMode, amountPaid, balanceDue },
-      QRCodeData: `Invoice INV-${Date.now()}, Total: ${grandTotal.toFixed(2)}`,
-    });
+    createInvoice.mutate(
+      {
+        invoiceNumber: `INV-${Date.now()}`,
+        date: invoiceDate,
+        customerId: selectedCustomer,
+        customerSnapshot:
+          customers?.find((c: Customer) => c._id === selectedCustomer) || {},
+        lineItems,
+        totals: { subtotal, GSTPercent, GSTAmount, grandTotal },
+        paymentDetails: { paymentMode, amountPaid, balanceDue },
+        QRCodeData: `Invoice INV-${Date.now()}, Total: ₹${grandTotal.toFixed(
+          2
+        )}`,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Invoice created successfully!");
+          setShowQRCode(true);
+        },
+        onError: (error: any) => {
+          toast.error(
+            error.response?.data?.error || "Failed to create invoice"
+          );
+        },
+      }
+    );
   };
 
+  const selectedCustomerData = customers?.find(
+    (c: Customer) => c._id === selectedCustomer
+  );
+
   return (
-    <div className="p-6">
-      <h2 className="text-xl font-semibold mb-4">Create Invoice</h2>
-
-      <label htmlFor="invoice-date" className="block mb-1">
-        Date:
-      </label>
-      <input
-        id="invoice-date"
-        type="date"
-        value={invoiceDate}
-        onChange={(e) => setInvoiceDate(e.target.value)}
-        className="border rounded p-1 mb-4"
-      />
-
-      <label htmlFor="customer-select" className="block mb-1">
-        Customer:
-      </label>
-      <select
-        id="customer-select"
-        value={selectedCustomer}
-        onChange={(e) => setSelectedCustomer(e.target.value)}
-        className="border rounded p-1 mb-4"
-      >
-        <option value="">Select Customer</option>
-        {customers?.map((c: Customer) => (
-          <option key={c._id} value={c._id}>
-            {c.name} - {c.phone}
-          </option>
-        ))}
-      </select>
-
-      <hr className="my-4" />
-
-      {lineItems.map((item, i) => (
-        <div key={i} className="border p-4 mb-3 rounded space-y-2 bg-white">
-          <div>
-            <label htmlFor={`itemType-${i}`}>Item Type:</label>
-            <select
-              id={`itemType-${i}`}
-              value={item.itemType}
-              onChange={(e) =>
-                handleLineItemChange(i, "itemType", e.target.value)
-              }
-              className="border rounded p-1"
-            >
-              <option value="gold">Gold</option>
-              <option value="silver">Silver</option>
-              <option value="other">Other</option>
-            </select>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="min-h-screen p-4 bg-gray-50"
+    >
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-3 bg-blue-100 rounded-xl">
+            <MdReceipt className="text-2xl text-blue-600" />
           </div>
-
           <div>
-            <label htmlFor={`purity-${i}`}>Purity:</label>
-            <select
-              id={`purity-${i}`}
-              value={item.purity}
-              onChange={(e) =>
-                handleLineItemChange(i, "purity", e.target.value)
-              }
-              className="border rounded p-1"
+            <h2 className="text-2xl font-bold text-gray-800">Create Invoice</h2>
+            <p className="text-gray-600">
+              Generate new invoices for your customers
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Left Column - Form */}
+          <div className="space-y-6 lg:col-span-2">
+            {/* Customer & Date Section */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+              className="p-6 bg-white border border-gray-100 shadow-sm rounded-xl"
             >
-              {item.itemType === "gold" ? (
-                <>
-                  <option value="24K">24K</option>
-                  <option value="22K">22K</option>
-                  <option value="18K">18K</option>
-                </>
-              ) : (
-                <>
-                  <option value="Standard">Standard</option>
-                  <option value="Sterling">Sterling</option>
-                </>
+              <h3 className="mb-4 text-lg font-semibold text-gray-800">
+                Customer Details
+              </h3>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="invoice-date"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    Invoice Date
+                  </label>
+                  <input
+                    id="invoice-date"
+                    type="date"
+                    value={invoiceDate}
+                    onChange={(e) => setInvoiceDate(e.target.value)}
+                    className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="customer-select"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    Select Customer
+                  </label>
+                  <select
+                    id="customer-select"
+                    value={selectedCustomer}
+                    onChange={(e) => setSelectedCustomer(e.target.value)}
+                    className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Choose a customer...</option>
+                    {customers?.map((c: Customer) => (
+                      <option key={c._id} value={c._id}>
+                        {c.name} - {c.phone}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {selectedCustomerData && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="p-4 mt-4 border border-blue-200 rounded-lg bg-blue-50"
+                >
+                  <h4 className="mb-2 font-medium text-blue-800">
+                    Customer Information
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-gray-600">Name:</span>
+                      <span className="ml-2 font-medium">
+                        {selectedCustomerData.name}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Phone:</span>
+                      <span className="ml-2 font-medium">
+                        {selectedCustomerData.phone}
+                      </span>
+                    </div>
+                    {selectedCustomerData.address && (
+                      <div className="col-span-2">
+                        <span className="text-gray-600">Address:</span>
+                        <span className="ml-2 font-medium">
+                          {selectedCustomerData.address}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
               )}
-            </select>
-          </div>
+            </motion.div>
 
-          <div>
-            <label htmlFor={`weightValue-${i}`}>Weight:</label>
-            <input
-              id={`weightValue-${i}`}
-              type="number"
-              min={0}
-              value={item.weight.value}
-              onChange={(e) =>
-                handleLineItemChange(i, "weightValue", e.target.value)
-              }
-              className="border rounded p-1 w-24"
-            />
-            <select
-              aria-label={`Weight unit for item ${i + 1}`}
-              value={item.weight.unit}
-              onChange={(e) =>
-                handleLineItemChange(i, "weightUnit", e.target.value)
-              }
-              className="border rounded p-1"
+            {/* Line Items Section */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="p-6 bg-white border border-gray-100 shadow-sm rounded-xl"
             >
-              <option value="kg">kg</option>
-              <option value="g">g</option>
-              <option value="mg">mg</option>
-              <option value="tola">tola</option>
-            </select>
-          </div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">Items</h3>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={addLineItem}
+                  className="flex items-center gap-2 px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
+                >
+                  <MdAdd className="text-lg" />
+                  Add Item
+                </motion.button>
+              </div>
 
-          <div>
-            <label htmlFor={`labourCharge-${i}`}>Labour Charge:</label>
-            <select
-              id={`labourCharge-${i}`}
-              value={item.labourChargeReferenceId || ""}
-              onChange={(e) =>
-                handleLineItemChange(
-                  i,
-                  "labourChargeReferenceId",
-                  e.target.value
-                )
-              }
-              className="border rounded p-1"
-            >
-              <option value="">None</option>
-              {labourCharges
-                ?.filter((lc) => lc.isActive)
-                .map((lc: LabourCharge) => (
-                  <option key={lc._id} value={lc._id}>
-                    {lc.name} (
-                    {lc.chargeType === "perGram" ? "per gram" : "fixed"})
-                  </option>
+              <AnimatePresence>
+                {lineItems.map((item, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="p-4 mb-4 transition-colors border border-gray-200 rounded-lg bg-gray-50 hover:bg-white"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium text-gray-700">
+                        Item #{index + 1}
+                      </h4>
+                      {lineItems.length > 1 && (
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => removeLineItem(index)}
+                          className="p-2 text-red-500 transition-colors rounded-lg hover:bg-red-50"
+                          title="Remove item"
+                        >
+                          <MdDelete className="text-lg" />
+                        </motion.button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                      {/* Item Type */}
+                      <div>
+                        <label className="block mb-1 text-sm font-medium text-gray-700">
+                          Item Type
+                        </label>
+                        <select
+                        title="form elements"
+                          value={item.itemType}
+                          onChange={(e) =>
+                            handleLineItemChange(
+                              index,
+                              "itemType",
+                              e.target.value
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="gold">Gold</option>
+                          <option value="silver">Silver</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+
+                      {/* Purity */}
+                      <div>
+                        <label className="block mb-1 text-sm font-medium text-gray-700">
+                          Purity
+                        </label>
+                        <select
+                        title="form elements"
+                          value={item.purity}
+                          onChange={(e) =>
+                            handleLineItemChange(
+                              index,
+                              "purity",
+                              e.target.value
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          {item.itemType === "gold" ? (
+                            <>
+                              <option value="24K">24K</option>
+                              <option value="22K">22K</option>
+                              <option value="18K">18K</option>
+                            </>
+                          ) : (
+                            <>
+                              <option value="Standard">Standard</option>
+                              <option value="Sterling">Sterling</option>
+                            </>
+                          )}
+                        </select>
+                      </div>
+
+                      {/* Weight */}
+                      <div>
+                        <label className="block mb-1 text-sm font-medium text-gray-700">
+                          Weight
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={item.weight.value}
+                            onChange={(e) =>
+                              handleLineItemChange(
+                                index,
+                                "weightValue",
+                                e.target.value
+                              )
+                            }
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="0.00"
+                          />
+                          <select
+                          title="form elements"
+                            value={item.weight.unit}
+                            onChange={(e) =>
+                              handleLineItemChange(
+                                index,
+                                "weightUnit",
+                                e.target.value
+                              )
+                            }
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="g">g</option>
+                            <option value="kg">kg</option>
+                            <option value="mg">mg</option>
+                            <option value="tola">tola</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Labour Charge */}
+                      <div>
+                        <label className="block mb-1 text-sm font-medium text-gray-700">
+                          Labour Charge
+                        </label>
+                        <select
+                        title="form elements"
+                          value={item.labourChargeReferenceId || ""}
+                          onChange={(e) =>
+                            handleLineItemChange(
+                              index,
+                              "labourChargeReferenceId",
+                              e.target.value
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="">No Labour Charge</option>
+                          {labourCharges
+                            ?.filter((lc) => lc.isActive)
+                            .map((lc: LabourCharge) => (
+                              <option key={lc._id} value={lc._id}>
+                                {lc.name} (
+                                {lc.chargeType === "perGram"
+                                  ? "per gram"
+                                  : "fixed"}
+                                )
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Item Summary */}
+                    <div className="p-3 mt-3 bg-white border rounded-lg">
+                      <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+                        <div>
+                          <span className="text-gray-600">Rate/Gram:</span>
+                          <span className="ml-1 font-medium">
+                            ₹{item.ratePerGram.toFixed(2)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Making Charges:</span>
+                          <span className="ml-1 font-medium">
+                            ₹{item.makingChargesTotal.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="md:col-span-2">
+                          <span className="text-gray-600">Item Total:</span>
+                          <span className="ml-1 font-medium text-green-600">
+                            ₹{item.itemTotal.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
                 ))}
-            </select>
+              </AnimatePresence>
+            </motion.div>
+
+            {/* Payment Details Section */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+              className="p-6 bg-white border border-gray-100 shadow-sm rounded-xl"
+            >
+              <h3 className="mb-4 text-lg font-semibold text-gray-800">
+                Payment Details
+              </h3>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    GST Percentage
+                  </label>
+                  <div className="relative">
+                    <input
+                    title="form elements"
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="0.1"
+                      value={GSTPercent}
+                      onChange={(e) => setGSTPercent(Number(e.target.value))}
+                      className="w-full px-4 py-3 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <span className="absolute text-gray-500 transform -translate-y-1/2 right-3 top-1/2">
+                      %
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Payment Mode
+                  </label>
+                  <select
+                  title="form elements"
+                    value={paymentMode}
+                    onChange={(e) => setPaymentMode(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="card">Card</option>
+                    <option value="bankTransfer">Bank Transfer</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Amount Paid
+                  </label>
+                  <div className="relative">
+                    <span className="absolute text-gray-500 transform -translate-y-1/2 left-3 top-1/2">
+                      ₹
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={amountPaid}
+                      onChange={(e) => setAmountPaid(Number(e.target.value))}
+                      className="w-full px-4 py-3 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           </div>
 
-          <div>
-            <span>
-              <strong>Item Total:</strong> ₹{item.itemTotal.toFixed(2)}
-            </span>
+          {/* Right Column - Summary & Actions */}
+          <div className="space-y-6">
+            {/* Invoice Summary */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4 }}
+              className="sticky p-6 bg-white border border-gray-100 shadow-sm rounded-xl top-6"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <MdCalculate className="text-xl text-blue-600" />
+                <h3 className="text-lg font-semibold text-gray-800">
+                  Invoice Summary
+                </h3>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-gray-600">Subtotal:</span>
+                  <span className="font-medium">₹{subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-gray-600">GST ({GSTPercent}%):</span>
+                  <span className="font-medium">₹{GSTAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-gray-600">Amount Paid:</span>
+                  <span className="font-medium">₹{amountPaid.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between py-3 border-t border-gray-300">
+                  <span className="text-lg font-semibold text-gray-800">
+                    Grand Total:
+                  </span>
+                  <span className="text-lg font-bold text-green-600">
+                    ₹{grandTotal.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-gray-600">Balance Due:</span>
+                  <span
+                    className={`font-medium ${
+                      balanceDue > 0 ? "text-red-600" : "text-green-600"
+                    }`}
+                  >
+                    ₹{balanceDue.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleSubmit}
+                disabled={createInvoice.isPending || !selectedCustomer}
+                className="flex items-center justify-center w-full gap-2 py-3 mt-6 font-medium text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <MdAttachMoney className="text-xl" />
+                {createInvoice.isPending
+                  ? "Creating Invoice..."
+                  : "Finalize Invoice"}
+              </motion.button>
+
+              {createInvoice.isError && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="p-3 mt-4 text-sm text-red-600 border border-red-200 rounded-lg bg-red-50"
+                >
+                  Failed to create invoice. Please try again.
+                </motion.div>
+              )}
+            </motion.div>
+
+            {/* QR Code Section */}
+            {createInvoice.data && showQRCode && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-6 bg-white border border-gray-100 shadow-sm rounded-xl"
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <MdQrCode className="text-xl text-purple-600" />
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    Invoice QR Code
+                  </h3>
+                </div>
+                <div className="flex justify-center">
+                  <InvoiceQRCode data={createInvoice.data.QRCodeData || ""} />
+                </div>
+                <p className="mt-3 text-sm text-center text-gray-600">
+                  Scan to view invoice details
+                </p>
+                <button
+                  onClick={() => setShowQRCode(false)}
+                  className="w-full py-2 mt-3 text-sm text-gray-600 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Hide QR Code
+                </button>
+              </motion.div>
+            )}
           </div>
         </div>
-      ))}
-
-      <button
-        onClick={() =>
-          setLineItems([
-            ...lineItems,
-            {
-              itemType: "gold",
-              purity: "24K",
-              description: "",
-              weight: { value: 0, unit: "g" },
-              ratePerGram: 0,
-              labourChargeReferenceId: "",
-              labourChargeType: null,
-              labourChargeAmount: 0,
-              makingChargesTotal: 0,
-              itemTotal: 0,
-            },
-          ])
-        }
-        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-      >
-        Add Item
-      </button>
-
-      <hr className="my-4" />
-
-      <div>
-        <label htmlFor="gstPercent">GST %:</label>
-        <input
-          id="gstPercent"
-          type="number"
-          value={GSTPercent}
-          onChange={(e) => setGSTPercent(Number(e.target.value))}
-          className="border rounded p-1 w-20"
-          placeholder="GST %"
-        />
       </div>
-
-      <div>
-        <label htmlFor="paymentMode">Payment Mode:</label>
-        <select
-          id="paymentMode"
-          value={paymentMode}
-          onChange={(e) => setPaymentMode(e.target.value)}
-          className="border rounded p-1"
-        >
-          <option value="cash">Cash</option>
-          <option value="upi">UPI</option>
-          <option value="card">Card</option>
-          <option value="bankTransfer">Bank Transfer</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-
-      <div>
-        <label htmlFor="amountPaid">Amount Paid:</label>
-        <input
-          id="amountPaid"
-          type="number"
-          min={0}
-          value={amountPaid}
-          onChange={(e) => setAmountPaid(Number(e.target.value))}
-          className="border rounded p-1"
-          placeholder="Amount Paid"
-        />
-      </div>
-
-      <div className="my-4">
-        <strong>Subtotal:</strong> ₹{subtotal.toFixed(2)}
-        <br />
-        <strong>GST Amount:</strong> ₹{GSTAmount.toFixed(2)}
-        <br />
-        <strong>Grand Total:</strong> ₹{grandTotal.toFixed(2)}
-        <br />
-        <strong>Balance Due:</strong> ₹{balanceDue.toFixed(2)}
-      </div>
-
-      {/* FIX: Use isPending instead of isLoading */}
-      <button
-        onClick={handleSubmit}
-        disabled={createInvoice.isPending}
-        className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
-      >
-        {createInvoice.isPending ? "Saving..." : "Finalize Invoice"}
-      </button>
-
-      {createInvoice.data && (
-        <div className="my-6">
-          <h3 className="font-semibold">Invoice QR Code</h3>
-          <InvoiceQRCode data={createInvoice.data.QRCodeData || ""} />
-        </div>
-      )}
-    </div>
+    </motion.div>
   );
 }
