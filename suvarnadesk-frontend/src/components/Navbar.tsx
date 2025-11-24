@@ -117,7 +117,7 @@ const Navbar = () => {
     <motion.div
       initial={{ y: -32, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 border-b shadow-sm bg-white/80 backdrop-blur-md border-white/20 md:px-6 lg:px-8"
+      className="sticky top-0 z-40 flex items-center justify-between h-16 px-6 border-b border-gray-200 shadow-sm bg-white/95 backdrop-blur-md"
     >
       {/* Left Section */}
       <div className="flex items-center gap-2">
@@ -130,7 +130,7 @@ const Navbar = () => {
       </div>
 
       {/* Right Section */}
-      <div className="flex items-center gap-3 md:gap-4">
+      <div className="flex items-center gap-4">
         {/* Notifications */}
         <div className="relative" ref={notificationsRef}>
           <motion.button
@@ -166,7 +166,7 @@ const Navbar = () => {
                 initial={{ opacity: 0, y: 10, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                className="absolute right-0 z-40 py-2 mt-2 border shadow-xl w-80 sm:w-96 bg-white/95 backdrop-blur-md rounded-xl border-gray-200/50"
+                className="absolute right-0 z-50 py-2 mt-2 border border-gray-200 shadow-xl w-80 sm:w-96 bg-white/95 backdrop-blur-md rounded-xl"
               >
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                   <h3 className="font-semibold text-gray-800">
@@ -276,7 +276,7 @@ const Navbar = () => {
                 initial={{ opacity: 0, y: 10, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                className="absolute right-0 z-40 w-64 py-2 mt-2 border shadow-xl bg-white/95 backdrop-blur-md rounded-xl border-gray-200/50"
+                className="absolute right-0 z-50 w-64 py-2 mt-2 border border-gray-200 shadow-xl bg-white/95 backdrop-blur-md rounded-xl"
               >
                 {/* Profile Info */}
                 <div className="px-4 py-3 border-b border-gray-100">

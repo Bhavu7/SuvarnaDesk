@@ -53,7 +53,7 @@ const Layout: React.FC = () => {
       />
 
       {/* Main Content */}
-      <div className="flex flex-col flex-1 min-h-screen transition-all duration-300 lg:ml-0">
+      <div className="flex flex-col flex-1 min-h-screen transition-all duration-300">
         {/* Topbar for mobile */}
         <Topbar
           onMenuClick={() => setMobileSidebarOpen(true)}
@@ -63,14 +63,14 @@ const Layout: React.FC = () => {
           unreadCount={3}
         />
 
-        {/* Navbar for desktop */}
-        <div className="hidden lg:block">
+        {/* Navbar for desktop - Made sticky */}
+        <div className="sticky top-0 z-30 hidden lg:block">
           <Navbar />
         </div>
 
         {/* Main Content Area */}
-        <main className="flex-1 p-4 overflow-auto transition-all duration-300 lg:p-6">
-          <div className="w-full mx-auto max-w-7xl">
+        <main className="flex-1 overflow-auto">
+          <div className="w-full p-4 mx-auto max-w-7xl lg:p-6">
             <Outlet />
           </div>
         </main>

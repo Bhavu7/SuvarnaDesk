@@ -88,7 +88,7 @@ export default function Settings() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-4xl mx-auto space-y-6"
+      className="space-y-6"
     >
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -111,9 +111,9 @@ export default function Settings() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 }}
-            className="p-6 bg-white border border-gray-100 shadow-sm rounded-xl"
+            className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm"
           >
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-2 mb-6">
               <MdStore className="text-xl text-blue-600" />
               <h3 className="text-lg font-semibold text-gray-800">
                 Shop Information
@@ -173,9 +173,9 @@ export default function Settings() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="p-6 bg-white border border-gray-100 shadow-sm rounded-xl"
+            className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm"
           >
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-2 mb-6">
               <MdLocationOn className="text-xl text-green-600" />
               <h3 className="text-lg font-semibold text-gray-800">
                 Contact Information
@@ -244,7 +244,7 @@ export default function Settings() {
           className="space-y-6"
         >
           {/* Settings Preview */}
-          <div className="p-6 bg-white border border-gray-100 shadow-sm rounded-xl">
+          <div className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
             <h4 className="mb-4 font-semibold text-gray-800">
               Settings Preview
             </h4>
@@ -273,7 +273,7 @@ export default function Settings() {
           </div>
 
           {/* Quick Tips */}
-          <div className="p-6 border border-blue-200 bg-blue-50 rounded-xl">
+          <div className="p-6 border border-blue-200 rounded-lg bg-blue-50">
             <h4 className="mb-3 font-semibold text-blue-800">💡 Quick Tips</h4>
             <ul className="space-y-2 text-sm text-blue-700">
               <li>• Fill all required fields marked with *</li>
