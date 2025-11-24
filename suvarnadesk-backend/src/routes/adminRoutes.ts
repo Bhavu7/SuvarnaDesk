@@ -9,13 +9,11 @@ import { authMiddleware } from "../middleware/auth";
 
 const router = Router();
 
-// Admin authentication endpoints
 router.post("/login", loginAdmin);
 
-// Use /register only for first-time setup or via seed script
+// Use /register only at first-time setup or via seeding script
 router.post("/register", registerAdmin);
 
-// Admin profile (GET, PUT)
 router.get("/profile", authMiddleware, getAdminProfile);
 router.put("/profile", authMiddleware, updateAdminProfile);
 

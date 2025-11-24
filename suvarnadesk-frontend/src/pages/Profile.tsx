@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   MdPerson,
   MdEmail,
@@ -8,32 +8,95 @@ import {
   MdCancel,
 } from "react-icons/md";
 import { motion } from "framer-motion";
-import { useAuth } from "../contexts/AuthContext";
-import { showToast } from '../components/CustomToast';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import apiClient from "../api/apiClient";
+import { showToast } from "../components/CustomToast";
 
-const Profile = () => {
-  const { user } = useAuth();
+interface AdminProfile {
+  _id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: string;
+  memberSince?: string;
+  lastLogin?: string;
+}
+
+const fetchAdminProfile = async (): Promise<AdminProfile> => {
+  const { data } = await apiClient.get("/admin/profile");
+  return data;
+};
+
+const updateAdminProfile = async (
+  profileData: Partial<AdminProfile>
+): Promise<AdminProfile> => {
+  const { data } = await apiClient.put("/admin/profile", profileData);
+  return data;
+};
+
+const Profile: React.FC = () => {
+  const queryClient = useQueryClient();
+  const { data: user, isLoading } = useQuery<AdminProfile, Error>({
+    queryKey: ["adminProfile"],
+    queryFn: fetchAdminProfile,
+  });
+
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    name: user?.name || "Super Admin",
-    email: user?.email || "admin@example.com",
-    phone: user?.phone || "+91 1234567890",
+  const [formData, setFormData] = useState<Partial<AdminProfile>>({
+    name: "",
+    email: "",
+    phone: "",
+  });
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name,
+        email: user.email,
+        phone: user.phone || "",
+      });
+    }
+  }, [user]);
+
+  const mutation = useMutation({
+    mutationFn: updateAdminProfile,
+    onSuccess: (data: AdminProfile) => {
+      showToast.success("Profile updated successfully!");
+      queryClient.setQueryData(["adminProfile"], data);
+      setIsEditing(false);
+    },
+    onError: (error: Error) => {
+      showToast.error("Failed to update profile");
+      console.error("Profile update error:", error);
+    },
   });
 
   const handleSave = () => {
-    // In a real app, you would make an API call to update the profile
-    showToast.success("Profile updated successfully!");
-    setIsEditing(false);
+    if (!formData.name?.trim() || !formData.email?.trim()) {
+      showToast.error("Name and email are required");
+      return;
+    }
+    mutation.mutate(formData);
   };
 
   const handleCancel = () => {
-    setFormData({
-      name: user?.name || "Super Admin",
-      email: user?.email || "admin@example.com",
-      phone: user?.phone || "+91 1234567890",
-    });
+    if (user) {
+      setFormData({
+        name: user.name,
+        email: user.email,
+        phone: user.phone || "",
+      });
+    }
     setIsEditing(false);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg text-gray-600">Loading profile...</div>
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -71,14 +134,21 @@ const Profile = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleSave}
-              className="flex items-center gap-2 px-6 py-3 text-white transition-all duration-200 bg-green-600 rounded-lg hover:bg-green-700"
+              disabled={mutation.isPending}
+              className={`flex items-center gap-2 px-6 py-3 text-white transition-all duration-200 rounded-lg ${
+                mutation.isPending
+                  ? "bg-green-400 cursor-not-allowed"
+                  : "bg-green-600 hover:bg-green-700"
+              }`}
             >
               <MdSave className="text-lg" />
-              Save Changes
+              {mutation.isPending ? "Saving..." : "Save Changes"}
             </motion.button>
             <button
               onClick={handleCancel}
-              className="flex items-center gap-2 px-6 py-3 text-gray-600 transition-all duration-200 border border-gray-300 rounded-lg hover:bg-gray-50"
+              disabled={mutation.isPending}
+              className="flex items-center gap-2 px-6 py-3 text-gray-600 transition-all duration-200 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              type="button"
             >
               <MdCancel className="text-lg" />
               Cancel
@@ -87,8 +157,8 @@ const Profile = () => {
         )}
       </div>
 
+      {/* Profile Information */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Profile Information */}
         <div className="space-y-6 lg:col-span-2">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -107,9 +177,9 @@ const Profile = () => {
                   <p className="mb-1 text-sm text-gray-600">Full Name</p>
                   {isEditing ? (
                     <input
-                      title="form inputs"
+                      title="Full Name"
                       type="text"
-                      value={formData.name}
+                      value={formData.name || ""}
                       onChange={(e) =>
                         setFormData((prev) => ({
                           ...prev,
@@ -117,6 +187,7 @@ const Profile = () => {
                         }))
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter your full name"
                     />
                   ) : (
                     <p className="font-medium text-gray-900">{formData.name}</p>
@@ -131,9 +202,9 @@ const Profile = () => {
                   <p className="mb-1 text-sm text-gray-600">Email Address</p>
                   {isEditing ? (
                     <input
-                      title="form inputs"
+                      title="Email Address"
                       type="email"
-                      value={formData.email}
+                      value={formData.email || ""}
                       onChange={(e) =>
                         setFormData((prev) => ({
                           ...prev,
@@ -141,6 +212,7 @@ const Profile = () => {
                         }))
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter your email address"
                     />
                   ) : (
                     <p className="font-medium text-gray-900">
@@ -157,9 +229,9 @@ const Profile = () => {
                   <p className="mb-1 text-sm text-gray-600">Phone Number</p>
                   {isEditing ? (
                     <input
-                      title="form inputs"
+                      title="Phone Number"
                       type="tel"
-                      value={formData.phone}
+                      value={formData.phone || ""}
                       onChange={(e) =>
                         setFormData((prev) => ({
                           ...prev,
@@ -167,10 +239,11 @@ const Profile = () => {
                         }))
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter your phone number"
                     />
                   ) : (
                     <p className="font-medium text-gray-900">
-                      {formData.phone}
+                      {formData.phone || "Not provided"}
                     </p>
                   )}
                 </div>
@@ -189,6 +262,16 @@ const Profile = () => {
                 </div>
               </div>
             </div>
+
+            {mutation.isError && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="p-3 mt-4 text-sm text-red-600 border border-red-200 rounded-lg bg-red-50"
+              >
+                Failed to update profile. Please try again.
+              </motion.div>
+            )}
           </motion.div>
 
           {/* Security Section */}
@@ -217,14 +300,16 @@ const Profile = () => {
           >
             <div className="text-center">
               <div className="flex items-center justify-center w-20 h-20 mx-auto mb-4 text-2xl font-semibold text-white rounded-full bg-gradient-to-r from-blue-500 to-purple-600">
-                {user?.name?.charAt(0)?.toUpperCase() || "A"}
+                {formData.name?.charAt(0).toUpperCase() || "A"}
               </div>
               <h4 className="text-lg font-semibold text-gray-800">
                 {formData.name}
               </h4>
               <p className="mt-1 text-sm text-gray-500">{formData.email}</p>
               <div className="inline-block px-3 py-1 mt-3 text-sm font-medium text-green-800 bg-green-100 rounded-full">
-                {user?.role || "Admin"}
+                {user?.role
+                  ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
+                  : "Admin"}
               </div>
             </div>
           </motion.div>
@@ -246,11 +331,15 @@ const Profile = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Member Since</span>
-                <span className="font-medium">2024</span>
+                <span className="font-medium">
+                  {user?.memberSince || "2024"}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Last Login</span>
-                <span className="font-medium">Today</span>
+                <span className="font-medium">
+                  {user?.lastLogin || "Today"}
+                </span>
               </div>
             </div>
           </motion.div>
