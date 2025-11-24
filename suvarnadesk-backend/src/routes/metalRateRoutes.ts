@@ -1,9 +1,15 @@
 import { Router } from "express";
-// Import your MetalRate controller here when ready
+import {
+    getMetalRates,
+    createMetalRate,
+    getCurrentRates
+} from "../controllers/metalRateController";
+import { authMiddleware } from "../middleware/auth";
+
 const router = Router();
 
-// Example GET and POST endpoints
-// router.get("/", authMiddleware, getMetalRates);
-// router.post("/", authMiddleware, createMetalRate);
+router.get("/", authMiddleware, getMetalRates);
+router.get("/current", authMiddleware, getCurrentRates);
+router.post("/", authMiddleware, createMetalRate);
 
 export default router;
