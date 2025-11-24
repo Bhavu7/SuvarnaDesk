@@ -2,6 +2,7 @@ import Admin from "../models/Admin";
 import { hashPassword, comparePassword } from "../utils/hashPassword";
 import jwt from "jsonwebtoken";
 import { Request, Response } from "express";
+import bcrypt from "bcryptjs";
 
 // POST /api/admin/login
 export const loginAdmin = async (req: Request, res: Response) => {
@@ -66,4 +67,26 @@ export const updateAdminProfile = async (req: Request, res: Response) => {
         return res.status(404).json({ error: "Admin not found" });
     }
     res.json(admin);
+};
+
+
+// PATCH /api/admin/change-password
+export const changePassword = async (req: Request, res: Response) => {
+    const adminId = (req as any).admin.adminId;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: "Both current and new password are required" });
+    }
+
+    const admin = await Admin.findById(adminId);
+    if (!admin) return res.status(404).json({ error: "Admin not found" });
+
+    const isMatch = await bcrypt.compare(currentPassword, admin.password);
+    if (!isMatch) return res.status(401).json({ error: "Current password is incorrect" });
+
+    admin.password = await hashPassword(newPassword);
+    await admin.save();
+
+    res.json({ message: "Password changed successfully" });
 };

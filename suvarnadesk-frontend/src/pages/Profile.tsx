@@ -6,11 +6,15 @@ import {
   MdEdit,
   MdSave,
   MdCancel,
+  MdLock,
+  MdVisibility,
+  MdVisibilityOff,
 } from "react-icons/md";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "../api/apiClient";
 import { showToast } from "../components/CustomToast";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 interface AdminProfile {
   _id: string;
@@ -20,6 +24,14 @@ interface AdminProfile {
   role: string;
   memberSince?: string;
   lastLogin?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface ChangePasswordData {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 }
 
 const fetchAdminProfile = async (): Promise<AdminProfile> => {
@@ -34,6 +46,91 @@ const updateAdminProfile = async (
   return data;
 };
 
+const changeAdminPassword = async (
+  passwordData: ChangePasswordData
+): Promise<{ message: string }> => {
+  const { data } = await apiClient.patch("/admin/change-password", {
+    currentPassword: passwordData.currentPassword,
+    newPassword: passwordData.newPassword,
+  });
+  return data;
+};
+
+// Date formatting utilities
+const formatDate = (dateString?: string): string => {
+  if (!dateString) return "Not available";
+
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  } catch (error) {
+    return "Invalid date";
+  }
+};
+
+const formatDateTime = (dateString?: string): string => {
+  if (!dateString) return "Not available";
+
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  } catch (error) {
+    return "Invalid date";
+  }
+};
+
+const formatRelativeTime = (dateString?: string): string => {
+  if (!dateString) return "Never";
+
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+    if (diffInMinutes < 1) {
+      return "Just now";
+    } else if (diffInMinutes < 60) {
+      return `${diffInMinutes} minute${diffInMinutes > 1 ? "s" : ""} ago`;
+    } else if (diffInHours < 24) {
+      return `${diffInHours} hour${diffInHours > 1 ? "s" : ""} ago`;
+    } else if (diffInDays === 1) {
+      return "Yesterday";
+    } else if (diffInDays < 7) {
+      return `${diffInDays} day${diffInDays > 1 ? "s" : ""} ago`;
+    } else {
+      return formatDate(dateString);
+    }
+  } catch (error) {
+    return "Invalid date";
+  }
+};
+
+const getCurrentDateTime = (): string => {
+  return new Date().toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
+};
+
 const Profile: React.FC = () => {
   const queryClient = useQueryClient();
   const { data: user, isLoading } = useQuery<AdminProfile, Error>({
@@ -42,11 +139,34 @@ const Profile: React.FC = () => {
   });
 
   const [isEditing, setIsEditing] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+  const [currentTime, setCurrentTime] = useState<string>(getCurrentDateTime());
+
   const [formData, setFormData] = useState<Partial<AdminProfile>>({
     name: "",
     email: "",
     phone: "",
   });
+
+  const [passwordData, setPasswordData] = useState<ChangePasswordData>({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  // Update current time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(getCurrentDateTime());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -58,7 +178,7 @@ const Profile: React.FC = () => {
     }
   }, [user]);
 
-  const mutation = useMutation({
+  const profileMutation = useMutation({
     mutationFn: updateAdminProfile,
     onSuccess: (data: AdminProfile) => {
       showToast.success("Profile updated successfully!");
@@ -71,12 +191,30 @@ const Profile: React.FC = () => {
     },
   });
 
+  const passwordMutation = useMutation({
+    mutationFn: changeAdminPassword,
+    onSuccess: () => {
+      showToast.success("Password changed successfully!");
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setShowChangePassword(false);
+    },
+    onError: (error: any) => {
+      const errorMessage =
+        error.response?.data?.error || "Failed to change password";
+      showToast.error(errorMessage);
+    },
+  });
+
   const handleSave = () => {
     if (!formData.name?.trim() || !formData.email?.trim()) {
       showToast.error("Name and email are required");
       return;
     }
-    mutation.mutate(formData);
+    profileMutation.mutate(formData);
   };
 
   const handleCancel = () => {
@@ -90,10 +228,49 @@ const Profile: React.FC = () => {
     setIsEditing(false);
   };
 
+  const handlePasswordChange = () => {
+    if (
+      !passwordData.currentPassword ||
+      !passwordData.newPassword ||
+      !passwordData.confirmPassword
+    ) {
+      showToast.error("All password fields are required");
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      showToast.error("New password must be at least 6 characters long");
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      showToast.error("New passwords do not match");
+      return;
+    }
+
+    passwordMutation.mutate(passwordData);
+  };
+
+  const togglePasswordVisibility = (field: keyof typeof showPasswords) => {
+    setShowPasswords((prev) => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
+  };
+
+  const handlePasswordCancel = () => {
+    setPasswordData({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+    setShowChangePassword(false);
+  };
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg text-gray-600">Loading profile...</div>
+      <div className="flex items-center justify-center min-h-96">
+        <LoadingSpinner text="Loading Profile..." />
       </div>
     );
   }
@@ -134,19 +311,19 @@ const Profile: React.FC = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleSave}
-              disabled={mutation.isPending}
+              disabled={profileMutation.isPending}
               className={`flex items-center gap-2 px-6 py-3 text-white transition-all duration-200 rounded-lg ${
-                mutation.isPending
+                profileMutation.isPending
                   ? "bg-green-400 cursor-not-allowed"
                   : "bg-green-600 hover:bg-green-700"
               }`}
             >
               <MdSave className="text-lg" />
-              {mutation.isPending ? "Saving..." : "Save Changes"}
+              {profileMutation.isPending ? "Saving..." : "Save Changes"}
             </motion.button>
             <button
               onClick={handleCancel}
-              disabled={mutation.isPending}
+              disabled={profileMutation.isPending}
               className="flex items-center gap-2 px-6 py-3 text-gray-600 transition-all duration-200 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               type="button"
             >
@@ -263,7 +440,7 @@ const Profile: React.FC = () => {
               </div>
             </div>
 
-            {mutation.isError && (
+            {profileMutation.isError && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -284,9 +461,154 @@ const Profile: React.FC = () => {
             <h3 className="mb-6 text-lg font-semibold text-gray-800">
               Security
             </h3>
-            <button className="w-full p-4 text-left text-blue-600 transition-colors border border-blue-200 rounded-lg hover:bg-blue-50">
-              Change Password
-            </button>
+
+            {!showChangePassword ? (
+              <button
+                onClick={() => setShowChangePassword(true)}
+                className="flex items-center w-full gap-2 p-4 text-left text-blue-600 transition-colors border border-blue-200 rounded-lg hover:bg-blue-50"
+              >
+                <MdLock className="text-lg" />
+                Change Password
+              </button>
+            ) : (
+              <div className="space-y-4">
+                <h4 className="font-medium text-gray-800">Change Password</h4>
+
+                {/* Current Password */}
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Current Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPasswords.current ? "text" : "password"}
+                      value={passwordData.currentPassword}
+                      onChange={(e) =>
+                        setPasswordData((prev) => ({
+                          ...prev,
+                          currentPassword: e.target.value,
+                        }))
+                      }
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter current password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePasswordVisibility("current")}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-600"
+                    >
+                      {showPasswords.current ? (
+                        <MdVisibilityOff />
+                      ) : (
+                        <MdVisibility />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* New Password */}
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    New Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPasswords.new ? "text" : "password"}
+                      value={passwordData.newPassword}
+                      onChange={(e) =>
+                        setPasswordData((prev) => ({
+                          ...prev,
+                          newPassword: e.target.value,
+                        }))
+                      }
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter new password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePasswordVisibility("new")}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-600"
+                    >
+                      {showPasswords.new ? (
+                        <MdVisibilityOff />
+                      ) : (
+                        <MdVisibility />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Confirm New Password */}
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Confirm New Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPasswords.confirm ? "text" : "password"}
+                      value={passwordData.confirmPassword}
+                      onChange={(e) =>
+                        setPasswordData((prev) => ({
+                          ...prev,
+                          confirmPassword: e.target.value,
+                        }))
+                      }
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Confirm new password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePasswordVisibility("confirm")}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-600"
+                    >
+                      {showPasswords.confirm ? (
+                        <MdVisibilityOff />
+                      ) : (
+                        <MdVisibility />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Password Action Buttons */}
+                <div className="flex gap-3 pt-2">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handlePasswordChange}
+                    disabled={passwordMutation.isPending}
+                    className={`flex items-center gap-2 px-4 py-2 text-white transition-all duration-200 rounded-lg ${
+                      passwordMutation.isPending
+                        ? "bg-blue-400 cursor-not-allowed"
+                        : "bg-blue-600 hover:bg-blue-700"
+                    }`}
+                  >
+                    <MdSave className="text-lg" />
+                    {passwordMutation.isPending
+                      ? "Changing..."
+                      : "Change Password"}
+                  </motion.button>
+                  <button
+                    onClick={handlePasswordCancel}
+                    disabled={passwordMutation.isPending}
+                    className="flex items-center gap-2 px-4 py-2 text-gray-600 transition-all duration-200 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <MdCancel className="text-lg" />
+                    Cancel
+                  </button>
+                </div>
+
+                {passwordMutation.isError && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="p-3 text-sm text-red-600 border border-red-200 rounded-lg bg-red-50"
+                  >
+                    Failed to change password. Please try again.
+                  </motion.div>
+                )}
+              </div>
+            )}
           </motion.div>
         </div>
 
@@ -331,16 +653,46 @@ const Profile: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Member Since</span>
-                <span className="font-medium">
-                  {user?.memberSince || "2024"}
+                <span className="font-medium text-right">
+                  {user?.createdAt
+                    ? formatDate(user.createdAt)
+                    : user?.memberSince
+                    ? formatDate(user.memberSince)
+                    : "Not available"}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Last Login</span>
-                <span className="font-medium">
-                  {user?.lastLogin || "Today"}
+                <span className="font-medium text-right">
+                  {user?.lastLogin
+                    ? formatRelativeTime(user.lastLogin)
+                    : "Never"}
+                  <br />
+                  {/* <span className="text-xs text-gray-500">
+                    {user?.lastLogin ? formatDateTime(user.lastLogin) : ""}
+                  </span> */}
                 </span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Profile Updated</span>
+                <span className="font-medium text-right">
+                  {user?.updatedAt
+                    ? formatRelativeTime(user.updatedAt)
+                    : "Never"}
+                  <br />
+                  {/* <span className="text-xs text-gray-500">
+                    {user?.updatedAt ? formatDateTime(user.updatedAt) : ""}
+                  </span> */}
+                </span>
+              </div>
+              {/* <div className="pt-2 mt-2 border-t border-gray-200">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Current Time</span>
+                  <span className="font-medium text-right text-blue-600">
+                    {currentTime}
+                  </span>
+                </div>
+              </div> */}
             </div>
           </motion.div>
 

@@ -4,17 +4,16 @@ import {
     registerAdmin,
     getAdminProfile,
     updateAdminProfile,
+    changePassword,
 } from "../controllers/adminController";
 import { authMiddleware } from "../middleware/auth";
 
 const router = Router();
 
 router.post("/login", loginAdmin);
-
-// Use /register only at first-time setup or via seeding script
-router.post("/register", registerAdmin);
-
+router.post("/register", registerAdmin); // Only initial setup
 router.get("/profile", authMiddleware, getAdminProfile);
 router.put("/profile", authMiddleware, updateAdminProfile);
+router.patch("/change-password", authMiddleware, changePassword);
 
 export default router;
