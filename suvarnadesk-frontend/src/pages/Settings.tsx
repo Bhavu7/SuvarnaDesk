@@ -48,7 +48,7 @@ export default function Settings() {
       console.error("Failed to fetch shop settings:", error);
       // If no settings exist, use defaults
       if (error.response?.status === 404) {
-        toast.info("No existing settings found. Creating new ones...");
+        toast("No existing settings found. Creating new ones...");
       } else {
         toast.error("Failed to load shop settings");
       }

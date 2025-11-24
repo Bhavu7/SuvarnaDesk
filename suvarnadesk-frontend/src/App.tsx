@@ -33,6 +33,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
@@ -41,23 +42,13 @@ const Layout = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex flex-col flex-1">
-        <Topbar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
-        <Navbar />
-        <main className="flex-1 p-4 overflow-auto md:p-6">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/billing" element={<Billing />} />
-            <Route path="/worker-jobs" element={<WorkerJobs />} />
-            <Route path="/rates" element={<Rates />} />
-            <Route path="/labour-charges" element={<LabourCharges />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </main>
+      {/* Desktop Sidebar */}
+      <div
+        className="relative z-30 hidden md:block"
+        onMouseEnter={() => setSidebarCollapsed(false)}
+        onMouseLeave={() => setSidebarCollapsed(true)}
+      >
+        <Sidebar collapsed={sidebarCollapsed} />
       </div>
 
       {/* Mobile Sidebar Overlay */}
@@ -75,7 +66,26 @@ const Layout = () => {
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
       `}
       >
-        <Sidebar />
+        <Sidebar collapsed={false} />
+      </div>
+
+      {/* Main Content */}
+      <div className="flex flex-col flex-1 min-w-0">
+        <Topbar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+        <Navbar />
+        <main className="flex-1 p-4 overflow-auto md:p-6">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/billing" element={<Billing />} />
+            <Route path="/worker-jobs" element={<WorkerJobs />} />
+            <Route path="/rates" element={<Rates />} />
+            <Route path="/labour-charges" element={<LabourCharges />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </main>
       </div>
     </div>
   );
