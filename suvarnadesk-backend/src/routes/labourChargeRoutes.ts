@@ -1,9 +1,17 @@
 import { Router } from "express";
-// Import your LabourCharge controller here when ready
+import {
+    getLabourCharges,
+    createLabourCharge,
+    updateLabourCharge,
+    deleteLabourCharge
+} from "../controllers/labourChargeController";
+import { authMiddleware } from "../middleware/auth";
+
 const router = Router();
 
-// Example GET and POST endpoints (protect with authMiddleware as needed)
-// router.get("/", authMiddleware, getLabourCharges);
-// router.post("/", authMiddleware, createLabourCharge);
+router.get("/", authMiddleware, getLabourCharges);
+router.post("/", authMiddleware, createLabourCharge);
+router.put("/:id", authMiddleware, updateLabourCharge);
+router.delete("/:id", authMiddleware, deleteLabourCharge);
 
 export default router;
