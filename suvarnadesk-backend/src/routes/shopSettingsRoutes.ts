@@ -1,9 +1,13 @@
 import { Router } from "express";
-// Import your ShopSettings controller here when ready
+import {
+    getShopSettings,
+    updateShopSettings
+} from "../controllers/shopSettingsController";
+import { authMiddleware } from "../middleware/auth";
+
 const router = Router();
 
-// Example GET and PUT endpoints
-// router.get("/", authMiddleware, getShopSettings);
-// router.put("/", authMiddleware, updateShopSettings);
+router.get("/", authMiddleware, getShopSettings);
+router.put("/", authMiddleware, updateShopSettings);
 
 export default router;
