@@ -272,7 +272,7 @@ export default function Billing() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Left Column - Form */}
-          <div className="space-y-6 lg:col-span-2">
+          <div className="min-w-0 space-y-6 lg:col-span-2">
             {/* Customer & Date Section */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -406,7 +406,7 @@ export default function Billing() {
 
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                       {/* Item Type */}
-                      <div>
+                      <div className="min-w-0">
                         <label className="block mb-1 text-sm font-medium text-gray-700">
                           Item Type
                         </label>
@@ -421,7 +421,7 @@ export default function Billing() {
                       </div>
 
                       {/* Purity */}
-                      <div>
+                      <div className="min-w-0">
                         <label className="block mb-1 text-sm font-medium text-gray-700">
                           Purity
                         </label>
@@ -439,48 +439,14 @@ export default function Billing() {
                         />
                       </div>
 
-                      {/* Weight */}
-                      <div>
-                        <label className="block mb-1 text-sm font-medium text-gray-700">
-                          Weight
-                        </label>
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={item.weight.value}
-                            onChange={(e) =>
-                              handleLineItemChange(
-                                index,
-                                "weightValue",
-                                e.target.value
-                              )
-                            }
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="0.00"
-                            aria-label="Enter weight value"
-                          />
-                          <CustomDropdown
-                            options={weightUnitOptions}
-                            value={item.weight.unit}
-                            onChange={(value) =>
-                              handleLineItemChange(index, "weightUnit", value)
-                            }
-                            className="w-24"
-                            aria-label="Select weight unit"
-                          />
-                        </div>
-                      </div>
-
                       {/* Labour Charge */}
-                      <div>
+                      <div className="min-w-0">
                         <label className="block mb-1 text-sm font-medium text-gray-700">
                           Labour Charge
                         </label>
                         <CustomDropdown
                           options={[
-                            { value: "", label: "No Labour Charge" },
+                            { value: "", label: "No LC" },
                             ...(labourCharges
                               ?.filter((lc) => lc.isActive)
                               .map((lc: LabourCharge) => ({
@@ -502,6 +468,40 @@ export default function Billing() {
                           }
                           aria-label="Select labour charge"
                         />
+                      </div>
+
+                      {/* Weight */}
+                      <div className="min-w-0">
+                        <label className="block mb-1 text-sm font-medium text-gray-700">
+                          Weight
+                        </label>
+                        <div className="flex w-full gap-2">
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={item.weight.value}
+                            onChange={(e) =>
+                              handleLineItemChange(
+                                index,
+                                "weightValue",
+                                e.target.value
+                              )
+                            }
+                            className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="0.00"
+                            aria-label="Enter weight value"
+                          />
+                          <CustomDropdown
+                            options={weightUnitOptions}
+                            value={item.weight.unit}
+                            onChange={(value) =>
+                              handleLineItemChange(index, "weightUnit", value)
+                            }
+                            className="w-18"
+                            aria-label="Select weight unit"
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -602,7 +602,7 @@ export default function Billing() {
           </div>
 
           {/* Right Column - Summary & Actions */}
-          <div className="space-y-6">
+          <div className="min-w-0 space-y-6">
             {/* Invoice Summary */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
