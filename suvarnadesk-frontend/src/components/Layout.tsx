@@ -46,14 +46,16 @@ const Layout: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <Sidebar
-        mobileOpen={mobileSidebarOpen}
-        onClose={() => setMobileSidebarOpen(false)}
-      />
+      {/* Sidebar - Fixed for mobile, static for desktop */}
+      <div className="fixed z-50 lg:static">
+        <Sidebar
+          mobileOpen={mobileSidebarOpen}
+          onClose={() => setMobileSidebarOpen(false)}
+        />
+      </div>
 
       {/* Main Content */}
-      <div className="flex flex-col flex-1 min-h-screen transition-all duration-300">
+      <div className="flex flex-col flex-1 w-full min-h-screen transition-all duration-300 lg:ml-0">
         {/* Topbar for mobile */}
         <Topbar
           onMenuClick={() => setMobileSidebarOpen(true)}
@@ -69,7 +71,7 @@ const Layout: React.FC = () => {
         </div>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 w-full overflow-auto">
           <div className="w-full p-4 mx-auto max-w-7xl lg:p-6">
             <Outlet />
           </div>

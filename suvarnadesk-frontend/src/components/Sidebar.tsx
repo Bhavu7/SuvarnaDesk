@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import {
   MdDashboard,
@@ -9,6 +9,7 @@ import {
   MdReport,
   MdPeople,
   MdClose,
+  MdMenu,
 } from "react-icons/md";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -16,28 +17,50 @@ interface SidebarProps {
   collapsed?: boolean;
   mobileOpen?: boolean;
   onClose?: () => void;
+  onToggle?: () => void;
 }
 
 const links = [
   { to: "/", label: "Dashboard", icon: <MdDashboard /> },
   { to: "/billing", label: "Billing", icon: <MdReceipt /> },
   { to: "/worker-jobs", label: "Worker Jobs", icon: <MdWork /> },
-  { to: "/rates", label: "Rates", icon: <MdCurrencyRupee  /> },
+  { to: "/rates", label: "Rates", icon: <MdCurrencyRupee /> },
   { to: "/labour-charges", label: "Labour Charges", icon: <MdPeople /> },
   { to: "/reports", label: "Reports", icon: <MdReport /> },
   { to: "/settings", label: "Settings", icon: <MdSettings /> },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({
-  collapsed = false,
+  collapsed = true, // Default to collapsed
   mobileOpen = false,
   onClose,
+  onToggle,
 }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if device is mobile
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+
+    checkIsMobile();
+    window.addEventListener("resize", checkIsMobile);
+
+    return () => {
+      window.removeEventListener("resize", checkIsMobile);
+    };
+  }, []);
+
+  const shouldExpand = isMobile ? mobileOpen : isHovered;
+  const sidebarWidth = shouldExpand ? 256 : 80; // 64 for collapsed, 256 for expanded
+
   return (
     <>
       {/* Mobile Overlay */}
       <AnimatePresence>
-        {mobileOpen && (
+        {mobileOpen && isMobile && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -48,24 +71,37 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}
       </AnimatePresence>
 
+      {/* Mobile Hamburger Menu */}
+      {isMobile && (
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          onClick={onToggle}
+          className="fixed z-50 p-2 text-white bg-blue-600 rounded-lg shadow-lg top-4 left-4 lg:hidden hover:bg-blue-700"
+          aria-label="Open menu"
+        >
+          <MdMenu className="text-2xl" />
+        </motion.button>
+      )}
+
       {/* Sidebar */}
       <motion.aside
         initial={false}
         animate={{
-          x: mobileOpen ? 0 : window.innerWidth < 1024 ? -320 : 0,
+          width: sidebarWidth,
+          x: mobileOpen || !isMobile ? 0 : -sidebarWidth,
         }}
+        onMouseEnter={() => !isMobile && setIsHovered(true)}
+        onMouseLeave={() => !isMobile && setIsHovered(false)}
         className={`fixed lg:sticky top-0 flex flex-col min-h-screen bg-gradient-to-b from-blue-900 to-blue-800 shadow-xl z-50 ${
-          collapsed ? "w-20" : "w-64"
-        } ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        } 
-        transition-all duration-300 ease-in-out`}
+          isMobile ? "lg:translate-x-0" : ""
+        } transition-all duration-300 ease-in-out`}
         style={{ height: "100vh" }}
       >
         {/* Logo & Close Button */}
         <div
           className={`py-6 border-b border-blue-700 ${
-            collapsed ? "px-4" : "px-6"
+            shouldExpand ? "px-6" : "px-4"
           } relative`}
         >
           <div className="flex items-center justify-between">
@@ -78,7 +114,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   <MdReceipt className="text-2xl text-blue-600" />
                 </div>
                 <AnimatePresence>
-                  {!collapsed && (
+                  {shouldExpand && (
                     <motion.span
                       initial={{ opacity: 0, width: 0 }}
                       animate={{ opacity: 1, width: "auto" }}
@@ -93,13 +129,15 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Close button for mobile */}
-            <button
-              onClick={onClose}
-              className="p-2 text-white transition-colors rounded-lg lg:hidden hover:bg-blue-700"
-              aria-label="Close sidebar"
-            >
-              <MdClose className="text-xl" />
-            </button>
+            {isMobile && (
+              <button
+                onClick={onClose}
+                className="p-2 text-white transition-colors rounded-lg lg:hidden hover:bg-blue-700"
+                aria-label="Close sidebar"
+              >
+                <MdClose className="text-xl" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -110,13 +148,13 @@ const Sidebar: React.FC<SidebarProps> = ({
               key={to}
               to={to}
               onClick={() => {
-                if (window.innerWidth < 1024 && onClose) {
+                if (isMobile && onClose) {
                   onClose();
                 }
               }}
               className={({ isActive }) =>
                 `flex items-center transition-all duration-300 group relative overflow-hidden ${
-                  collapsed ? "justify-center px-4 py-4" : "px-6 py-4"
+                  shouldExpand ? "px-6 py-4" : "justify-center px-4 py-4"
                 } ${
                   isActive
                     ? "bg-blue-700 text-white shadow-lg"
@@ -152,7 +190,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </motion.div>
 
                     <AnimatePresence>
-                      {!collapsed && (
+                      {shouldExpand && (
                         <motion.span
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
@@ -166,7 +204,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   </div>
 
                   {/* Tooltip for collapsed state */}
-                  {collapsed && (
+                  {!shouldExpand && (
                     <motion.div
                       initial={{ opacity: 0, x: 10 }}
                       whileHover={{ opacity: 1, x: 0 }}
@@ -179,18 +217,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                   )}
 
                   {/* Active indicator */}
-                  {isActive && !collapsed && (
-                    <motion.div
-                      layoutId="activeIndicator"
-                      className="absolute w-2 h-2 bg-white rounded-full right-4"
-                      initial={false}
-                      transition={{
-                        type: "spring",
-                        stiffness: 500,
-                        damping: 30,
-                      }}
-                    />
-                  )}
                 </>
               )}
             </NavLink>
