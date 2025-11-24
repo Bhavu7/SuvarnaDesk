@@ -1,37 +1,33 @@
 import { Schema, model, Document, Types } from "mongoose";
 
 export interface IWorkerJob extends Document {
-    description: string;
-    jobType: string;
-    status: string;
-    estimatedCharges: number;
-    paymentStatus: string;
-    metalType: string;
-    estimatedWeightBefore?: { value: number; unit: string };
-    estimatedWeightAfter?: { value: number; unit: string };
-    receivedDate: Date;
-    promisedDeliveryDate: Date;
-    createdBy?: Types.ObjectId;
+    title: string;
+    description?: string;
+    assignedTo: Types.ObjectId;
+    assignedBy: Types.ObjectId;
+    status: "pending" | "in-progress" | "completed" | "cancelled";
+    priority: "low" | "medium" | "high";
+    dueDate?: Date;
+    completedAt?: Date;
 }
 
 const workerJobSchema = new Schema<IWorkerJob>({
-    description: { type: String, required: true },
-    jobType: { type: String, required: true },
-    status: { type: String, required: true },
-    estimatedCharges: { type: Number, default: 0 },
-    paymentStatus: { type: String, required: true },
-    metalType: { type: String, required: true },
-    estimatedWeightBefore: {
-        value: { type: Number },
-        unit: { type: String }
+    title: { type: String, required: true },
+    description: { type: String },
+    assignedTo: { type: Schema.Types.ObjectId, ref: "Admin", required: true },
+    assignedBy: { type: Schema.Types.ObjectId, ref: "Admin", required: true },
+    status: {
+        type: String,
+        enum: ["pending", "in-progress", "completed", "cancelled"],
+        default: "pending"
     },
-    estimatedWeightAfter: {
-        value: { type: Number },
-        unit: { type: String }
+    priority: {
+        type: String,
+        enum: ["low", "medium", "high"],
+        default: "medium"
     },
-    receivedDate: { type: Date },
-    promisedDeliveryDate: { type: Date },
-    createdBy: { type: Types.ObjectId, ref: "Admin" }
+    dueDate: { type: Date },
+    completedAt: { type: Date }
 }, { timestamps: true });
 
 export default model<IWorkerJob>("WorkerJob", workerJobSchema);
