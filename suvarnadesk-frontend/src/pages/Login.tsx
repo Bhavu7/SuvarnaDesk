@@ -1,26 +1,20 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MdLockOutline, MdPerson } from "react-icons/md";
-import { motion } from "framer-motion";
 
-export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+const Login: React.FC = () => {
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
   const navigate = useNavigate();
 
-  // Replace with actual authentication logic
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     localStorage.setItem("token", "dummy-token");
     navigate("/");
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="flex items-center justify-center min-h-[70vh]"
-    >
+    <div className="flex items-center justify-center min-h-[70vh]">
       <form
         className="bg-white rounded shadow p-8 min-w-[320px]"
         onSubmit={handleLogin}
@@ -30,34 +24,44 @@ export default function Login() {
         </div>
         <h2 className="mb-4 text-xl font-bold text-center">Admin Login</h2>
         <div className="mb-4">
-          <label className="block mb-1 text-sm font-medium">Email</label>
+          <label htmlFor="email" className="block mb-1 text-sm font-medium">
+            Email
+          </label>
           <input
-            title="auth inputs"
+            id="email"
             className="w-full p-2 border rounded"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             type="email"
             required
+            title="Enter your email"
+            placeholder="admin@example.com"
           />
         </div>
         <div className="mb-6">
-          <label className="block mb-1 text-sm font-medium">Password</label>
+          <label htmlFor="password" className="block mb-1 text-sm font-medium">
+            Password
+          </label>
           <input
-            title="auth inputs"
+            id="password"
             className="w-full p-2 border rounded"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             type="password"
             required
+            title="Enter your password"
+            placeholder="Password"
           />
         </div>
         <button
           type="submit"
           className="flex items-center justify-center w-full gap-1 py-2 text-white transition bg-blue-600 rounded hover:bg-blue-700"
         >
-          <MdLockOutline /> Login
+          <MdLockOutline className="text-xl" /> Login
         </button>
       </form>
-    </motion.div>
+    </div>
   );
-}
+};
+
+export default Login;

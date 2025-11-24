@@ -1,12 +1,17 @@
-// import React, { useState } from "react";
+import React from "react";
 import { MdMenu, MdPerson } from "react-icons/md";
 
-const Topbar = ({ onMenuClick }: { onMenuClick: () => void }) => (
+interface TopbarProps {
+  onMenuClick: () => void;
+}
+
+const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => (
   <div className="flex items-center justify-between px-4 bg-white border-b shadow-sm md:hidden h-14">
     <button
-      title="menu"
+      type="button"
       onClick={onMenuClick}
       className="mr-2 text-3xl text-blue-600"
+      title="Open menu"
     >
       <MdMenu />
     </button>
