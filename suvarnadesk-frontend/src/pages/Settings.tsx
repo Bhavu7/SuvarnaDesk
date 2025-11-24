@@ -1,16 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import {
-  MdSettings,
-  MdSave,
-  MdStore,
-  MdPerson,
-  MdReceipt,
-  MdLocationOn,
-  MdPhone,
-} from "react-icons/md";
+import { MdSettings, MdSave, MdStore, MdLocationOn } from "react-icons/md";
 import apiClient from "../api/apiClient";
-import { showToast } from '../components/CustomToast';
+import { showToast } from "../components/CustomToast";
 
 interface ShopSettings {
   shopName: string;

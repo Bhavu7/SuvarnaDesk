@@ -1,9 +1,18 @@
-// useLabourCharges.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "../api/apiClient";
-import { use } from "react";
 
-export interface LabourChargeInput {
+export interface LabourCharge {
+    _id: string;
+    name: string;
+    chargeType: "perGram" | "fixedPerItem";
+    amount: number;
+    description?: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CreateLabourChargeInput {
     name: string;
     chargeType: "perGram" | "fixedPerItem";
     amount: number;
@@ -11,23 +20,24 @@ export interface LabourChargeInput {
     isActive: boolean;
 }
 
-export interface LabourCharge extends LabourChargeInput {
-    _id: string;
-}
-
-export const useLabourCharges = () =>
-    useQuery<LabourCharge[], Error>({
+export const useLabourCharges = () => {
+    return useQuery({
         queryKey: ["labourCharges"],
-        queryFn: () => apiClient.get("/labour-charges").then(res => res.data),
+        queryFn: async (): Promise<LabourCharge[]> => {
+            const response = await apiClient.get("/labour-charges");
+            return response.data;
+        },
     });
+};
 
 export const useCreateLabourCharge = () => {
     const queryClient = useQueryClient();
 
-    return useMutation<void, Error, LabourChargeInput>({
-        mutationFn: (data: LabourChargeInput) =>
-            apiClient.post("/labour-charges", data).then(res => res.data),
-
+    return useMutation({
+        mutationFn: async (data: CreateLabourChargeInput): Promise<LabourCharge> => {
+            const response = await apiClient.post("/labour-charges", data);
+            return response.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["labourCharges"] });
         },

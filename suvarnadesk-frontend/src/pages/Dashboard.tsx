@@ -11,8 +11,6 @@ import {
   MdCalendarToday,
 } from "react-icons/md";
 import {
-  LineChart,
-  Line,
   BarChart,
   Bar,
   PieChart,
@@ -30,10 +28,34 @@ import {
 import apiClient from "../api/apiClient";
 import LoadingSpinner from "../components/LoadingSpinner";
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
+// Define types for chart data
+interface ChartDataItem {
+  name: string;
+  revenue: number;
+  invoices: number;
+  customers: number;
+  jobs: number;
+}
+
+interface Stats {
+  customers: number;
+  invoices: number;
+  workerJobs: number;
+  revenue: number;
+  activeJobs: number;
+  pendingInvoices: number;
+}
+
+interface RecentActivity {
+  id: number;
+  action: string;
+  customer: string;
+  amount: string;
+  time: string;
+}
 
 const Dashboard = () => {
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<Stats>({
     customers: 0,
     invoices: 0,
     workerJobs: 0,
@@ -41,14 +63,6 @@ const Dashboard = () => {
     activeJobs: 0,
     pendingInvoices: 0,
   });
-
-  interface ChartDataItem {
-  name: string;
-  revenue: number;
-  invoices: number;
-  customers: number;
-  jobs: number;
-}
 
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<ChartDataItem[]>([]);
@@ -91,7 +105,7 @@ const Dashboard = () => {
         });
 
         // Enhanced mock chart data
-        const mockData = [
+        const mockData: ChartDataItem[] = [
           { name: "Jan", revenue: 42000, invoices: 24, customers: 18, jobs: 8 },
           { name: "Feb", revenue: 38000, invoices: 19, customers: 15, jobs: 6 },
           {
@@ -193,14 +207,18 @@ const Dashboard = () => {
     },
   ];
 
-  const metalDistribution = [
-    { name: "Gold", value: 65, color: "#FFD700" },
-    { name: "Silver", value: 25, color: "#C0C0C0" },
-    { name: "Platinum", value: 8, color: "#E5E4E2" },
-    { name: "Other", value: 2, color: "#8884D8" },
+  // Simple pie chart data - using Record<string, any> to avoid TypeScript issues
+  const pieChartData: Record<string, any>[] = [
+    { name: "Gold", value: 65 },
+    { name: "Silver", value: 25 },
+    { name: "Platinum", value: 8 },
+    { name: "Other", value: 2 },
   ];
 
-  const recentActivities = [
+  // Colors for pie chart segments
+  const COLORS = ["#FFD700", "#C0C0C0", "#E5E4E2", "#8884D8"];
+
+  const recentActivities: RecentActivity[] = [
     {
       id: 1,
       action: "New Invoice",
@@ -230,6 +248,38 @@ const Dashboard = () => {
       time: "5 hours ago",
     },
   ];
+
+  // Safe label formatter for pie chart
+  const renderCustomizedLabel = ({
+    cx,
+    cy,
+    midAngle,
+    innerRadius,
+    outerRadius,
+    percent,
+    name,
+  }: any) => {
+    if (!percent) return null;
+
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="white"
+        textAnchor={x > cx ? "start" : "end"}
+        dominantBaseline="central"
+        fontSize={12}
+        fontWeight="bold"
+      >
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
 
   if (loading) {
     return (
@@ -394,19 +444,26 @@ const Dashboard = () => {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={metalDistribution}
+                  data={pieChartData}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
                   outerRadius={80}
                   paddingAngle={5}
                   dataKey="value"
+                  label={renderCustomizedLabel}
+                  labelLine={false}
                 >
-                  {metalDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  {pieChartData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip
+                  formatter={(value: number) => [`${value}%`, "Percentage"]}
+                />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>

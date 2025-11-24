@@ -1,11 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import {
-  MdLogout,
-  MdPerson,
-  MdNotifications,
-  MdEmail,
-  MdPhone,
-} from "react-icons/md";
+import { MdLogout, MdPerson, MdNotifications, MdEmail } from "react-icons/md";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
 import { showToast } from "../components/CustomToast";

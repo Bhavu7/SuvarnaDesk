@@ -7,7 +7,6 @@ import { useAuth } from "../contexts/AuthContext";
 import LoadingSpinner from "./LoadingSpinner";
 
 const Layout: React.FC = () => {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
@@ -49,7 +48,6 @@ const Layout: React.FC = () => {
     <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar */}
       <Sidebar
-        collapsed={sidebarCollapsed}
         mobileOpen={mobileSidebarOpen}
         onClose={() => setMobileSidebarOpen(false)}
       />

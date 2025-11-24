@@ -3,8 +3,8 @@ import { NavLink } from "react-router-dom";
 import {
   MdDashboard,
   MdWork,
-  MdMoney,
-  MdList,
+  MdReceipt,
+  MdCurrencyRupee,
   MdSettings,
   MdReport,
   MdPeople,
@@ -20,9 +20,9 @@ interface SidebarProps {
 
 const links = [
   { to: "/", label: "Dashboard", icon: <MdDashboard /> },
-  { to: "/billing", label: "Billing", icon: <MdMoney /> },
+  { to: "/billing", label: "Billing", icon: <MdReceipt /> },
   { to: "/worker-jobs", label: "Worker Jobs", icon: <MdWork /> },
-  { to: "/rates", label: "Rates", icon: <MdList /> },
+  { to: "/rates", label: "Rates", icon: <MdCurrencyRupee  /> },
   { to: "/labour-charges", label: "Labour Charges", icon: <MdPeople /> },
   { to: "/reports", label: "Reports", icon: <MdReport /> },
   { to: "/settings", label: "Settings", icon: <MdSettings /> },
@@ -75,7 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 className="flex items-center gap-3"
               >
                 <div className="p-2 bg-white rounded-lg shadow-lg">
-                  <MdMoney className="text-2xl text-blue-600" />
+                  <MdReceipt className="text-2xl text-blue-600" />
                 </div>
                 <AnimatePresence>
                   {!collapsed && (
