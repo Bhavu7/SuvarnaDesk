@@ -279,7 +279,7 @@ const Profile: React.FC = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-4xl mx-auto space-y-6"
+      className="mx-auto space-y-6 max-w-7xl"
     >
       {/* Header */}
       <div className="flex items-center justify-between">
