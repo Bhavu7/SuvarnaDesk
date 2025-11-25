@@ -3,6 +3,7 @@ import { MdLogout, MdPerson, MdNotifications, MdEmail } from "react-icons/md";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
 import { showToast } from "../components/CustomToast";
+import { useNavigate } from "react-router-dom"; // Add this import
 
 interface NavbarProps {
   sidebarExpanded?: boolean;
@@ -10,6 +11,7 @@ interface NavbarProps {
 
 const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
   const { logout, user } = useAuth();
+  const navigate = useNavigate(); // Add this hook
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -81,6 +83,22 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
   const markAllAsRead = () => {
     showToast.success("All notifications marked as read");
     // In real app, update all notifications status via API
+  };
+
+  // Navigation handlers
+  const handleViewProfile = () => {
+    setShowProfileDropdown(false);
+    navigate("/profile");
+  };
+
+  const handleSettings = () => {
+    setShowProfileDropdown(false);
+    navigate("/settings");
+  };
+
+  const handleViewAllNotifications = () => {
+    setShowNotifications(false);
+    navigate("/notifications");
   };
 
   // Close dropdowns when clicking outside
@@ -255,7 +273,7 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
 
                 <div className="px-4 py-2 border-t border-gray-100">
                   <button
-                    onClick={() => (window.location.href = "/notifications")}
+                    onClick={handleViewAllNotifications}
                     className="w-full py-2 text-sm text-center text-blue-600 transition-colors hover:text-blue-700"
                   >
                     View all notifications
@@ -316,14 +334,14 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
                 {/* Actions */}
                 <div className="px-2 py-2">
                   <button
-                    onClick={() => (window.location.href = "/profile")}
+                    onClick={handleViewProfile}
                     className="flex items-center w-full gap-2 px-3 py-2 text-sm text-left text-gray-700 transition-colors duration-200 rounded-lg hover:bg-gray-100/80"
                   >
                     <MdPerson className="text-lg" />
                     View Profile
                   </button>
                   <button
-                    onClick={() => (window.location.href = "/settings")}
+                    onClick={handleSettings}
                     className="flex items-center w-full gap-2 px-3 py-2 text-sm text-left text-gray-700 transition-colors duration-200 rounded-lg hover:bg-gray-100/80"
                   >
                     <MdEmail className="text-lg" />
