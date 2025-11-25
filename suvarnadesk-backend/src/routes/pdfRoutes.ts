@@ -2,7 +2,7 @@ import { Router } from "express";
 import { authMiddleware } from "../middleware/auth";
 import { generateInvoicePDF, InvoicePDFData } from "../utils/pdfGenerator";
 import Invoice from "../models/Invoice";
-import ShopSettings from "../models/ShopSettings";
+import ShopSettings from "../models/Settings";
 
 const router = Router();
 

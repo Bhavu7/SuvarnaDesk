@@ -2,7 +2,7 @@ import { Router } from "express";
 import {
     getShopSettings,
     updateShopSettings
-} from "../controllers/shopSettingsController";
+} from "../controllers/settingsController";
 import { authMiddleware } from "../middleware/auth";
 
 const router = Router();

@@ -21,7 +21,7 @@ import invoiceRoutes from "./routes/invoiceRoutes";
 import labourChargeRoutes from "./routes/labourChargeRoutes";
 import metalRateRoutes from "./routes/metalRateRoutes";
 import workerJobRoutes from "./routes/workerJobRoutes";
-import shopSettingsRoutes from "./routes/shopSettingsRoutes";
+import shopSettingsRoutes from "./routes/settingsRoutes";
 
 // Connect to MongoDB
 mongoose

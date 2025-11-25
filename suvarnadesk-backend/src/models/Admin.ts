@@ -9,7 +9,7 @@ export interface IAdmin extends Document {
     memberSince: Date;
     lastLogin: Date;
 
-    // Shop Settings fields
+    // Settings fields
     shopName?: string;
     address?: string;
     gstNumber?: string;
@@ -26,7 +26,7 @@ const AdminSchema: Schema = new Schema({
     memberSince: { type: Date, default: Date.now },
     lastLogin: { type: Date, default: Date.now },
 
-    // Shop Settings fields
+    // Settings fields
     shopName: { type: String },
     address: { type: String },
     gstNumber: { type: String },

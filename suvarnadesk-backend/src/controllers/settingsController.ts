@@ -1,4 +1,4 @@
-import ShopSettings from "../models/ShopSettings";
+import ShopSettings from "../models/Settings";
 import { Request, Response } from "express";
 
 export const getShopSettings = async (req: Request, res: Response) => {
