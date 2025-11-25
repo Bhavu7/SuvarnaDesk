@@ -7,9 +7,9 @@ export const getShopSettings = async (req: Request, res: Response) => {
         if (!settings) {
             // Create default settings if none exist
             settings = new ShopSettings({
-                shopName: "My Jewelry Shop",
-                address: "Add your shop address",
-                phone: "+1234567890"
+                shopName: "SuvarnaDesk",
+                address: "Anand, Gujarat, India",
+                phone: "+91 12345 67890",
             });
             await settings.save();
         }
