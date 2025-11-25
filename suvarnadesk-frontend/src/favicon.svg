@@ -1,0 +1,40 @@
+  <!-- SuvarnaDesk SVG Logo -->
+  <svg width="240" height="240" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Outer frame -->
+    <rect x="16" y="16" width="88" height="88" rx="18" stroke="#2563EB" stroke-width="3"/>
+
+    <!-- Base line -->
+    <line x1="26" y1="90" x2="94" y2="90" stroke="#60A5FA" stroke-width="3" stroke-linecap="round"/>
+
+    <!-- Bars -->
+    <rect x="32" y="64" width="10" height="26" rx="4" fill="url(#goldGradient)"/>
+    <rect x="52" y="54" width="10" height="36" rx="4" fill="url(#silverGradient)"/>
+    <rect x="72" y="42" width="10" height="48" rx="4" fill="#2563EB"/>
+
+    <!-- Line chart -->
+    <path d="M30 78 L44 70 L58 64 L72 56 L86 52" stroke="#EFF6FF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Arrow head -->
+    <polygon points="86,52 92,49 88,57" fill="#EFF6FF"/>
+
+    <!-- Rings -->
+    <circle cx="44" cy="46" r="7" stroke="url(#goldGradient)" stroke-width="3" fill="none"/>
+    <circle cx="54" cy="40" r="7" stroke="url(#silverGradient)" stroke-width="3" fill="none"/>
+
+    <!-- Rupee symbol -->
+    <text x="66" y="45" font-size="12" font-weight="600" fill="#EFF6FF">₹</text>
+
+    <!-- Gradients -->
+    <defs>
+      <linearGradient id="goldGradient" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0%" stop-color="#B7791F"/>
+        <stop offset="50%" stop-color="#D4AF37"/>
+        <stop offset="100%" stop-color="#FACC15"/>
+      </linearGradient>
+      <linearGradient id="silverGradient" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0%" stop-color="#6B7280"/>
+        <stop offset="50%" stop-color="#9CA3AF"/>
+        <stop offset="100%" stop-color="#E5E7EB"/>
+      </linearGradient>
+    </defs>
+  </svg>

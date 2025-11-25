@@ -31,6 +31,110 @@ const links = [
   { to: "/settings", label: "Settings", icon: <MdSettings /> },
 ];
 
+// Your Custom SVG Icon Component
+const SuvarnaDeskSvgIcon = ({ className = "" }) => (
+  <svg
+    className={className}
+    width="24"
+    height="24"
+    viewBox="0 0 120 120"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    {/* <!-- Outer frame --> */}
+    <rect
+      x="16"
+      y="16"
+      width="88"
+      height="88"
+      rx="18"
+      stroke="currentColor"
+      strokeWidth="3"
+    />
+
+    {/* <!-- Base line --> */}
+    <line
+      x1="26"
+      y1="90"
+      x2="94"
+      y2="90"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      opacity="0.7"
+    />
+
+    {/* <!-- Bars --> */}
+    <rect
+      x="32"
+      y="64"
+      width="10"
+      height="26"
+      rx="4"
+      fill="url(#goldGradient)"
+    />
+    <rect
+      x="52"
+      y="54"
+      width="10"
+      height="36"
+      rx="4"
+      fill="url(#silverGradient)"
+    />
+    <rect x="72" y="42" width="10" height="48" rx="4" fill="currentColor" />
+
+    {/* <!-- Line chart --> */}
+    <path
+      d="M30 78 L44 70 L58 64 L72 56 L86 52"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      opacity="0.8"
+    />
+
+    {/* <!-- Arrow head --> */}
+    <polygon points="86,52 92,49 88,57" fill="currentColor" opacity="0.8" />
+
+    {/* <!-- Rings --> */}
+    <circle
+      cx="44"
+      cy="46"
+      r="7"
+      stroke="url(#goldGradient)"
+      strokeWidth="3"
+      fill="none"
+    />
+    <circle
+      cx="54"
+      cy="40"
+      r="7"
+      stroke="url(#silverGradient)"
+      strokeWidth="3"
+      fill="none"
+    />
+
+    {/* <!-- Rupee symbol --> */}
+    <text x="66" y="45" fontSize="12" fontWeight="600" fill="currentColor">
+      ₹
+    </text>
+
+    {/* <!-- Gradients --> */}
+    <defs>
+      <linearGradient id="goldGradient" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0%" stopColor="#B7791F" />
+        <stop offset="50%" stopColor="#D4AF37" />
+        <stop offset="100%" stopColor="#FACC15" />
+      </linearGradient>
+      <linearGradient id="silverGradient" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0%" stopColor="#6B7280" />
+        <stop offset="50%" stopColor="#9CA3AF" />
+        <stop offset="100%" stopColor="#E5E7EB" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
 const Sidebar: React.FC<SidebarProps> = ({
   collapsed = true,
   mobileOpen = false,
@@ -120,7 +224,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 className="flex items-center gap-3"
               >
                 <div className="p-2 bg-white rounded-lg shadow-lg">
-                  <MdReceipt className="text-2xl text-blue-600" />
+                  <SuvarnaDeskSvgIcon className="text-2xl text-blue-600" />
                 </div>
                 <AnimatePresence>
                   {shouldExpand && (
