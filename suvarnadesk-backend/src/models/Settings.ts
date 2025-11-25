@@ -9,7 +9,7 @@ export interface IShopSettings extends Document {
     logoUrl?: string;
 }
 
-const shopSettingsSchema = new Schema<IShopSettings>({
+const settingsSchema = new Schema<IShopSettings>({
     shopName: { type: String, required: true },
     ownerName: { type: String, required: true },
     address: { type: String, required: true },
@@ -18,4 +18,4 @@ const shopSettingsSchema = new Schema<IShopSettings>({
     logoUrl: { type: String }
 });
 
-export default model<IShopSettings>("ShopSettings", shopSettingsSchema);
+export default model<IShopSettings>("Settings", settingsSchema);
