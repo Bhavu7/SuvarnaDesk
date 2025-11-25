@@ -335,14 +335,14 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
                 <div className="px-2 py-2">
                   <button
                     onClick={handleViewProfile}
-                    className="flex items-center w-full gap-2 px-3 py-2 text-sm text-left text-gray-700 transition-colors duration-200 rounded-lg hover:bg-gray-100/80"
+                    className="flex items-center w-full gap-2 px-3 py-3 text-sm text-left text-gray-700 transition-colors duration-200 rounded-lg hover:bg-gray-100/80"
                   >
                     <MdPerson className="text-lg" />
                     View Profile
                   </button>
                   <button
                     onClick={handleSettings}
-                    className="flex items-center w-full gap-2 px-3 py-2 text-sm text-left text-gray-700 transition-colors duration-200 rounded-lg hover:bg-gray-100/80"
+                    className="flex items-center w-full gap-2 px-3 py-3 text-sm text-left text-gray-700 transition-colors duration-200 rounded-lg hover:bg-gray-100/80"
                   >
                     <MdEmail className="text-lg" />
                     Settings
@@ -352,10 +352,10 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
                 {/* Logout */}
                 <div className="px-2 py-2 border-t border-gray-100">
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
+                    // whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleLogout}
-                    className="flex items-center w-full gap-2 px-3 py-2 text-sm text-red-600 transition-colors duration-200 rounded-lg hover:bg-red-50/80"
+                    className="flex items-center w-full gap-2 px-3 py-3 text-sm text-red-600 transition-colors duration-200 rounded-lg hover:bg-red-50/80"
                   >
                     <MdLogout />
                     Logout
