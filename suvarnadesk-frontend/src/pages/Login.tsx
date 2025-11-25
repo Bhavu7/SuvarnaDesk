@@ -256,7 +256,8 @@ const Login: React.FC = () => {
         className="flex items-center justify-center md:w-1/2 bg-slate-50"
       >
         <form
-          className="w-full max-w-md p-8 mx-auto space-y-8 bg-white border-t-8 border-blue-700 shadow-2xl rounded-3xl"
+        // bg-white border-t-8 border-blue-700 shadow-2xl
+          className="w-full max-w-md p-8 mx-auto space-y-8 rounded-3xl"
           onSubmit={handleLogin}
           noValidate
         >
