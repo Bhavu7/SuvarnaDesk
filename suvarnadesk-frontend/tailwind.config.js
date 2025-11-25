@@ -4,7 +4,7 @@ module.exports = {
   theme: {
     extend: {},
     fontFamily: {
-      inter: ["Poppins", "sans-serif"], // or your chosen font
+      sans: ["Roboto", "Segoe UI"],
     },
   },
   plugins: [],

@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Roboto', 'Segoe UI';
 }
 
 /* Custom responsive breakpoints */
@@ -29,8 +29,10 @@ textarea:focus,
 select:focus,
 button:focus {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5); /* Tailwind's blue-500 with opacity */
-    border-color: #3b82f6; /* Tailwind's blue-500 */
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+    /* Tailwind's blue-500 with opacity */
+    border-color: #3b82f6;
+    /* Tailwind's blue-500 */
 }
 
 /* Custom scrollbar */
