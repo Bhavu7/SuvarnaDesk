@@ -161,12 +161,7 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  MdLockOutline,
-  MdPerson,
-  MdVisibility,
-  MdVisibilityOff,
-} from "react-icons/md";
+import { MdLockOutline, MdVisibility, MdVisibilityOff } from "react-icons/md";
 import { motion } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -241,8 +236,8 @@ const Login: React.FC = () => {
         className="flex flex-col items-center justify-center px-10 py-10 md:w-1/2 bg-gradient-to-tr from-blue-700 via-purple-700 to-indigo-900 md:px-20"
       >
         <div className="flex flex-col items-center space-y-6">
-          <div className="rounded-full shadow-2xl p-7 bg-white/20">
-            <MdPerson className="text-white text-7xl drop-shadow-xl" />
+          <div className="">
+            <LoadingSpinner text="" />
           </div>
           <h1 className="mb-2 text-4xl font-extrabold tracking-tight text-white md:text-5xl drop-shadow-lg">
             SuvarnaDesk
