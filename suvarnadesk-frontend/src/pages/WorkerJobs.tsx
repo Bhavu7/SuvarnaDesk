@@ -12,6 +12,7 @@ import { useWorkerJobs, useCreateWorkerJob } from "../hooks/useWorkerJobs";
 import CustomDropdown from "../components/CustomDropdown";
 import { showToast } from "../components/CustomToast";
 import { AnimatePresence } from "framer-motion";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 export default function WorkerJobs() {
   const { data: jobs, isLoading } = useWorkerJobs();
@@ -104,11 +105,8 @@ export default function WorkerJobs() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-64">
-        <div className="text-center">
-          <div className="w-10 h-10 mx-auto mb-4 border-t-4 border-b-4 border-blue-500 rounded-full animate-spin"></div>
-          <p className="text-gray-600">Loading worker jobs...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-96">
+        <LoadingSpinner text="Loading worker jobs..." />
       </div>
     );
   }

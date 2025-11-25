@@ -8,6 +8,7 @@ import {
 } from "../hooks/useMetalRates";
 import CustomDropdown from "../components/CustomDropdown";
 import { showToast } from "../components/CustomToast";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 export default function Rates() {
   const { data: rates, isLoading } = useMetalRates();
@@ -74,11 +75,8 @@ export default function Rates() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-64">
-        <div className="text-center">
-          <div className="w-10 h-10 mx-auto mb-4 border-t-4 border-b-4 border-blue-500 rounded-full animate-spin"></div>
-          <p className="text-gray-600">Loading metal rates...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-96">
+        <LoadingSpinner text="Loading metal rates..." />
       </div>
     );
   }

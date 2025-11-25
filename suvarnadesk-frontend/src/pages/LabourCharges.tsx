@@ -6,8 +6,9 @@ import {
   useCreateLabourCharge,
 } from "../hooks/useLabourCharges";
 import CustomDropdown from "../components/CustomDropdown";
-import { showToast } from '../components/CustomToast';
+import { showToast } from "../components/CustomToast";
 import { AnimatePresence } from "framer-motion";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 export default function LabourCharges() {
   const { data: labourCharges, isLoading } = useLabourCharges();
@@ -59,10 +60,7 @@ export default function LabourCharges() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-64">
-        <div className="text-center">
-          <div className="w-10 h-10 mx-auto mb-4 border-t-4 border-b-4 border-blue-500 rounded-full animate-spin"></div>
-          <p className="text-gray-600">Loading labour charges...</p>
-        </div>
+        <LoadingSpinner text="Loading Labour Charges..." />
       </div>
     );
   }
@@ -245,10 +243,16 @@ export default function LabourCharges() {
                 />
               </div>
               <div className="flex gap-2 transition-opacity opacity-0 group-hover:opacity-100">
-                <button title="Edit" className="p-2 text-blue-600 transition-colors rounded-lg hover:bg-blue-50">
+                <button
+                  title="Edit"
+                  className="p-2 text-blue-600 transition-colors rounded-lg hover:bg-blue-50"
+                >
                   <MdEdit className="text-lg" />
                 </button>
-                <button title="Delete" className="p-2 text-red-600 transition-colors rounded-lg hover:bg-red-50">
+                <button
+                  title="Delete"
+                  className="p-2 text-red-600 transition-colors rounded-lg hover:bg-red-50"
+                >
                   <MdDelete className="text-lg" />
                 </button>
               </div>

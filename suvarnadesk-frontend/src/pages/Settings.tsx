@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { MdSettings, MdSave, MdStore, MdLocationOn } from "react-icons/md";
 import apiClient from "../api/apiClient";
 import { showToast } from "../components/CustomToast";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 interface ShopSettings {
   shopName: string;
@@ -71,11 +72,8 @@ export default function Settings() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-64">
-        <div className="text-center">
-          <div className="w-10 h-10 mx-auto mb-4 border-t-4 border-b-4 border-blue-500 rounded-full animate-spin"></div>
-          <p className="text-gray-600">Loading shop settings...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-96">
+        <LoadingSpinner text="Loading shop settings..." />
       </div>
     );
   }
