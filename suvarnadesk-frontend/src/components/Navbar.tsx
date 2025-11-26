@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { MdLogout, MdPerson, MdNotifications, MdEmail } from "react-icons/md";
+import { MdLogout, MdPerson, MdNotifications, MdSettings } from "react-icons/md";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
 import { showToast } from "../components/CustomToast";
@@ -344,7 +344,7 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
                     onClick={handleSettings}
                     className="flex items-center w-full gap-2 px-3 py-3 text-sm text-left text-gray-700 transition-colors duration-200 rounded-lg hover:bg-gray-100/80"
                   >
-                    <MdEmail className="text-lg" />
+                    <MdSettings className="text-lg" />
                     Settings
                   </button>
                 </div>
