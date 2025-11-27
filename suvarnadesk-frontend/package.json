@@ -16,6 +16,7 @@
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "framer-motion": "^12.23.24",
+    "html2pdf.js": "^0.12.1",
     "lucide-react": "^0.554.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.0",
