@@ -35,6 +35,10 @@ button:focus {
     /* Tailwind's blue-500 */
 }
 
+button{
+    outline: none;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
     width: 6px;

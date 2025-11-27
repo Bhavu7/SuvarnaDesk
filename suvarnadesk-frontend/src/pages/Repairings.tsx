@@ -105,10 +105,7 @@ export default function Repairings() {
       return;
     }
 
-    // Show toast BEFORE starting generation
-    if (showToast.info) {
-      showToast.info("Generating PDF, please wait...");
-    }
+    showToast.loading("Generating PDF, please wait...");
 
     const opt = {
       // smaller outer margin so everything fits comfortably on a single page
