@@ -264,9 +264,7 @@ const ReceiptPDF: React.FC<ReceiptPDFProps> = ({ data }) => {
         <View style={styles.header}>
           <Text style={styles.companyName}>{data.companyName}</Text>
           <Text style={styles.companyInfo}>{data.companyAddress}</Text>
-          <Text style={styles.companyInfo}>
-            +91-98765-43210 | info@suvarnadesk.com
-          </Text>
+          <Text style={styles.companyInfo}>+91-98765-43210 | info@suvarnadesk.com</Text>
         </View>
 
         {/* Bill From / Bill To */}
@@ -274,9 +272,7 @@ const ReceiptPDF: React.FC<ReceiptPDFProps> = ({ data }) => {
           <View style={styles.gridItem}>
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>BILL FROM</Text>
-              <Text style={{ fontWeight: "bold", marginBottom: 4 }}>
-                {data.companyName}
-              </Text>
+              <Text style={{ fontWeight: "bold", marginBottom: 4 }}>{data.companyName}</Text>
               <Text style={{ fontSize: 10, color: "#6b7280", marginBottom: 2 }}>
                 {data.companyAddress}
               </Text>
@@ -288,9 +284,7 @@ const ReceiptPDF: React.FC<ReceiptPDFProps> = ({ data }) => {
           <View style={styles.gridItem}>
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>BILL TO</Text>
-              <Text style={{ fontWeight: "bold", marginBottom: 4 }}>
-                {data.customerName}
-              </Text>
+              <Text style={{ fontWeight: "bold", marginBottom: 4 }}>{data.customerName}</Text>
               <Text style={{ fontSize: 10, color: "#6b7280" }}>
                 {data.customerAddress}
               </Text>
@@ -307,15 +301,11 @@ const ReceiptPDF: React.FC<ReceiptPDFProps> = ({ data }) => {
             </View>
             <View style={styles.metaItem}>
               <Text style={styles.metaLabel}>DATE & TIME</Text>
-              <Text style={styles.metaValue}>
-                {formatDate(data.receiptDateTime)}
-              </Text>
+              <Text style={styles.metaValue}>{formatDate(data.receiptDateTime)}</Text>
             </View>
             <View style={styles.metaItem}>
               <Text style={styles.metaLabel}>PAYMENT METHOD</Text>
-              <Text style={styles.metaValue}>
-                {getPaymentMethodText(data.paymentMethod)}
-              </Text>
+              <Text style={styles.metaValue}>{getPaymentMethodText(data.paymentMethod)}</Text>
             </View>
           </View>
         </View>
@@ -345,34 +335,24 @@ const ReceiptPDF: React.FC<ReceiptPDFProps> = ({ data }) => {
 
           {/* Table Rows */}
           {data.items.map((item, index) => (
-            <View
-              key={index}
+            <View 
+              key={index} 
               style={[
                 styles.tableRow,
-                { backgroundColor: index % 2 === 0 ? "#FFFFFF" : "#f9fafb" },
+                { backgroundColor: index % 2 === 0 ? "#FFFFFF" : "#f9fafb" }
               ]}
             >
               <View style={[styles.tableCol, styles.colDescription]}>
                 <Text style={{ fontSize: 10 }}>{item.description}</Text>
               </View>
               <View style={[styles.tableCol, styles.colQuantity]}>
-                <Text style={{ fontSize: 10, textAlign: "center" }}>
-                  {item.quantity}
-                </Text>
+                <Text style={{ fontSize: 10, textAlign: "center" }}>{item.quantity}</Text>
               </View>
               <View style={[styles.tableCol, styles.colUnitPrice]}>
-                <Text style={{ fontSize: 10, textAlign: "right" }}>
-                  ₹{item.unitPrice.toFixed(2)}
-                </Text>
+                <Text style={{ fontSize: 10, textAlign: "right" }}>₹{item.unitPrice.toFixed(2)}</Text>
               </View>
               <View style={[styles.tableCol, styles.colAmount]}>
-                <Text
-                  style={{
-                    fontSize: 10,
-                    fontWeight: "bold",
-                    textAlign: "right",
-                  }}
-                >
+                <Text style={{ fontSize: 10, fontWeight: "bold", textAlign: "right" }}>
                   ₹{(item.quantity * item.unitPrice).toFixed(2)}
                 </Text>
               </View>
@@ -385,21 +365,15 @@ const ReceiptPDF: React.FC<ReceiptPDFProps> = ({ data }) => {
           <View style={styles.totalsWrapper}>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Subtotal:</Text>
-              <Text style={styles.totalValue}>
-                ₹{calculateSubtotal().toFixed(2)}
-              </Text>
+              <Text style={styles.totalValue}>₹{calculateSubtotal().toFixed(2)}</Text>
             </View>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Tax ({data.tax}%):</Text>
-              <Text style={styles.totalValue}>
-                ₹{calculateTax().toFixed(2)}
-              </Text>
+              <Text style={styles.totalValue}>₹{calculateTax().toFixed(2)}</Text>
             </View>
             <View style={styles.totalRowMain}>
               <Text style={styles.totalMainLabel}>Total Amount:</Text>
-              <Text style={styles.totalMainValue}>
-                ₹{calculateTotal().toFixed(2)}
-              </Text>
+              <Text style={styles.totalMainValue}>₹{calculateTotal().toFixed(2)}</Text>
             </View>
           </View>
         </View>
@@ -409,16 +383,13 @@ const ReceiptPDF: React.FC<ReceiptPDFProps> = ({ data }) => {
           <View style={styles.gridItem}>
             <Text style={styles.sectionTitle}>SERVICE INFORMATION</Text>
             <Text style={{ fontSize: 10, marginBottom: 2 }}>
-              <Text style={{ fontWeight: "bold" }}>Service Engineer:</Text>{" "}
-              {data.salespersonName}
+              <Text style={{ fontWeight: "bold" }}>Service Engineer:</Text> {data.salespersonName}
             </Text>
             <Text style={{ fontSize: 10, marginBottom: 2 }}>
-              <Text style={{ fontWeight: "bold" }}>Warranty:</Text> 90 days on
-              service
+              <Text style={{ fontWeight: "bold" }}>Warranty:</Text> 90 days on service
             </Text>
             <Text style={{ fontSize: 10 }}>
-              <Text style={{ fontWeight: "bold" }}>Service Type:</Text> AC
-              Repair & Maintenance
+              <Text style={{ fontWeight: "bold" }}>Service Type:</Text> AC Repair & Maintenance
             </Text>
           </View>
           <View style={styles.gridItem}>
@@ -444,8 +415,7 @@ const ReceiptPDF: React.FC<ReceiptPDFProps> = ({ data }) => {
             Thank you for choosing {data.companyName}
           </Text>
           <Text style={styles.footerText}>
-            For support: support@suvarnadesk.com | ☎ +91-98765-43210 | 🌐
-            www.suvarnadesk.com
+            For support: support@suvarnadesk.com | ☎ +91-98765-43210 | 🌐 www.suvarnadesk.com
           </Text>
           <Text style={[styles.footerText, { marginTop: 8 }]}>
             This is a computer-generated receipt. No signature required.

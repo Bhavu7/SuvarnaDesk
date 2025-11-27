@@ -229,7 +229,7 @@ export default function Repairings() {
                         receiptNumber: generateReceiptNumber(),
                       }))
                     }
-                    className="px-4 py-3 text-sm bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 whitespace-nowrap"
+                    className="px-4 py-3 text-sm bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 whitespace-nowrap focus:outline-none focus:ring-0"
                   >
                     Generate
                   </button>
@@ -467,7 +467,7 @@ export default function Repairings() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleAddItem}
-                  className="w-full px-4 py-3 text-white transition-all duration-200 bg-blue-600 rounded-lg hover:bg-blue-700"
+                  className="w-full px-4 py-3 text-white transition-all duration-200 bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-0"
                 >
                   <MdAdd className="inline mr-2" />
                   Add Item
@@ -566,7 +566,7 @@ export default function Repairings() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={generatePDF}
-              className="flex items-center justify-center flex-1 gap-2 px-6 py-3 font-semibold text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+              className="flex items-center justify-center flex-1 gap-2 px-6 py-3 font-semibold text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 focus:outline-none focus:ring-0 hover:from-green-700 hover:to-emerald-700"
             >
               <MdDownload className="text-lg" />
               Generate PDF Receipt
