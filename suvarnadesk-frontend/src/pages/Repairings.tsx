@@ -87,15 +87,24 @@ export default function Repairings() {
     }
 
     const element = pdfRef.current;
+    if (!element) {
+      showToast.error("Something went wrong. Please try again.");
+      return;
+    }
+
     const opt = {
-      margin: 5,
+      margin: [5, 5, 5, 5] as [number, number, number, number],
       filename: `Receipt-${formData.receiptNumber}.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
+      image: { type: "jpeg" as const, quality: 0.98 },
       html2canvas: { scale: 2 },
-      jsPDF: { orientation: "portrait", unit: "mm", format: "a4" },
+      jsPDF: {
+        orientation: "portrait" as const,
+        unit: "mm" as const,
+        format: "a4" as const,
+      },
     };
 
-    html2pdf().set(opt).from(element).save();
+    (html2pdf() as any).set(opt).from(element).save();
     showToast.success("PDF generated successfully!");
   };
 
@@ -150,6 +159,7 @@ export default function Repairings() {
                   Date & Time *
                 </label>
                 <input
+                  title="Date and Time"
                   type="datetime-local"
                   value={formData.receiptDateTime}
                   onChange={(e) =>
@@ -166,6 +176,7 @@ export default function Repairings() {
                   Payment Method *
                 </label>
                 <select
+                  title="Date and Time"
                   value={formData.paymentMethod}
                   onChange={(e) =>
                     setFormData((prev) => ({
@@ -187,6 +198,7 @@ export default function Repairings() {
                   Tax Rate (%) *
                 </label>
                 <input
+                  title="Date and Time"
                   type="number"
                   value={formData.tax}
                   onChange={(e) =>
@@ -267,6 +279,7 @@ export default function Repairings() {
                     Company Name *
                   </label>
                   <input
+                    title="Date and Time"
                     type="text"
                     value={formData.companyName}
                     onChange={(e) =>
@@ -283,6 +296,7 @@ export default function Repairings() {
                     Company Address *
                   </label>
                   <textarea
+                    title="Date and Time"
                     value={formData.companyAddress}
                     onChange={(e) =>
                       setFormData((prev) => ({
@@ -331,6 +345,7 @@ export default function Repairings() {
                   Quantity
                 </label>
                 <input
+                  title="Date and Time"
                   type="number"
                   value={currentItem.quantity}
                   onChange={(e) =>
@@ -414,6 +429,7 @@ export default function Repairings() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           <button
+                            title="Date and Time"
                             onClick={() => handleRemoveItem(index)}
                             className="p-2 text-red-600 transition-colors rounded-lg hover:bg-red-50"
                           >
@@ -506,129 +522,210 @@ export default function Repairings() {
 
       {/* Hidden PDF Template */}
       <div className="hidden">
-        <div ref={pdfRef} className="p-8 bg-white" style={{ width: "210mm" }}>
-          <div className="max-w-2xl mx-auto">
-            {/* Header */}
-            <div className="pb-4 mb-6 text-center border-b-2 border-gray-300">
-              <h1 className="text-3xl font-bold text-blue-600">
-                {formData.companyName}
-              </h1>
-              <p className="mt-1 text-sm text-gray-600">
-                {formData.companyAddress}
-              </p>
-              <h2 className="mt-4 text-xl font-semibold">AC REPAIR RECEIPT</h2>
-            </div>
+        <div
+          ref={pdfRef}
+          className="bg-white"
+          style={{ width: "210mm", minHeight: "297mm", padding: "12mm" }}
+        >
+          <div
+            className="w-full mx-auto text-[11px] leading-snug"
+            style={{ fontFamily: "Roboto, 'Segoe UI', sans-serif" }}
+          >
+            {/* Top Logo + Title bar */}
+            <div className="border border-gray-300">
+              {/* Top logo row (you can replace with your real logo or text) */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-300">
+                <div className="text-sm font-bold text-green-700">
+                  {/* Logo placeholder */}
+                  SuvarnaDesk
+                </div>
+                {/* Empty right side to mimic layout */}
+                <div />
+              </div>
 
-            {/* Receipt Info */}
-            <div className="grid grid-cols-2 gap-6 mb-6 text-sm">
-              <div>
-                <p className="font-semibold text-gray-700">Receipt Number:</p>
-                <p className="text-gray-900">{formData.receiptNumber}</p>
+              {/* Green title bar */}
+              <div className="py-2 text-center bg-emerald-600">
+                <span className="text-base font-semibold text-white">
+                  AC Repair Receipt
+                </span>
               </div>
-              <div>
-                <p className="font-semibold text-gray-700">Date & Time:</p>
-                <p className="text-gray-900">
-                  {new Date(formData.receiptDateTime).toLocaleString()}
-                </p>
-              </div>
-            </div>
 
-            {/* Customer & Company */}
-            <div className="grid grid-cols-2 gap-6 mb-6 text-sm">
-              <div className="p-4 border border-gray-300 rounded">
-                <p className="mb-2 font-semibold text-gray-700">Customer:</p>
-                <p className="font-semibold">{formData.customerName}</p>
-                <p className="mt-1 text-xs text-gray-600">
-                  {formData.customerAddress}
-                </p>
+              {/* Receipt meta row */}
+              <div className="flex justify-between px-4 py-2 text-xs border-b border-gray-300 bg-gray-50">
+                <div>
+                  <span className="font-semibold text-gray-700">
+                    Receipt Number:{" "}
+                  </span>
+                  <span className="text-gray-800">
+                    {formData.receiptNumber || "-"}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-700">
+                    Payment Method:{" "}
+                  </span>
+                  <span className="text-gray-800 capitalize">
+                    {formData.paymentMethod || "-"}
+                  </span>
+                </div>
               </div>
-              <div className="p-4 border border-gray-300 rounded">
-                <p className="mb-2 font-semibold text-gray-700">
-                  Payment Method:
-                </p>
-                <p className="font-semibold capitalize">
-                  {formData.paymentMethod}
-                </p>
+              <div className="flex justify-between px-4 py-1 text-xs border-b border-gray-300">
+                <div>
+                  <span className="font-semibold text-gray-700">
+                    Receipt Date:{" "}
+                  </span>
+                  <span className="text-gray-800">
+                    {formData.receiptDateTime
+                      ? new Date(formData.receiptDateTime).toLocaleString()
+                      : "-"}
+                  </span>
+                </div>
               </div>
-            </div>
 
-            {/* Items Table */}
-            <table className="w-full mb-6 text-sm border-collapse">
-              <thead>
-                <tr className="bg-gray-200 border border-gray-300">
-                  <th className="p-2 text-left border border-gray-300">
-                    Description
-                  </th>
-                  <th className="p-2 text-center border border-gray-300">
-                    Qty
-                  </th>
-                  <th className="p-2 text-right border border-gray-300">
-                    Unit Price
-                  </th>
-                  <th className="p-2 text-right border border-gray-300">
-                    Subtotal
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {formData.items.map((item, index) => (
-                  <tr key={index} className="border border-gray-300">
-                    <td className="p-2 border border-gray-300">
-                      {item.description}
-                    </td>
-                    <td className="p-2 text-center border border-gray-300">
-                      {item.quantity}
-                    </td>
-                    <td className="p-2 text-right border border-gray-300">
-                      ₹{item.unitPrice.toFixed(2)}
-                    </td>
-                    <td className="p-2 font-semibold text-right border border-gray-300">
-                      ₹{(item.quantity * item.unitPrice).toFixed(2)}
-                    </td>
+              {/* Customer / Seller boxes */}
+              <div className="grid grid-cols-2 gap-0 px-4 pt-3 pb-2">
+                {/* Customer */}
+                <div className="border border-gray-300">
+                  <div className="px-2 py-1 text-xs font-semibold text-white bg-emerald-600">
+                    Customer
+                  </div>
+                  <div className="px-2 py-2 text-xs min-h-[60px]">
+                    <div className="font-semibold text-gray-800">
+                      {formData.customerName || "[Customer Name]"}
+                    </div>
+                    <div className="mt-1 text-gray-700 whitespace-pre-line">
+                      {formData.customerAddress ||
+                        "[Customer Address Line 1]\n[Line 2]\n[Line 3]"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Seller */}
+                <div className="border border-l-0 border-gray-300">
+                  <div className="px-2 py-1 text-xs font-semibold text-white bg-emerald-600">
+                    Seller
+                  </div>
+                  <div className="px-2 py-2 text-xs min-h-[60px]">
+                    <div className="font-semibold text-gray-800">
+                      {formData.companyName || "[Company Name]"}
+                    </div>
+                    <div className="mt-1 text-gray-700 whitespace-pre-line">
+                      {formData.companyAddress ||
+                        "[Company Address Line 1]\n[Line 2]\n[Line 3]"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Description table header */}
+              <table className="w-full mt-3 text-xs border-t border-b border-gray-300">
+                <thead>
+                  <tr className="text-white bg-emerald-600">
+                    <th className="px-2 py-1 text-left w-[45%]">DESCRIPTION</th>
+                    <th className="px-2 py-1 text-center w-[15%]">QUANTITY</th>
+                    <th className="px-2 py-1 text-right w-[15%]">UNIT PRICE</th>
+                    <th className="px-2 py-1 text-right w-[15%]">SUBTOTAL</th>
+                    <th className="px-2 py-1 text-right w-[10%]">TAX</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {formData.items.length > 0 ? (
+                    formData.items.map((item, idx) => (
+                      <tr key={idx} className="border-t border-gray-200">
+                        <td className="px-2 py-1 text-gray-800 align-top">
+                          {item.description}
+                        </td>
+                        <td className="px-2 py-1 text-center text-gray-800">
+                          {item.quantity}
+                        </td>
+                        <td className="px-2 py-1 text-right text-gray-800">
+                          ₹{item.unitPrice.toFixed(2)}
+                        </td>
+                        <td className="px-2 py-1 text-right text-gray-800">
+                          ₹{(item.quantity * item.unitPrice).toFixed(2)}
+                        </td>
+                        <td className="px-2 py-1 text-right text-gray-800">
+                          {/* per‑row tax, matching template idea */}₹
+                          {(
+                            (item.quantity * item.unitPrice * formData.tax) /
+                            100
+                          ).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        className="px-2 py-10 text-center text-gray-400"
+                        colSpan={5}
+                      >
+                        No services added
+                      </td>
+                    </tr>
+                  )}
 
-            {/* Totals */}
-            <div className="flex justify-end mb-8 text-sm">
-              <div className="w-64">
-                <div className="flex justify-between p-2 border-b border-gray-300">
-                  <span>Subtotal:</span>
-                  <span>₹{calculateSubtotal().toFixed(2)}</span>
+                  {/* Extra blank lines to mimic lined area */}
+                  {Array.from({
+                    length: Math.max(6 - formData.items.length, 0),
+                  }).map((_, i) => (
+                    <tr key={`blank-${i}`} className="border-t border-gray-100">
+                      <td className="px-2 py-2">&nbsp;</td>
+                      <td />
+                      <td />
+                      <td />
+                      <td />
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Notes + totals row */}
+              <div className="flex text-xs border-t border-gray-300">
+                <div className="flex-1 px-2 py-6 align-top border-r border-gray-300">
+                  <span className="font-semibold text-gray-700">[Notes]</span>
                 </div>
-                <div className="flex justify-between p-2 border-b border-gray-300">
-                  <span>Tax ({formData.tax}%):</span>
-                  <span>₹{calculateTax().toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between p-2 text-lg font-bold bg-gray-100">
-                  <span>Total:</span>
-                  <span>₹{calculateTotal().toFixed(2)}</span>
+                <div className="w-64">
+                  <div className="flex justify-between px-3 py-1 border-b border-gray-200">
+                    <span className="text-gray-700">SUBTOTAL</span>
+                    <span className="text-gray-800">
+                      ₹{calculateSubtotal().toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between px-3 py-1 border-b border-gray-200">
+                    <span className="text-gray-700">
+                      TAX ({formData.tax || 0}%)
+                    </span>
+                    <span className="text-gray-800">
+                      ₹{calculateTax().toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between px-3 py-1 font-semibold bg-gray-50">
+                    <span className="text-gray-800">TOTAL</span>
+                    <span className="text-emerald-600">
+                      ₹{calculateTotal().toFixed(2)}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Signature */}
-            <div className="grid grid-cols-2 gap-20 text-sm text-center">
-              <div>
-                <p className="pt-2 mt-12 border-t border-gray-300">
-                  Salesperson: {formData.salespersonName}
-                </p>
-                <p>Signature</p>
+              {/* Signature row */}
+              <div className="flex justify-between px-12 pt-10 pb-6 text-xs">
+                <div className="flex-1 text-center">
+                  <div className="pt-1 border-t border-emerald-600" />
+                  <span className="block mt-1 text-emerald-700">
+                    Salesperson
+                  </span>
+                </div>
+                <div className="flex-1 text-center">
+                  <div className="pt-1 border-t border-emerald-600" />
+                  <span className="block mt-1 text-emerald-700">Signature</span>
+                </div>
               </div>
-              <div>
-                <p className="text-gray-600">Customer Signature</p>
-              </div>
-            </div>
 
-            {/* Thank You */}
-            <div className="pt-6 mt-8 text-center border-t border-gray-300">
-              <p className="font-semibold text-gray-700">
-                Thank You For Your Payment!
-              </p>
-              <p className="mt-2 text-xs text-gray-600">
-                Please keep this receipt for your records
-              </p>
+              {/* Footer Thank you */}
+              <div className="pb-6 text-xs text-center text-gray-700">
+                Thank you for the payment!
+              </div>
             </div>
           </div>
         </div>

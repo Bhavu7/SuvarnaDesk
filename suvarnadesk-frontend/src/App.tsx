@@ -13,6 +13,7 @@ import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import PrivateRoute from "./components/PrivateRoute";
+import Repairings from "./pages/Repairings";
 
 function App() {
   return (
@@ -67,6 +68,7 @@ function App() {
                 <Route path="rates" element={<Rates />} />
                 <Route path="labour-charges" element={<LabourCharges />} />
                 <Route path="reports" element={<Reports />} />
+                <Route path="repairings" element={<Repairings />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="profile" element={<Profile />} />
               </Route>

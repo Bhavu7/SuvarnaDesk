@@ -10,6 +10,7 @@ import {
   MdPeople,
   MdClose,
   MdMenu,
+  MdBuildCircle,
 } from "react-icons/md";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -27,6 +28,7 @@ const links = [
   { to: "/worker-jobs", label: "Worker Jobs", icon: <MdWork /> },
   { to: "/rates", label: "Rates", icon: <MdCurrencyRupee /> },
   { to: "/labour-charges", label: "Labour Charges", icon: <MdPeople /> },
+  { to: "/repairings", label: "Repairings", icon: <MdBuildCircle /> },
   { to: "/reports", label: "Reports", icon: <MdReport /> },
   { to: "/settings", label: "Settings", icon: <MdSettings /> },
 ];
