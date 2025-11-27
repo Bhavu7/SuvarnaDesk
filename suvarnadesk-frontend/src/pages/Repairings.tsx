@@ -8,9 +8,10 @@ import {
   MdPhone,
   MdEmail,
 } from "react-icons/md";
-import html2pdf from "html2pdf.js";
+import { pdf } from "@react-pdf/renderer";
 import { showToast } from "../components/CustomToast";
 import CustomDropdown from "../components/CustomDropdown";
+import ReceiptPDF from "../components/ReceiptPDF";
 
 interface RepairItem {
   description: string;
@@ -50,8 +51,6 @@ export default function Repairings() {
     quantity: 1,
     unitPrice: 0,
   });
-
-  const pdfRef = useRef<HTMLDivElement>(null);
 
   const handleAddItem = () => {
     if (!currentItem.description || currentItem.unitPrice <= 0) {
@@ -128,65 +127,33 @@ export default function Repairings() {
     showToast.success("Form reset successfully");
   };
 
-  const generatePDF = () => {
+  const generatePDF = async () => {
     const errors = validateForm();
     if (errors.length > 0) {
       errors.forEach((error) => showToast.error(error));
       return;
     }
 
-    const element = pdfRef.current;
-    if (!element) {
-      showToast.error("Something went wrong. Please try again.");
-      return;
-    }
-
     showToast.loading("Generating PDF, please wait...");
 
-    const opt = {
-      margin: [10, 10, 10, 10] as [number, number, number, number],
-      filename: `${formData.companyName.replace(/\s+/g, "_")}_Receipt_${
+    try {
+      const blob = await pdf(<ReceiptPDF data={formData} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${formData.companyName.replace(/\s+/g, "_")}_Receipt_${
         formData.receiptNumber
-      }.pdf`,
-      image: { type: "jpeg" as const, quality: 1 },
-      html2canvas: {
-        scale: 3,
-        useCORS: true,
-        logging: false,
-        backgroundColor: "#ffffff",
-        width: 794,
-        height: 1123,
-        windowWidth: 794,
-      },
-      jsPDF: {
-        orientation: "portrait" as const,
-        unit: "mm" as const,
-        format: "a4" as const,
-        compress: true,
-      },
-    };
+      }.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
 
-    html2pdf()
-      .set(opt)
-      .from(element)
-      .save()
-      .then(() => {
-        showToast.success("PDF downloaded successfully!");
-      })
-      .catch((error: any) => {
-        console.error("PDF generation error:", error);
-        showToast.error("Failed to generate PDF. Please try again.");
-      });
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-IN", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+      showToast.success("PDF downloaded successfully!");
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      showToast.error("Failed to generate PDF. Please try again.");
+    }
   };
 
   const getPaymentMethodText = (method: string) => {
@@ -645,235 +612,6 @@ export default function Repairings() {
           </div>
         </div>
       </div>
-
-      {/* PDF Template - Hidden from normal view */}
-      <div className="hidden">
-        <div ref={pdfRef} className="p-8 text-gray-800 bg-white pdf-template">
-          {/* Header with Branding */}
-          <div className="pb-4 mb-6 border-b-2 border-blue-600">
-            <div className="flex items-start justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-blue-800">
-                  {formData.companyName}
-                </h1>
-                <p className="mt-1 text-sm text-gray-600">
-                  {formData.companyAddress}
-                </p>
-                <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                  <span className="flex items-center gap-1">
-                    <MdPhone className="inline" /> +91-98765-43210
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <MdEmail className="inline" /> info@suvarnadesk.com
-                  </span>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="px-4 py-2 text-white bg-blue-600 rounded-lg">
-                  <MdReceipt className="inline mr-2 text-xl" />
-                  <span className="text-lg font-bold">SERVICE RECEIPT</span>
-                </div>
-                <p className="mt-1 text-xs text-gray-600">
-                  Professional AC Repair Services
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Receipt Details */}
-          <div className="grid grid-cols-2 gap-6 mb-6">
-            <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
-              <h3 className="mb-2 text-sm font-bold tracking-wide text-blue-700 uppercase">
-                Bill From
-              </h3>
-              <p className="font-semibold text-gray-800">
-                {formData.companyName}
-              </p>
-              <p className="text-sm text-gray-600 whitespace-pre-line">
-                {formData.companyAddress}
-              </p>
-              <p className="mt-2 text-xs text-gray-500">
-                GSTIN: 07AABCU9603R1ZM
-              </p>
-            </div>
-
-            <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
-              <h3 className="mb-2 text-sm font-bold tracking-wide text-blue-700 uppercase">
-                Bill To
-              </h3>
-              <p className="font-semibold text-gray-800">
-                {formData.customerName}
-              </p>
-              <p className="text-sm text-gray-600 whitespace-pre-line">
-                {formData.customerAddress}
-              </p>
-            </div>
-          </div>
-
-          {/* Receipt Meta Information */}
-          <div className="grid grid-cols-3 gap-4 p-4 mb-6 border border-blue-200 rounded-lg bg-blue-50">
-            <div>
-              <p className="text-xs font-semibold text-blue-600">RECEIPT NO.</p>
-              <p className="text-sm font-bold text-gray-800">
-                {formData.receiptNumber}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-blue-600">DATE & TIME</p>
-              <p className="text-sm font-bold text-gray-800">
-                {formatDate(formData.receiptDateTime)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-blue-600">
-                PAYMENT METHOD
-              </p>
-              <p className="text-sm font-bold text-gray-800">
-                {getPaymentMethodText(formData.paymentMethod)}
-              </p>
-            </div>
-          </div>
-
-          {/* Service Items Table */}
-          <div className="mb-6">
-            <div className="px-4 py-3 text-white bg-blue-700 rounded-t-lg">
-              <h3 className="text-lg font-bold">Service Details</h3>
-            </div>
-            <table className="w-full overflow-hidden border border-collapse border-gray-300 rounded-b-lg">
-              <thead>
-                <tr className="bg-blue-100">
-                  <th className="p-3 text-sm font-bold text-left text-blue-800 border border-blue-200">
-                    Description
-                  </th>
-                  <th className="p-3 text-sm font-bold text-center text-blue-800 border border-blue-200">
-                    Qty
-                  </th>
-                  <th className="p-3 text-sm font-bold text-right text-blue-800 border border-blue-200">
-                    Unit Price
-                  </th>
-                  <th className="p-3 text-sm font-bold text-right text-blue-800 border border-blue-200">
-                    Amount (₹)
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {formData.items.map((item, index) => (
-                  <tr key={index} className="hover:bg-gray-50 even:bg-gray-50">
-                    <td className="p-3 text-gray-700 border border-gray-200">
-                      {item.description}
-                    </td>
-                    <td className="p-3 text-center text-gray-700 border border-gray-200">
-                      {item.quantity}
-                    </td>
-                    <td className="p-3 text-right text-gray-700 border border-gray-200">
-                      ₹{item.unitPrice.toFixed(2)}
-                    </td>
-                    <td className="p-3 font-semibold text-right text-gray-800 border border-gray-200">
-                      ₹{(item.quantity * item.unitPrice).toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Totals Section */}
-          <div className="flex justify-end mb-8">
-            <div className="w-80">
-              <div className="space-y-2">
-                <div className="flex justify-between py-2 border-b border-gray-200">
-                  <span className="font-semibold text-gray-700">Subtotal:</span>
-                  <span className="font-semibold text-gray-800">
-                    ₹{calculateSubtotal().toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-gray-200">
-                  <span className="font-semibold text-gray-700">
-                    Tax ({formData.tax}%):
-                  </span>
-                  <span className="font-semibold text-gray-800">
-                    ₹{calculateTax().toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between px-4 py-3 border border-blue-200 rounded-lg bg-blue-50">
-                  <span className="text-lg font-bold text-blue-800">
-                    Total Amount:
-                  </span>
-                  <span className="text-lg font-bold text-blue-800">
-                    ₹{calculateTotal().toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Additional Information */}
-          <div className="grid grid-cols-2 gap-8 pt-6 border-t border-gray-300">
-            <div>
-              <h4 className="mb-3 text-sm font-bold tracking-wide text-blue-700 uppercase">
-                Service Information
-              </h4>
-              <div className="space-y-2 text-sm">
-                <p>
-                  <strong className="text-gray-700">Service Engineer:</strong>{" "}
-                  {formData.salespersonName}
-                </p>
-                <p>
-                  <strong className="text-gray-700">Warranty:</strong> 90 days
-                  on service
-                </p>
-                <p>
-                  <strong className="text-gray-700">Service Type:</strong> AC
-                  Repair & Maintenance
-                </p>
-              </div>
-            </div>
-            <div>
-              <h4 className="mb-3 text-sm font-bold tracking-wide text-blue-700 uppercase">
-                Terms & Conditions
-              </h4>
-              <ul className="space-y-1 text-xs text-gray-600">
-                <li>• Warranty covers service labor only</li>
-                <li>• Parts warranty as per manufacturer</li>
-                <li>• Original receipt required for claims</li>
-                <li>• Service response within 24 hours</li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="pt-6 mt-12 text-center border-t border-gray-300">
-            <div className="p-4 border border-blue-200 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50">
-              <p className="text-sm font-semibold text-blue-800">
-                Thank you for choosing {formData.companyName}
-              </p>
-              <p className="mt-1 text-xs text-gray-600">
-                For support: support@suvarnadesk.com | ☎ +91-98765-43210 | 🌐
-                www.suvarnadesk.com
-              </p>
-            </div>
-            <p className="mt-4 text-xs text-gray-500">
-              This is a computer-generated receipt. No signature required.
-            </p>
-          </div>
-
-          {/* Watermark */}
-          <div className="fixed text-6xl font-bold text-blue-300 rotate-45 pointer-events-none bottom-10 right-10 opacity-10">
-            PAID
-          </div>
-        </div>
-      </div>
-
-      {/* Add CSS for PDF template */}
-      <style>{`
-        .pdf-template {
-          width: 794px;
-          height: 1123px;
-          font-family: Arial, sans-serif;
-          font-size: 14px;
-          line-height: 1.4;
-        }
-      `}</style>
     </motion.div>
   );
 }
