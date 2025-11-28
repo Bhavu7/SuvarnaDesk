@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Font,
 } from "@react-pdf/renderer";
-import { useSettings } from "../hooks/useSettings";
 
 // Register fonts
 Font.register({
@@ -223,7 +222,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: "#666",
     marginTop: 2,
-  }
+  },
 });
 
 interface InvoiceItem {
@@ -233,6 +232,17 @@ interface InvoiceItem {
   weight: number;
   pricePerGram: number;
   amount: number;
+}
+
+interface ShopSettings {
+  shopName: string;
+  address: string;
+  phone: string;
+  gstNumber?: string;
+  logoUrl?: string;
+  ownerName?: string;
+  bankName?: string;
+  accountNumber?: string;
 }
 
 interface InvoicePDFProps {
@@ -247,24 +257,32 @@ interface InvoicePDFProps {
     };
     items: InvoiceItem[];
     grandTotal: number;
+    shopSettings: ShopSettings;
   };
 }
 
 const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
-  const { settings } = useSettings();
-
   // Format date like "01 January 2024"
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = date.toLocaleString('en-US', { month: 'long' });
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = date.toLocaleString("en-US", { month: "long" });
     const year = date.getFullYear();
     return `${day} ${month} ${year}`;
   };
 
   // Format currency without symbol, with commas
   const formatCurrency = (amount: number) => {
-    return `$ ${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}`;
+    return `$ ${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,")}`;
+  };
+
+  // Default bank details if not provided in settings
+  const getBankName = () => {
+    return data.shopSettings.bankName || "Your Bank Name";
+  };
+
+  const getAccountNumber = () => {
+    return data.shopSettings.accountNumber || "0000-0000-0000";
   };
 
   return (
@@ -274,8 +292,14 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
         <View style={styles.header}>
           <View>
             <Text style={styles.invoiceTitle}>INVOICE</Text>
-            <Text style={styles.companyName}>{settings.companyName}</Text>
-            <Text style={styles.gstNumber}>GST: {settings.gstNumber}</Text>
+            <Text style={styles.companyName}>
+              {data.shopSettings.shopName || "JEWELRY COMMERCIAL"}
+            </Text>
+            {data.shopSettings.gstNumber && (
+              <Text style={styles.gstNumber}>
+                GST: {data.shopSettings.gstNumber}
+              </Text>
+            )}
           </View>
         </View>
 
@@ -289,16 +313,20 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Issued to:</Text>
               <Text style={styles.fieldValue}>[1] {data.customer.name}</Text>
-              <Text style={styles.customerAddress}>{data.customer.address}</Text>
+              <Text style={styles.customerAddress}>
+                {data.customer.address}
+              </Text>
               <Text style={styles.customerAddress}>{data.customer.email}</Text>
               <Text style={styles.customerAddress}>{data.customer.phone}</Text>
             </View>
           </View>
-          
+
           <View style={styles.rightColumn}>
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Date Issued:</Text>
-              <Text style={styles.fieldValue}>{formatDate(data.invoiceDate)}</Text>
+              <Text style={styles.fieldValue}>
+                {formatDate(data.invoiceDate)}
+              </Text>
             </View>
           </View>
         </View>
@@ -355,14 +383,18 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
         {/* Grand Total - Match sample */}
         <View style={styles.totalSection}>
           <Text style={styles.totalLabel}>GRAND TOTAL</Text>
-          <Text style={styles.totalValue}>{formatCurrency(data.grandTotal)}</Text>
+          <Text style={styles.totalValue}>
+            {formatCurrency(data.grandTotal)}
+          </Text>
         </View>
 
         {/* Payment Information - Match sample */}
         <View style={styles.paymentSection}>
           <Text style={styles.paymentTitle}>Payment Information</Text>
-          <Text style={styles.paymentInfo}>Bank Name: {settings.bankName}</Text>
-          <Text style={styles.paymentInfo}>Account No: {settings.accountNumber}</Text>
+          <Text style={styles.paymentInfo}>Bank Name: {getBankName()}</Text>
+          <Text style={styles.paymentInfo}>
+            Account No: {getAccountNumber()}
+          </Text>
         </View>
 
         {/* Signature Section - Match sample */}
@@ -375,7 +407,10 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
 
         {/* Footer - Match sample exactly */}
         <View style={styles.footer}>
-          <Text>Thank you for choosing us! We hope you enjoy your exquisite jewellery.</Text>
+          <Text>
+            Thank you for choosing us! We hope you enjoy your exquisite
+            jewellery.
+          </Text>
         </View>
       </Page>
     </Document>
