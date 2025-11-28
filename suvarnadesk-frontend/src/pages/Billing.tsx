@@ -29,6 +29,7 @@ export default function Billing() {
   const [invoiceDate, setInvoiceDate] = useState<string>(
     new Date().toISOString().substring(0, 10)
   );
+  const [invoiceNumber, setInvoiceNumber] = useState<string>("");
   const [selectedCustomer, setSelectedCustomer] = useState<string>("");
   const [customerName, setCustomerName] = useState<string>("");
   const [customerEmail, setCustomerEmail] = useState<string>("");
@@ -58,9 +59,10 @@ export default function Billing() {
     gstNumber: "",
   });
 
-  // Fetch shop settings on component mount
+  // Fetch shop settings and generate invoice number on component mount
   React.useEffect(() => {
     fetchShopSettings();
+    generateInvoiceNumber();
   }, []);
 
   const fetchShopSettings = async () => {
@@ -76,6 +78,14 @@ export default function Billing() {
       console.error("Failed to fetch shop settings:", error);
       // Use defaults if fetch fails
     }
+  };
+
+  const generateInvoiceNumber = () => {
+    const timestamp = Date.now();
+    const randomNum = Math.floor(Math.random() * 1000);
+    const newInvoiceNumber = `INV-${timestamp}-${randomNum}`;
+    setInvoiceNumber(newInvoiceNumber);
+    return newInvoiceNumber;
   };
 
   // Custom dropdown options
@@ -273,9 +283,13 @@ export default function Billing() {
       return;
     }
 
+    if (!invoiceNumber.trim()) {
+      showToast.error("Invoice number is required");
+      return;
+    }
+
     if (createInvoice.isPending) return;
 
-    const invoiceNumber = `INV-${Date.now()}`;
     const qrCodeData = JSON.stringify({
       invoiceNumber,
       date: invoiceDate,
@@ -340,6 +354,8 @@ export default function Billing() {
         showToast.success("Invoice created successfully!");
         setInvoiceData(pdfData);
         setShowQRCode(true);
+        // Generate new invoice number for next invoice
+        generateInvoiceNumber();
       },
       onError: (error: any) => {
         showToast.error(
@@ -386,6 +402,24 @@ export default function Billing() {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label
+                    htmlFor="invoice-number"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    Invoice Number *
+                  </label>
+                  <input
+                    id="invoice-number"
+                    type="text"
+                    value={invoiceNumber}
+                    onChange={(e) => setInvoiceNumber(e.target.value)}
+                    className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="INV-123456"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label
                     htmlFor="invoice-date"
                     className="block mb-2 text-sm font-medium text-gray-700"
                   >
@@ -400,7 +434,7 @@ export default function Billing() {
                   />
                 </div>
 
-                <div>
+                <div className="md:col-span-2">
                   <label
                     htmlFor="customer-select"
                     className="block mb-2 text-sm font-medium text-gray-700"
@@ -818,7 +852,8 @@ export default function Billing() {
                 disabled={
                   createInvoice.isPending ||
                   !customerName.trim() ||
-                  !customerPhone.trim()
+                  !customerPhone.trim() ||
+                  !invoiceNumber.trim()
                 }
                 className="flex items-center justify-center w-full gap-2 py-3 mt-6 font-medium text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -870,7 +905,7 @@ export default function Billing() {
                 <div className="space-y-2">
                   <PDFDownloadLink
                     document={<InvoicePDF data={invoiceData} />}
-                    fileName={`invoice-${invoiceData.invoiceNumber}.pdf`}
+                    fileName={`${invoiceData.invoiceNumber}_${invoiceData.customer.name}_${invoiceData.invoiceDate}.pdf`}
                     className="flex items-center justify-center w-full gap-2 py-2 text-sm font-medium text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
                   >
                     {({ loading }) => (
@@ -880,7 +915,6 @@ export default function Billing() {
                       </>
                     )}
                   </PDFDownloadLink>
-
                   <button
                     onClick={() => setShowQRCode(false)}
                     className="w-full py-2 text-sm text-gray-600 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"

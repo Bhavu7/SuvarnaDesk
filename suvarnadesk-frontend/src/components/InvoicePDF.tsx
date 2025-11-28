@@ -29,6 +29,7 @@ const styles = StyleSheet.create({
   container: {
     border: "2 solid #999999",
     padding: 16,
+    flex: 1,
   },
 
   // Title section - EXACTLY like receipt sample
@@ -103,6 +104,7 @@ const styles = StyleSheet.create({
   tableSection: {
     marginBottom: 8,
     border: "1 solid #1f9e4d",
+    flex: 1,
   },
 
   tableHeader: {
@@ -129,6 +131,13 @@ const styles = StyleSheet.create({
   tableRow: {
     flexDirection: "row",
     borderBottom: "1 solid #ddd",
+    minHeight: 24,
+  },
+
+  // Empty row style
+  emptyRow: {
+    flexDirection: "row",
+    borderBottom: "1 solid #f0f0f0",
     minHeight: 24,
   },
 
@@ -307,8 +316,19 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
 
   // Format currency without symbol, with commas
   const formatCurrency = (amount: number) => {
-    return `$ ${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,")}`;
+    return `₹ ${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,")}`;
   };
+
+  // Calculate how many empty rows we need to fill the page
+  const calculateEmptyRows = () => {
+    // Adjust this number based on how many rows you want to fill the page
+    // For A4 size with your current layout, 15-20 empty rows usually fill the page well
+    const targetTotalRows = 15; // You can adjust this number
+    const emptyRowsCount = Math.max(0, targetTotalRows - data.items.length);
+    return Array(emptyRowsCount).fill(null);
+  };
+
+  const emptyRows = calculateEmptyRows();
 
   return (
     <Document>
@@ -316,7 +336,7 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
         <View style={styles.container}>
           {/* Title - EXACTLY like receipt sample */}
           <View style={styles.titleSection}>
-            <Text style={styles.title}>INVOICE</Text>
+            <Text style={styles.title}>COMMERCIAL INVOICE</Text>
             {data.shopSettings.gstNumber && (
               <Text style={styles.gstNumber}>
                 GST: {data.shopSettings.gstNumber}
@@ -328,11 +348,11 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
           <View style={styles.metaInfoRow}>
             <View style={styles.metaInfoItem}>
               <Text style={styles.metaLabel}>Invoice Number:</Text>
-              <Text style={styles.metaValue}>#{data.invoiceNumber}</Text>
+              <Text style={styles.metaValue}>{data.invoiceNumber}</Text>
             </View>
             <View style={styles.metaInfoItem}>
               <Text style={styles.metaLabel}>Issued To:</Text>
-              <Text style={styles.metaValue}>[1] {data.customer.name}</Text>
+              <Text style={styles.metaValue}>{data.customer.name}</Text>
             </View>
             <View style={styles.metaInfoItem}>
               <Text style={styles.metaLabel}>Date Issued:</Text>
@@ -364,7 +384,7 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
               </View>
               <View style={styles.boxBody}>
                 <Text>
-                  {data.shopSettings.shopName || "JEWELRY COMMERCIAL"}
+                  {data.shopSettings.shopName || "JEWELRY COMMERCIAL INVOICE"}
                 </Text>
                 <Text>Professional Jewelry Services</Text>
               </View>
@@ -420,7 +440,7 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
               </View>
             </View>
 
-            {/* Table Rows */}
+            {/* Table Rows - Actual Data */}
             {data.items.map((item, index) => (
               <View key={index} style={styles.tableRow}>
                 <View style={[styles.tableCell, styles.colProductNo]}>
@@ -465,6 +485,55 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                   ]}
                 >
                   <Text>{formatCurrency(item.amount)}</Text>
+                </View>
+              </View>
+            ))}
+
+            {/* Empty Rows to Fill the Page */}
+            {emptyRows.map((_, index) => (
+              <View key={`empty-${index}`} style={styles.emptyRow}>
+                <View style={[styles.tableCell, styles.colProductNo]}>
+                  <Text> </Text>
+                </View>
+                <View style={[styles.tableCell, styles.colDescription]}>
+                  <Text> </Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCell,
+                    styles.colQty,
+                    styles.tableCellCenter,
+                  ]}
+                >
+                  <Text> </Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCell,
+                    styles.colWeight,
+                    styles.tableCellRight,
+                  ]}
+                >
+                  <Text> </Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCell,
+                    styles.colPrice,
+                    styles.tableCellRight,
+                  ]}
+                >
+                  <Text> </Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCell,
+                    styles.colAmount,
+                    styles.tableCellRight,
+                    styles.tableCellLast,
+                  ]}
+                >
+                  <Text> </Text>
                 </View>
               </View>
             ))}
