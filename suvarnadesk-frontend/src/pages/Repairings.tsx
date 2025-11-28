@@ -12,6 +12,7 @@ import { pdf } from "@react-pdf/renderer";
 import { showToast } from "../components/CustomToast";
 import CustomDropdown from "../components/CustomDropdown";
 import ReceiptPDF from "../components/ReceiptPDF";
+import DateTimeDropdown from "../components/DateTimeDropdown";
 
 interface RepairItem {
   description: string;
@@ -239,17 +240,15 @@ export default function Repairings() {
                 <label className="block mb-2 text-sm font-medium text-gray-700">
                   Date & Time *
                 </label>
-                <input
-                  title="Receipt Date and Time"
-                  type="datetime-local"
+                <DateTimeDropdown
                   value={formData.receiptDateTime}
-                  onChange={(e) =>
+                  onChange={(value) =>
                     setFormData((prev) => ({
                       ...prev,
-                      receiptDateTime: e.target.value,
+                      receiptDateTime: value,
                     }))
                   }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Select receipt date and time"
                 />
               </div>
               <div>
