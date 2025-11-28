@@ -49,7 +49,7 @@ export default function Billing() {
       itemTotal: 0,
     },
   ]);
-  const [GSTPercent, setGSTPercent] = useState<number>(3.0);
+  const [GSTPercent, setGSTPercent] = useState<number>(2.5);
   const [paymentMode, setPaymentMode] = useState<string>("cash");
   const [amountPaid, setAmountPaid] = useState<number>(0);
   const [showQRCode, setShowQRCode] = useState<boolean>(false);
