@@ -19,184 +19,244 @@ Font.register({
 
 const styles = StyleSheet.create({
   page: {
-    flexDirection: "column",
     backgroundColor: "#FFFFFF",
-    padding: 30,
+    padding: 20,
     fontFamily: "Helvetica",
     fontSize: 10,
-    lineHeight: 1.4,
   },
 
-  // Header Section - Match sample exactly
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20,
-    borderBottom: "1 solid #000",
-    paddingBottom: 10,
+  // Main container with border - EXACTLY like receipt sample
+  container: {
+    border: "2 solid #999999",
+    padding: 16,
   },
 
-  invoiceTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 5,
+  // Title section - EXACTLY like receipt sample
+  titleSection: {
+    textAlign: "left",
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottom: "1 solid #ddd",
   },
 
-  companyName: {
+  title: {
     fontSize: 16,
     fontWeight: "bold",
+    color: "#1f9e4d",
     marginBottom: 3,
   },
 
-  // Two Column Layout - Match sample spacing
-  twoColumn: {
+  // Meta info row (Invoice Number, Date) - EXACTLY like receipt sample
+  metaInfoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 15,
+    marginBottom: 12,
+    fontSize: 10,
   },
 
-  leftColumn: {
-    width: "50%",
+  metaInfoItem: {
+    flex: 1,
   },
 
-  rightColumn: {
-    width: "45%",
-    alignItems: "flex-end",
-  },
-
-  // Field Styles
-  fieldGroup: {
-    marginBottom: 8,
-  },
-
-  fieldLabel: {
-    fontSize: 9,
+  metaLabel: {
     fontWeight: "bold",
+    color: "#333",
     marginBottom: 2,
+  },
+
+  metaValue: {
     color: "#333",
   },
 
-  fieldValue: {
-    fontSize: 10,
-    color: "#000",
+  // Customer & Seller boxes row - EXACTLY like receipt sample
+  boxesRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+    gap: 16,
   },
 
-  customerAddress: {
-    fontSize: 10,
-    color: "#000",
-    marginTop: 2,
+  box: {
+    flex: 1,
+    border: "1 solid #ccc",
   },
 
-  // Table Styles - Match sample exactly
-  table: {
-    marginTop: 20,
-    marginBottom: 20,
-    width: "100%",
+  boxHeader: {
+    backgroundColor: "#1f9e4d",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 10,
+  },
+
+  boxBody: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    minHeight: 50,
+    fontSize: 9,
+    color: "#333",
+    lineHeight: 1.4,
+  },
+
+  // Table section - EXACTLY like receipt sample
+  tableSection: {
+    marginBottom: 8,
+    border: "1 solid #1f9e4d",
   },
 
   tableHeader: {
     flexDirection: "row",
-    borderBottom: "1 solid #000",
-    paddingVertical: 8,
-    paddingHorizontal: 5,
-    backgroundColor: "#f8f8f8",
+    backgroundColor: "#1f9e4d",
+    borderBottom: "1 solid #1f9e4d",
+  },
+
+  tableHeaderCell: {
+    flex: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 9,
+    textAlign: "center",
+    borderRight: "1 solid #1a7a3d",
+  },
+
+  tableHeaderCellLast: {
+    borderRight: "none",
   },
 
   tableRow: {
     flexDirection: "row",
     borderBottom: "1 solid #ddd",
-    paddingVertical: 8,
-    paddingHorizontal: 5,
-    minHeight: 30,
+    minHeight: 24,
   },
 
   tableCell: {
-    paddingHorizontal: 5,
+    flex: 1,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    fontSize: 9,
+    color: "#333",
     justifyContent: "center",
+    borderRight: "1 solid #eee",
   },
 
-  // Column widths matching the sample exactly
-  colProductNo: {
-    width: "18%",
-    textAlign: "left",
+  tableCellLast: {
+    borderRight: "none",
   },
 
-  colDescription: {
-    width: "25%",
-    textAlign: "left",
-  },
-
-  colQty: {
-    width: "10%",
+  tableCellCenter: {
     textAlign: "center",
   },
 
-  colWeight: {
-    width: "15%",
+  tableCellRight: {
     textAlign: "right",
   },
 
-  colPrice: {
-    width: "16%",
-    textAlign: "right",
+  // Column widths for invoice items
+  colProductNo: { flex: 1.2 },
+  colDescription: { flex: 1.5 },
+  colQty: { flex: 0.6 },
+  colWeight: { flex: 0.8 },
+  colPrice: { flex: 0.8 },
+  colAmount: { flex: 0.8 },
+
+  // Notes & Totals section - EXACTLY like receipt sample
+  footerSection: {
+    flexDirection: "row",
+    marginTop: 8,
+    justifyContent: "space-between",
   },
 
-  colAmount: {
-    width: "16%",
-    textAlign: "right",
+  notesBox: {
+    flex: 1,
+    borderTop: "1 solid #1f9e4d",
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    fontSize: 9,
+    color: "#333",
   },
 
-  // Total Section - Match sample
-  totalSection: {
+  totalsBox: {
+    borderTop: "1 solid #1f9e4d",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    width: "200px",
+  },
+
+  totalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 10,
-    paddingTop: 10,
-    borderTop: "2 solid #000",
-    alignItems: "center",
+    marginBottom: 4,
+    fontSize: 9,
   },
 
   totalLabel: {
-    fontSize: 12,
-    fontWeight: "bold",
+    color: "#666",
   },
 
   totalValue: {
-    fontSize: 12,
+    fontWeight: "bold",
+    color: "#333",
+    textAlign: "right",
+    minWidth: 70,
+  },
+
+  totalRowBold: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 6,
+    paddingTop: 6,
+    borderTop: "1 solid #ddd",
+    fontSize: 10,
     fontWeight: "bold",
   },
 
-  // Signature Section - Match sample
+  totalBoldLabel: {
+    color: "#1f9e4d",
+  },
+
+  totalBoldValue: {
+    color: "#1f9e4d",
+    textAlign: "right",
+    minWidth: 70,
+  },
+
+  // Signature section - EXACTLY like receipt sample
   signatureSection: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 40,
-    paddingTop: 15,
+    marginTop: 32,
+    paddingTop: 12,
   },
 
-  signatureBox: {
+  signatureBlock: {
     width: "45%",
+    alignItems: "center",
   },
 
   signatureLine: {
-    borderBottom: "1 solid #000",
-    marginBottom: 5,
-    height: 20,
+    borderTop: "1 solid #999",
+    width: "100%",
+    marginBottom: 4,
+    minHeight: 40,
   },
 
   signatureLabel: {
     fontSize: 9,
-    textAlign: "center",
-    fontStyle: "italic",
+    color: "#1f9e4d",
+    fontWeight: "bold",
   },
 
-  // Footer - Match sample
+  // Footer text - EXACTLY like receipt sample
   footer: {
-    marginTop: 30,
     textAlign: "center",
+    marginTop: 16,
+    paddingTop: 8,
     fontSize: 10,
-    color: "#666",
-    fontStyle: "italic",
+    color: "#1f9e4d",
+    fontWeight: "bold",
   },
 
   // GST Number style
@@ -253,120 +313,197 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Header - Match sample exactly */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.invoiceTitle}>INVOICE</Text>
-            <Text style={styles.companyName}>
-              {data.shopSettings.shopName || "JEWELRY COMMERCIAL"}
-            </Text>
+        <View style={styles.container}>
+          {/* Title - EXACTLY like receipt sample */}
+          <View style={styles.titleSection}>
+            <Text style={styles.title}>INVOICE</Text>
             {data.shopSettings.gstNumber && (
               <Text style={styles.gstNumber}>
                 GST: {data.shopSettings.gstNumber}
               </Text>
             )}
           </View>
-        </View>
 
-        {/* Invoice Number and Customer Details - Match sample layout */}
-        <View style={styles.twoColumn}>
-          <View style={styles.leftColumn}>
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Invoice No.:</Text>
-              <Text style={styles.fieldValue}>#{data.invoiceNumber}</Text>
+          {/* Meta Info Row - EXACTLY like receipt sample */}
+          <View style={styles.metaInfoRow}>
+            <View style={styles.metaInfoItem}>
+              <Text style={styles.metaLabel}>Invoice Number:</Text>
+              <Text style={styles.metaValue}>#{data.invoiceNumber}</Text>
             </View>
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Issued to:</Text>
-              <Text style={styles.fieldValue}>[1] {data.customer.name}</Text>
-              <Text style={styles.customerAddress}>
-                {data.customer.address}
-              </Text>
-              <Text style={styles.customerAddress}>{data.customer.email}</Text>
-              <Text style={styles.customerAddress}>{data.customer.phone}</Text>
+            <View style={styles.metaInfoItem}>
+              <Text style={styles.metaLabel}>Issued To:</Text>
+              <Text style={styles.metaValue}>[1] {data.customer.name}</Text>
             </View>
-          </View>
-
-          <View style={styles.rightColumn}>
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Date Issued:</Text>
-              <Text style={styles.fieldValue}>
+            <View style={styles.metaInfoItem}>
+              <Text style={styles.metaLabel}>Date Issued:</Text>
+              <Text style={styles.metaValue}>
                 {formatDate(data.invoiceDate)}
               </Text>
             </View>
           </View>
-        </View>
 
-        {/* Items Table - Match sample exactly */}
-        <View style={styles.table}>
-          {/* Table Header */}
-          <View style={styles.tableHeader}>
-            <View style={[styles.tableCell, styles.colProductNo]}>
-              <Text>PRODUCT/ SERVICE NO</Text>
+          {/* Customer & Seller Boxes - EXACTLY like receipt sample */}
+          <View style={styles.boxesRow}>
+            {/* Customer Box */}
+            <View style={styles.box}>
+              <View style={styles.boxHeader}>
+                <Text>Customer</Text>
+              </View>
+              <View style={styles.boxBody}>
+                <Text>{data.customer.name}</Text>
+                <Text>{data.customer.address}</Text>
+                <Text>{data.customer.email}</Text>
+                <Text>{data.customer.phone}</Text>
+              </View>
             </View>
-            <View style={[styles.tableCell, styles.colDescription]}>
-              <Text>DESCRIPTION</Text>
-            </View>
-            <View style={[styles.tableCell, styles.colQty]}>
-              <Text>QTY</Text>
-            </View>
-            <View style={[styles.tableCell, styles.colWeight]}>
-              <Text>WEIGHT (grams)</Text>
-            </View>
-            <View style={[styles.tableCell, styles.colPrice]}>
-              <Text>PRICE/GRAM</Text>
-            </View>
-            <View style={[styles.tableCell, styles.colAmount]}>
-              <Text>AMOUNT</Text>
+
+            {/* Seller Box */}
+            <View style={styles.box}>
+              <View style={styles.boxHeader}>
+                <Text>Seller</Text>
+              </View>
+              <View style={styles.boxBody}>
+                <Text>
+                  {data.shopSettings.shopName || "JEWELRY COMMERCIAL"}
+                </Text>
+                <Text>Professional Jewelry Services</Text>
+              </View>
             </View>
           </View>
 
-          {/* Table Rows */}
-          {data.items.map((item, index) => (
-            <View key={index} style={styles.tableRow}>
-              <View style={[styles.tableCell, styles.colProductNo]}>
-                <Text>{item.productNo}</Text>
+          {/* Table - EXACTLY like receipt sample */}
+          <View style={styles.tableSection}>
+            {/* Table Header */}
+            <View style={styles.tableHeader}>
+              <View style={[styles.tableHeaderCell, styles.colProductNo]}>
+                <Text>PRODUCT NO</Text>
               </View>
-              <View style={[styles.tableCell, styles.colDescription]}>
-                <Text>{item.description}</Text>
+              <View style={[styles.tableHeaderCell, styles.colDescription]}>
+                <Text>DESCRIPTION</Text>
               </View>
-              <View style={[styles.tableCell, styles.colQty]}>
-                <Text>{item.quantity}</Text>
+              <View
+                style={[
+                  styles.tableHeaderCell,
+                  styles.colQty,
+                  styles.tableCellCenter,
+                ]}
+              >
+                <Text>QTY</Text>
               </View>
-              <View style={[styles.tableCell, styles.colWeight]}>
-                <Text>{item.weight.toFixed(1)}</Text>
+              <View
+                style={[
+                  styles.tableHeaderCell,
+                  styles.colWeight,
+                  styles.tableCellRight,
+                ]}
+              >
+                <Text>WEIGHT (g)</Text>
               </View>
-              <View style={[styles.tableCell, styles.colPrice]}>
-                <Text>{formatCurrency(item.pricePerGram)}</Text>
+              <View
+                style={[
+                  styles.tableHeaderCell,
+                  styles.colPrice,
+                  styles.tableCellRight,
+                ]}
+              >
+                <Text>PRICE/GRAM</Text>
               </View>
-              <View style={[styles.tableCell, styles.colAmount]}>
-                <Text>{formatCurrency(item.amount)}</Text>
+              <View
+                style={[
+                  styles.tableHeaderCell,
+                  styles.colAmount,
+                  styles.tableCellRight,
+                  styles.tableHeaderCellLast,
+                ]}
+              >
+                <Text>AMOUNT</Text>
               </View>
             </View>
-          ))}
-        </View>
 
-        {/* Grand Total - Match sample */}
-        <View style={styles.totalSection}>
-          <Text style={styles.totalLabel}>GRAND TOTAL</Text>
-          <Text style={styles.totalValue}>
-            {formatCurrency(data.grandTotal)}
-          </Text>
-        </View>
-
-        {/* Signature Section - Match sample */}
-        <View style={styles.signatureSection}>
-          <View style={styles.signatureBox}>
-            <View style={styles.signatureLine} />
-            <Text style={styles.signatureLabel}>Customer Signature [2]</Text>
+            {/* Table Rows */}
+            {data.items.map((item, index) => (
+              <View key={index} style={styles.tableRow}>
+                <View style={[styles.tableCell, styles.colProductNo]}>
+                  <Text>{item.productNo}</Text>
+                </View>
+                <View style={[styles.tableCell, styles.colDescription]}>
+                  <Text>{item.description}</Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCell,
+                    styles.colQty,
+                    styles.tableCellCenter,
+                  ]}
+                >
+                  <Text>{item.quantity}</Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCell,
+                    styles.colWeight,
+                    styles.tableCellRight,
+                  ]}
+                >
+                  <Text>{item.weight.toFixed(1)}</Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCell,
+                    styles.colPrice,
+                    styles.tableCellRight,
+                  ]}
+                >
+                  <Text>{formatCurrency(item.pricePerGram)}</Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCell,
+                    styles.colAmount,
+                    styles.tableCellRight,
+                    styles.tableCellLast,
+                  ]}
+                >
+                  <Text>{formatCurrency(item.amount)}</Text>
+                </View>
+              </View>
+            ))}
           </View>
-        </View>
 
-        {/* Footer - Match sample exactly */}
-        <View style={styles.footer}>
-          <Text>
-            Thank you for choosing us! We hope you enjoy your exquisite
-            jewellery.
-          </Text>
+          {/* Notes & Totals - EXACTLY like receipt sample */}
+          <View style={styles.footerSection}>
+            <View style={styles.notesBox}>
+              <Text>Thank you for your business!</Text>
+            </View>
+            <View style={styles.totalsBox}>
+              <View style={styles.totalRowBold}>
+                <Text style={styles.totalBoldLabel}>GRAND TOTAL</Text>
+                <Text style={styles.totalBoldValue}>
+                  {formatCurrency(data.grandTotal)}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Signature Section - EXACTLY like receipt sample */}
+          <View style={styles.signatureSection}>
+            <View style={styles.signatureBlock}>
+              <View style={styles.signatureLine} />
+              <Text style={styles.signatureLabel}>Authorized Signature</Text>
+            </View>
+            <View style={styles.signatureBlock}>
+              <View style={styles.signatureLine} />
+              <Text style={styles.signatureLabel}>Customer Signature</Text>
+            </View>
+          </View>
+
+          {/* Footer - EXACTLY like receipt sample */}
+          <View style={styles.footer}>
+            <Text>
+              Thank you for choosing us! We hope you enjoy your exquisite
+              jewellery.
+            </Text>
+          </View>
         </View>
       </Page>
     </Document>

@@ -18,6 +18,7 @@ import InvoiceQRCode from "../components/InvoiceQRCode";
 import { showToast } from "../components/CustomToast";
 import InvoicePDF from "../components/InvoicePDF";
 import { PDFDownloadLink } from "@react-pdf/renderer";
+import apiClient from "../api/apiClient";
 
 export default function Billing() {
   const { data: customers } = useCustomers();
@@ -52,6 +53,30 @@ export default function Billing() {
   const [amountPaid, setAmountPaid] = useState<number>(0);
   const [showQRCode, setShowQRCode] = useState<boolean>(false);
   const [invoiceData, setInvoiceData] = useState<any>(null);
+  const [shopSettings, setShopSettings] = useState({
+    shopName: "JEWELRY COMMERCIAL",
+    gstNumber: "",
+  });
+
+  // Fetch shop settings on component mount
+  React.useEffect(() => {
+    fetchShopSettings();
+  }, []);
+
+  const fetchShopSettings = async () => {
+    try {
+      const response = await apiClient.get("/shop-settings");
+      if (response.data) {
+        setShopSettings({
+          shopName: response.data.shopName || "JEWELRY COMMERCIAL",
+          gstNumber: response.data.gstNumber || "",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch shop settings:", error);
+      // Use defaults if fetch fails
+    }
+  };
 
   // Custom dropdown options
   const itemTypeOptions = [
@@ -261,7 +286,7 @@ export default function Billing() {
         address: customerAddress,
       },
       total: grandTotal,
-      items: lineItems.map(item => ({
+      items: lineItems.map((item) => ({
         type: item.itemType,
         purity: item.purity,
         weight: item.weight,
@@ -285,7 +310,7 @@ export default function Billing() {
       QRCodeData: qrCodeData,
     };
 
-    // Prepare data for PDF
+    // Prepare data for PDF - Only shop name and GST from settings
     const pdfData = {
       invoiceNumber,
       invoiceDate,
@@ -294,10 +319,6 @@ export default function Billing() {
         address: customerAddress,
         email: customerEmail,
         phone: customerPhone,
-      },
-      company: {
-        name: "JEWELRY COMMERCIAL",
-        address: "Your Company Address Here",
       },
       items: lineItems.map((item, index) => ({
         productNo: `ITEM-${index + 1}`,
@@ -308,9 +329,9 @@ export default function Billing() {
         amount: item.itemTotal,
       })),
       grandTotal,
-      paymentInfo: {
-        bankName: "Your Bank Name",
-        accountNo: "Your Account Number",
+      shopSettings: {
+        shopName: shopSettings.shopName,
+        gstNumber: shopSettings.gstNumber,
       },
     };
 
@@ -633,7 +654,11 @@ export default function Billing() {
                         type="text"
                         value={item.description}
                         onChange={(e) =>
-                          handleLineItemChange(index, "description", e.target.value)
+                          handleLineItemChange(
+                            index,
+                            "description",
+                            e.target.value
+                          )
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Item description"
@@ -790,7 +815,11 @@ export default function Billing() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleSubmit}
-                disabled={createInvoice.isPending || !customerName.trim() || !customerPhone.trim()}
+                disabled={
+                  createInvoice.isPending ||
+                  !customerName.trim() ||
+                  !customerPhone.trim()
+                }
                 className="flex items-center justify-center w-full gap-2 py-3 mt-6 font-medium text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <MdAttachMoney className="text-xl" />
@@ -823,17 +852,17 @@ export default function Billing() {
                     Invoice QR Code
                   </h3>
                 </div>
-                
+
                 <div className="flex justify-center mb-4">
-                  <InvoiceQRCode 
+                  <InvoiceQRCode
                     data={JSON.stringify({
                       invoiceNumber: invoiceData.invoiceNumber,
                       downloadUrl: `${window.location.origin}/invoices/${invoiceData.invoiceNumber}.pdf`,
                       total: invoiceData.grandTotal,
-                    })} 
+                    })}
                   />
                 </div>
-                
+
                 <p className="mb-4 text-sm text-center text-gray-600">
                   Scan to download invoice PDF
                 </p>
@@ -851,7 +880,7 @@ export default function Billing() {
                       </>
                     )}
                   </PDFDownloadLink>
-                  
+
                   <button
                     onClick={() => setShowQRCode(false)}
                     className="w-full py-2 text-sm text-gray-600 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
