@@ -5,7 +5,7 @@ import {
   MdDelete,
   MdReceipt,
   MdQrCode,
-  MdAttachMoney,
+  MdCurrencyRupee,
   MdCalculate,
   MdDownload,
 } from "react-icons/md";
@@ -859,7 +859,7 @@ export default function Billing() {
                 }
                 className="flex items-center justify-center w-full gap-2 py-3 mt-6 font-medium text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <MdAttachMoney className="text-xl" />
+                <MdCurrencyRupee className="text-xl" />
                 {createInvoice.isPending
                   ? "Creating Invoice..."
                   : "Finalize Invoice"}
