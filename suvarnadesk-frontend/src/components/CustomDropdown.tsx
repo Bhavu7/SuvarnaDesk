@@ -47,7 +47,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
       <motion.button
-        whileHover={{ scale: disabled ? 1 : 1.02 }}
+        // whileHover={{ scale: disabled ? 1 : 1.02 }}
         whileTap={{ scale: disabled ? 1 : 0.98 }}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
