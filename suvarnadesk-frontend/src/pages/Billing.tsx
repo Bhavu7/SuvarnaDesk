@@ -7,6 +7,7 @@ import {
   MdQrCode,
   MdAttachMoney,
   MdCalculate,
+  MdDownload,
 } from "react-icons/md";
 import { useCustomers, Customer } from "../hooks/useCustomers";
 import { useLabourCharges, LabourCharge } from "../hooks/useLabourCharges";
@@ -15,6 +16,8 @@ import { useCreateInvoice, LineItem } from "../hooks/useBilling";
 import CustomDropdown from "../components/CustomDropdown";
 import InvoiceQRCode from "../components/InvoiceQRCode";
 import { showToast } from "../components/CustomToast";
+import InvoicePDF from "../components/InvoicePDF";
+import { PDFDownloadLink } from "@react-pdf/renderer";
 
 export default function Billing() {
   const { data: customers } = useCustomers();
@@ -26,6 +29,10 @@ export default function Billing() {
     new Date().toISOString().substring(0, 10)
   );
   const [selectedCustomer, setSelectedCustomer] = useState<string>("");
+  const [customerName, setCustomerName] = useState<string>("");
+  const [customerEmail, setCustomerEmail] = useState<string>("");
+  const [customerPhone, setCustomerPhone] = useState<string>("");
+  const [customerAddress, setCustomerAddress] = useState<string>("");
   const [lineItems, setLineItems] = useState<LineItem[]>([
     {
       itemType: "gold",
@@ -44,6 +51,7 @@ export default function Billing() {
   const [paymentMode, setPaymentMode] = useState<string>("cash");
   const [amountPaid, setAmountPaid] = useState<number>(0);
   const [showQRCode, setShowQRCode] = useState<boolean>(false);
+  const [invoiceData, setInvoiceData] = useState<any>(null);
 
   // Custom dropdown options
   const itemTypeOptions = [
@@ -102,6 +110,26 @@ export default function Billing() {
   const GSTAmount = (subtotal * GSTPercent) / 100;
   const grandTotal = subtotal + GSTAmount;
   const balanceDue = grandTotal - amountPaid;
+
+  // Handle customer selection from dropdown
+  const handleCustomerSelect = (customerId: string) => {
+    setSelectedCustomer(customerId);
+    if (customerId) {
+      const customer = customers?.find((c: Customer) => c._id === customerId);
+      if (customer) {
+        setCustomerName(customer.name);
+        setCustomerEmail(customer.email || "");
+        setCustomerPhone(customer.phone);
+        setCustomerAddress(customer.address || "");
+      }
+    } else {
+      // Reset form for new customer
+      setCustomerName("");
+      setCustomerEmail("");
+      setCustomerPhone("");
+      setCustomerAddress("");
+    }
+  };
 
   const handleLineItemChange = (
     index: number,
@@ -205,8 +233,13 @@ export default function Billing() {
   };
 
   const handleSubmit = () => {
-    if (!selectedCustomer) {
-      showToast.error("Please select a customer");
+    if (!customerName.trim()) {
+      showToast.error("Please enter customer name");
+      return;
+    }
+
+    if (!customerPhone.trim()) {
+      showToast.error("Please enter customer phone number");
       return;
     }
 
@@ -217,37 +250,83 @@ export default function Billing() {
 
     if (createInvoice.isPending) return;
 
-    createInvoice.mutate(
-      {
-        invoiceNumber: `INV-${Date.now()}`,
-        date: invoiceDate,
-        customerId: selectedCustomer,
-        customerSnapshot:
-          customers?.find((c: Customer) => c._id === selectedCustomer) || {},
-        lineItems,
-        totals: { subtotal, GSTPercent, GSTAmount, grandTotal },
-        paymentDetails: { paymentMode, amountPaid, balanceDue },
-        QRCodeData: `Invoice INV-${Date.now()}, Total: ₹${grandTotal.toFixed(
-          2
-        )}`,
+    const invoiceNumber = `INV-${Date.now()}`;
+    const qrCodeData = JSON.stringify({
+      invoiceNumber,
+      date: invoiceDate,
+      customer: {
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
+        address: customerAddress,
       },
-      {
-        onSuccess: () => {
-          showToast.success("Invoice created successfully!");
-          setShowQRCode(true);
-        },
-        onError: (error: any) => {
-          showToast.error(
-            error.response?.data?.error || "Failed to create invoice"
-          );
-        },
-      }
-    );
-  };
+      total: grandTotal,
+      items: lineItems.map(item => ({
+        type: item.itemType,
+        purity: item.purity,
+        weight: item.weight,
+        total: item.itemTotal,
+      })),
+    });
 
-  const selectedCustomerData = customers?.find(
-    (c: Customer) => c._id === selectedCustomer
-  );
+    const invoicePayload = {
+      invoiceNumber,
+      date: invoiceDate,
+      customerId: selectedCustomer || "new-customer",
+      customerSnapshot: {
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
+        address: customerAddress,
+      },
+      lineItems,
+      totals: { subtotal, GSTPercent, GSTAmount, grandTotal },
+      paymentDetails: { paymentMode, amountPaid, balanceDue },
+      QRCodeData: qrCodeData,
+    };
+
+    // Prepare data for PDF
+    const pdfData = {
+      invoiceNumber,
+      invoiceDate,
+      customer: {
+        name: customerName,
+        address: customerAddress,
+        email: customerEmail,
+        phone: customerPhone,
+      },
+      company: {
+        name: "JEWELRY COMMERCIAL",
+        address: "Your Company Address Here",
+      },
+      items: lineItems.map((item, index) => ({
+        productNo: `ITEM-${index + 1}`,
+        description: `${item.itemType} ${item.purity} ${item.description}`,
+        quantity: 1,
+        weight: convertToGrams(item.weight.value, item.weight.unit),
+        pricePerGram: item.ratePerGram,
+        amount: item.itemTotal,
+      })),
+      grandTotal,
+      paymentInfo: {
+        bankName: "Your Bank Name",
+        accountNo: "Your Account Number",
+      },
+    };
+
+    createInvoice.mutate(invoicePayload, {
+      onSuccess: (data) => {
+        showToast.success("Invoice created successfully!");
+        setInvoiceData(pdfData);
+        setShowQRCode(true);
+      },
+      onError: (error: any) => {
+        showToast.error(
+          error.response?.data?.error || "Failed to create invoice"
+        );
+      },
+    });
+  };
 
   return (
     <motion.div
@@ -308,53 +387,93 @@ export default function Billing() {
                     Select Customer
                   </label>
                   <CustomDropdown
-                    options={
-                      customers?.map((c: Customer) => ({
+                    options={[
+                      { value: "", label: "Add New Customer" },
+                      ...(customers?.map((c: Customer) => ({
                         value: c._id,
                         label: `${c.name} - ${c.phone}`,
-                      })) || []
-                    }
+                      })) || []),
+                    ]}
                     value={selectedCustomer}
-                    onChange={setSelectedCustomer}
-                    placeholder="Choose a customer..."
+                    onChange={handleCustomerSelect}
+                    placeholder="Choose a customer or add new..."
                     aria-label="Select customer"
                   />
                 </div>
               </div>
 
-              {selectedCustomerData && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  className="p-4 mt-4 border border-blue-200 rounded-lg bg-blue-50"
-                >
-                  <h4 className="mb-2 font-medium text-blue-800">
-                    Customer Information
-                  </h4>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span className="text-gray-600">Name:</span>
-                      <span className="ml-2 font-medium">
-                        {selectedCustomerData.name}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Phone:</span>
-                      <span className="ml-2 font-medium">
-                        {selectedCustomerData.phone}
-                      </span>
-                    </div>
-                    {selectedCustomerData.address && (
-                      <div className="col-span-2">
-                        <span className="text-gray-600">Address:</span>
-                        <span className="ml-2 font-medium">
-                          {selectedCustomerData.address}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              )}
+              {/* Customer Information Form */}
+              <div className="grid grid-cols-1 gap-4 mt-4 md:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="customer-name"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    Customer Name *
+                  </label>
+                  <input
+                    id="customer-name"
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter customer name"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="customer-phone"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    Phone Number *
+                  </label>
+                  <input
+                    id="customer-phone"
+                    type="tel"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter phone number"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="customer-email"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    Email Address
+                  </label>
+                  <input
+                    id="customer-email"
+                    type="email"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter email address"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="customer-address"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    Address
+                  </label>
+                  <input
+                    id="customer-address"
+                    type="text"
+                    value={customerAddress}
+                    onChange={(e) => setCustomerAddress(e.target.value)}
+                    className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter address"
+                  />
+                </div>
+              </div>
             </motion.div>
 
             {/* Line Items Section */}
@@ -503,6 +622,23 @@ export default function Billing() {
                           />
                         </div>
                       </div>
+                    </div>
+
+                    {/* Description */}
+                    <div className="mt-3">
+                      <label className="block mb-1 text-sm font-medium text-gray-700">
+                        Description
+                      </label>
+                      <input
+                        type="text"
+                        value={item.description}
+                        onChange={(e) =>
+                          handleLineItemChange(index, "description", e.target.value)
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Item description"
+                        aria-label="Enter item description"
+                      />
                     </div>
 
                     {/* Item Summary */}
@@ -654,7 +790,7 @@ export default function Billing() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleSubmit}
-                disabled={createInvoice.isPending || !selectedCustomer}
+                disabled={createInvoice.isPending || !customerName.trim() || !customerPhone.trim()}
                 className="flex items-center justify-center w-full gap-2 py-3 mt-6 font-medium text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <MdAttachMoney className="text-xl" />
@@ -674,8 +810,8 @@ export default function Billing() {
               )}
             </motion.div>
 
-            {/* QR Code Section */}
-            {createInvoice.data && showQRCode && (
+            {/* QR Code & Download Section */}
+            {invoiceData && showQRCode && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -687,18 +823,42 @@ export default function Billing() {
                     Invoice QR Code
                   </h3>
                 </div>
-                <div className="flex justify-center">
-                  <InvoiceQRCode data={createInvoice.data.QRCodeData || ""} />
+                
+                <div className="flex justify-center mb-4">
+                  <InvoiceQRCode 
+                    data={JSON.stringify({
+                      invoiceNumber: invoiceData.invoiceNumber,
+                      downloadUrl: `${window.location.origin}/invoices/${invoiceData.invoiceNumber}.pdf`,
+                      total: invoiceData.grandTotal,
+                    })} 
+                  />
                 </div>
-                <p className="mt-3 text-sm text-center text-gray-600">
-                  Scan to view invoice details
+                
+                <p className="mb-4 text-sm text-center text-gray-600">
+                  Scan to download invoice PDF
                 </p>
-                <button
-                  onClick={() => setShowQRCode(false)}
-                  className="w-full py-2 mt-3 text-sm text-gray-600 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  Hide QR Code
-                </button>
+
+                <div className="space-y-2">
+                  <PDFDownloadLink
+                    document={<InvoicePDF data={invoiceData} />}
+                    fileName={`invoice-${invoiceData.invoiceNumber}.pdf`}
+                    className="flex items-center justify-center w-full gap-2 py-2 text-sm font-medium text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
+                  >
+                    {({ loading }) => (
+                      <>
+                        <MdDownload className="text-lg" />
+                        {loading ? "Preparing PDF..." : "Download PDF"}
+                      </>
+                    )}
+                  </PDFDownloadLink>
+                  
+                  <button
+                    onClick={() => setShowQRCode(false)}
+                    className="w-full py-2 text-sm text-gray-600 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Hide QR Code
+                  </button>
+                </div>
               </motion.div>
             )}
           </div>
