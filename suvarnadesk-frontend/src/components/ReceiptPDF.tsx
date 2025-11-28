@@ -1,12 +1,6 @@
 // components/ReceiptPDF.tsx
 import React from "react";
-import {
-  Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
-} from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 
 interface RepairItem {
   description: string;
@@ -34,7 +28,7 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica",
     fontSize: 10,
   },
-  
+
   // Main container with border
   container: {
     border: "2 solid #999999",
@@ -48,7 +42,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     borderBottom: "1 solid #ddd",
   },
-  
+
   title: {
     fontSize: 16,
     fontWeight: "bold",
@@ -63,17 +57,17 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 10,
   },
-  
+
   metaInfoItem: {
     flex: 1,
   },
-  
+
   metaLabel: {
     fontWeight: "bold",
     color: "#333",
     marginBottom: 2,
   },
-  
+
   metaValue: {
     color: "#333",
   },
@@ -85,12 +79,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     gap: 16,
   },
-  
+
   box: {
     flex: 1,
     border: "1 solid #ccc",
   },
-  
+
   boxHeader: {
     backgroundColor: "#1f9e4d",
     paddingVertical: 4,
@@ -99,7 +93,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 10,
   },
-  
+
   boxBody: {
     paddingVertical: 6,
     paddingHorizontal: 8,
@@ -114,13 +108,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     border: "1 solid #1f9e4d",
   },
-  
+
   tableHeader: {
     flexDirection: "row",
     backgroundColor: "#1f9e4d",
     borderBottom: "1 solid #1f9e4d",
   },
-  
+
   tableHeaderCell: {
     flex: 1,
     paddingVertical: 6,
@@ -131,7 +125,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     borderRight: "1 solid #1a7a3d",
   },
-  
+
   tableHeaderCellLast: {
     borderRight: "none",
   },
@@ -141,7 +135,7 @@ const styles = StyleSheet.create({
     borderBottom: "1 solid #ddd",
     minHeight: 24,
   },
-  
+
   tableCell: {
     flex: 1,
     paddingVertical: 4,
@@ -151,15 +145,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRight: "1 solid #eee",
   },
-  
+
   tableCellLast: {
     borderRight: "none",
   },
-  
+
   tableCellCenter: {
     textAlign: "center",
   },
-  
+
   tableCellRight: {
     textAlign: "right",
   },
@@ -177,7 +171,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     justifyContent: "space-between",
   },
-  
+
   notesBox: {
     flex: 1,
     borderTop: "1 solid #1f9e4d",
@@ -186,32 +180,32 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: "#333",
   },
-  
+
   totalsBox: {
     borderTop: "1 solid #1f9e4d",
     paddingVertical: 8,
     paddingHorizontal: 12,
     width: "200px",
   },
-  
+
   totalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 4,
     fontSize: 9,
   },
-  
+
   totalLabel: {
     color: "#666",
   },
-  
+
   totalValue: {
     fontWeight: "bold",
     color: "#333",
     textAlign: "right",
     minWidth: 70,
   },
-  
+
   totalRowBold: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -221,11 +215,11 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "bold",
   },
-  
+
   totalBoldLabel: {
     color: "#1f9e4d",
   },
-  
+
   totalBoldValue: {
     color: "#1f9e4d",
     textAlign: "right",
@@ -239,19 +233,19 @@ const styles = StyleSheet.create({
     marginTop: 32,
     paddingTop: 12,
   },
-  
+
   signatureBlock: {
     width: "45%",
     alignItems: "center",
   },
-  
+
   signatureLine: {
     borderTop: "1 solid #999",
     width: "100%",
     marginBottom: 4,
     minHeight: 40,
   },
-  
+
   signatureLabel: {
     fontSize: 9,
     color: "#1f9e4d",
@@ -376,9 +370,7 @@ const ReceiptPDF: React.FC<ReceiptPDFProps> = ({ data }) => {
           <View style={styles.tableSection}>
             {/* Table Header */}
             <View style={styles.tableHeader}>
-              <View
-                style={[styles.tableHeaderCell, styles.colDescription]}
-              >
+              <View style={[styles.tableHeaderCell, styles.colDescription]}>
                 <Text>DESCRIPTION</Text>
               </View>
               <View
