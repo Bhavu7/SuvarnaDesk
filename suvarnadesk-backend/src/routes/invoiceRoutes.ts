@@ -1,19 +1,19 @@
-import { Router } from "express";
+import express from "express";
 import {
     createInvoice,
     getInvoices,
-    getInvoice,
-    updateInvoice,
-    deleteInvoice,
+    getInvoiceByNumber,
 } from "../controllers/invoiceController";
-import { authMiddleware } from "../middleware/auth";
 
-const router = Router();
+const router = express.Router();
 
-router.post("/", authMiddleware, createInvoice);
-router.get("/", authMiddleware, getInvoices);
-router.get("/:id", authMiddleware, getInvoice);
-router.put("/:id", authMiddleware, updateInvoice);
-router.delete("/:id", authMiddleware, deleteInvoice);
+// POST /api/invoices
+router.post("/", createInvoice);
+
+// GET /api/invoices
+router.get("/", getInvoices);
+
+// GET /api/invoices/:invoiceNumber
+router.get("/:invoiceNumber", getInvoiceByNumber);
 
 export default router;
