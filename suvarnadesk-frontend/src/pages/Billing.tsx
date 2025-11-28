@@ -389,7 +389,7 @@ export default function Billing() {
                   >
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-medium text-gray-700">
-                        Item #{index + 1}
+                        Item : {index + 1}
                       </h4>
                       {lineItems.length > 1 && (
                         <motion.button
