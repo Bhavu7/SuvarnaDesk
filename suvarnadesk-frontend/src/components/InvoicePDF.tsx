@@ -1,13 +1,6 @@
 // components/InvoicePDF.tsx
 import React from "react";
-import {
-  Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
-  Font,
-} from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer";
 
 // Register fonts (you might need to adjust these)
 Font.register({
@@ -27,7 +20,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 1.4,
   },
-
+  
   // Header Section
   header: {
     flexDirection: "row",
@@ -36,58 +29,58 @@ const styles = StyleSheet.create({
     borderBottom: "1 solid #000",
     paddingBottom: 10,
   },
-
+  
   invoiceTitle: {
     fontSize: 24,
     fontWeight: "bold",
     marginBottom: 5,
   },
-
+  
   companyName: {
     fontSize: 16,
     fontWeight: "bold",
     marginBottom: 3,
   },
-
+  
   // Two Column Layout
   twoColumn: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 15,
   },
-
+  
   leftColumn: {
     width: "48%",
   },
-
+  
   rightColumn: {
     width: "48%",
     alignItems: "flex-end",
   },
-
+  
   // Field Styles
   fieldGroup: {
     marginBottom: 8,
   },
-
+  
   fieldLabel: {
     fontSize: 9,
     fontWeight: "bold",
     marginBottom: 2,
     color: "#333",
   },
-
+  
   fieldValue: {
     fontSize: 10,
     color: "#000",
   },
-
+  
   // Table Styles
   table: {
     marginTop: 20,
     marginBottom: 20,
   },
-
+  
   tableHeader: {
     flexDirection: "row",
     backgroundColor: "#f5f5f5",
@@ -95,7 +88,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 5,
   },
-
+  
   tableRow: {
     flexDirection: "row",
     borderBottom: "1 solid #ddd",
@@ -103,41 +96,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     minHeight: 30,
   },
-
+  
   tableCell: {
     paddingHorizontal: 5,
     justifyContent: "center",
   },
-
+  
   // Column widths matching the sample
   colProductNo: {
     width: "15%",
   },
-
+  
   colDescription: {
     width: "25%",
   },
-
+  
   colQty: {
     width: "10%",
     textAlign: "center",
   },
-
+  
   colWeight: {
     width: "15%",
     textAlign: "right",
   },
-
+  
   colPrice: {
     width: "17%",
     textAlign: "right",
   },
-
+  
   colAmount: {
     width: "18%",
     textAlign: "right",
   },
-
+  
   // Total Section
   totalSection: {
     flexDirection: "row",
@@ -146,30 +139,30 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     borderTop: "2 solid #000",
   },
-
+  
   totalLabel: {
     fontSize: 12,
     fontWeight: "bold",
   },
-
+  
   totalValue: {
     fontSize: 12,
     fontWeight: "bold",
   },
-
+  
   // Payment Information
   paymentSection: {
     marginTop: 20,
     paddingTop: 15,
     borderTop: "1 solid #ddd",
   },
-
+  
   paymentTitle: {
     fontSize: 11,
     fontWeight: "bold",
     marginBottom: 8,
   },
-
+  
   // Signature Section
   signatureSection: {
     flexDirection: "row",
@@ -178,23 +171,23 @@ const styles = StyleSheet.create({
     paddingTop: 15,
     borderTop: "1 solid #ddd",
   },
-
+  
   signatureBox: {
     width: "45%",
   },
-
+  
   signatureLine: {
     borderBottom: "1 solid #000",
     marginBottom: 5,
     height: 30,
   },
-
+  
   signatureLabel: {
     fontSize: 9,
     textAlign: "center",
     fontStyle: "italic",
   },
-
+  
   // Footer
   footer: {
     marginTop: 40,
@@ -263,7 +256,7 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
               <Text style={styles.fieldValue}>{data.customer.phone}</Text>
             </View>
           </View>
-
+          
           <View style={styles.rightColumn}>
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Date Issued:</Text>
@@ -331,14 +324,10 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
         <View style={styles.paymentSection}>
           <Text style={styles.paymentTitle}>Payment Information</Text>
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>
-              Bank Name: {data.paymentInfo.bankName}
-            </Text>
+            <Text style={styles.fieldLabel}>Bank Name: {data.paymentInfo.bankName}</Text>
           </View>
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>
-              Account No: {data.paymentInfo.accountNo}
-            </Text>
+            <Text style={styles.fieldLabel}>Account No: {data.paymentInfo.accountNo}</Text>
           </View>
         </View>
 
@@ -352,10 +341,7 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text>
-            Thank you for choosing us! We hope you enjoy your exquisite
-            jewellery.
-          </Text>
+          <Text>Thank you for choosing us! We hope you enjoy your exquisite jewellery.</Text>
         </View>
       </Page>
     </Document>
