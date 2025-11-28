@@ -17,6 +17,7 @@ import CustomDropdown from "../components/CustomDropdown";
 import InvoiceQRCode from "../components/InvoiceQRCode";
 import { showToast } from "../components/CustomToast";
 import InvoicePDF from "../components/InvoicePDF";
+import DateDropdown from "../components/DateDropdown";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import apiClient from "../api/apiClient";
 
@@ -427,12 +428,10 @@ export default function Billing() {
                   >
                     Invoice Date
                   </label>
-                  <input
-                    id="invoice-date"
-                    type="date"
+                  <DateDropdown
                     value={invoiceDate}
-                    onChange={(e) => setInvoiceDate(e.target.value)}
-                    className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onChange={(value) => setInvoiceDate(value)}
+                    placeholder="Select invoice date"
                   />
                 </div>
 
