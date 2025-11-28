@@ -1,4 +1,3 @@
-// components/InvoicePDF.tsx
 import React from "react";
 import {
   Document,
@@ -8,6 +7,7 @@ import {
   StyleSheet,
   Font,
 } from "@react-pdf/renderer";
+import { useSettings } from "../hooks/useSettings";
 
 // Register fonts
 Font.register({
@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
     lineHeight: 1.4,
   },
 
-  // Header Section
+  // Header Section - Match sample exactly
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
 
-  // Two Column Layout
+  // Two Column Layout - Match sample spacing
   twoColumn: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -57,11 +57,11 @@ const styles = StyleSheet.create({
   },
 
   leftColumn: {
-    width: "48%",
+    width: "50%",
   },
 
   rightColumn: {
-    width: "48%",
+    width: "45%",
     alignItems: "flex-end",
   },
 
@@ -82,18 +82,25 @@ const styles = StyleSheet.create({
     color: "#000",
   },
 
-  // Table Styles
+  customerAddress: {
+    fontSize: 10,
+    color: "#000",
+    marginTop: 2,
+  },
+
+  // Table Styles - Match sample exactly
   table: {
     marginTop: 20,
     marginBottom: 20,
+    width: "100%",
   },
 
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: "#f5f5f5",
     borderBottom: "1 solid #000",
     paddingVertical: 8,
     paddingHorizontal: 5,
+    backgroundColor: "#f8f8f8",
   },
 
   tableRow: {
@@ -109,13 +116,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  // Column widths
+  // Column widths matching the sample exactly
   colProductNo: {
-    width: "15%",
+    width: "18%",
+    textAlign: "left",
   },
 
   colDescription: {
     width: "25%",
+    textAlign: "left",
   },
 
   colQty: {
@@ -129,22 +138,23 @@ const styles = StyleSheet.create({
   },
 
   colPrice: {
-    width: "17%",
+    width: "16%",
     textAlign: "right",
   },
 
   colAmount: {
-    width: "18%",
+    width: "16%",
     textAlign: "right",
   },
 
-  // Total Section
+  // Total Section - Match sample
   totalSection: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 10,
     paddingTop: 10,
     borderTop: "2 solid #000",
+    alignItems: "center",
   },
 
   totalLabel: {
@@ -157,7 +167,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 
-  // Payment Information
+  // Payment Information - Match sample
   paymentSection: {
     marginTop: 20,
     paddingTop: 15,
@@ -170,13 +180,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  // Signature Section
+  paymentInfo: {
+    fontSize: 10,
+    marginBottom: 4,
+  },
+
+  // Signature Section - Match sample
   signatureSection: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 30,
+    marginTop: 40,
     paddingTop: 15,
-    borderTop: "1 solid #ddd",
   },
 
   signatureBox: {
@@ -186,7 +200,7 @@ const styles = StyleSheet.create({
   signatureLine: {
     borderBottom: "1 solid #000",
     marginBottom: 5,
-    height: 30,
+    height: 20,
   },
 
   signatureLabel: {
@@ -195,13 +209,21 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
 
-  // Footer
+  // Footer - Match sample
   footer: {
-    marginTop: 40,
+    marginTop: 30,
     textAlign: "center",
     fontSize: 10,
     color: "#666",
+    fontStyle: "italic",
   },
+
+  // GST Number style
+  gstNumber: {
+    fontSize: 9,
+    color: "#666",
+    marginTop: 2,
+  }
 });
 
 interface InvoiceItem {
@@ -223,33 +245,41 @@ interface InvoicePDFProps {
       email: string;
       phone: string;
     };
-    company: {
-      name: string;
-      address: string;
-    };
     items: InvoiceItem[];
     grandTotal: number;
-    paymentInfo: {
-      bankName: string;
-      accountNo: string;
-    };
   };
 }
 
 const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
+  const { settings } = useSettings();
+
+  // Format date like "01 January 2024"
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = date.toLocaleString('en-US', { month: 'long' });
+    const year = date.getFullYear();
+    return `${day} ${month} ${year}`;
+  };
+
+  // Format currency without symbol, with commas
+  const formatCurrency = (amount: number) => {
+    return `$ ${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}`;
+  };
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Header */}
+        {/* Header - Match sample exactly */}
         <View style={styles.header}>
           <View>
             <Text style={styles.invoiceTitle}>INVOICE</Text>
-            <Text style={styles.companyName}>{data.company.name}</Text>
-            <Text style={styles.fieldValue}>{data.company.address}</Text>
+            <Text style={styles.companyName}>{settings.companyName}</Text>
+            <Text style={styles.gstNumber}>GST: {settings.gstNumber}</Text>
           </View>
         </View>
 
-        {/* Invoice Number and Customer Details */}
+        {/* Invoice Number and Customer Details - Match sample layout */}
         <View style={styles.twoColumn}>
           <View style={styles.leftColumn}>
             <View style={styles.fieldGroup}>
@@ -258,27 +288,27 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
             </View>
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Issued to:</Text>
-              <Text style={styles.fieldValue}>{data.customer.name}</Text>
-              <Text style={styles.fieldValue}>{data.customer.address}</Text>
-              <Text style={styles.fieldValue}>{data.customer.email}</Text>
-              <Text style={styles.fieldValue}>{data.customer.phone}</Text>
+              <Text style={styles.fieldValue}>[1] {data.customer.name}</Text>
+              <Text style={styles.customerAddress}>{data.customer.address}</Text>
+              <Text style={styles.customerAddress}>{data.customer.email}</Text>
+              <Text style={styles.customerAddress}>{data.customer.phone}</Text>
             </View>
           </View>
-
+          
           <View style={styles.rightColumn}>
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Date Issued:</Text>
-              <Text style={styles.fieldValue}>{data.invoiceDate}</Text>
+              <Text style={styles.fieldValue}>{formatDate(data.invoiceDate)}</Text>
             </View>
           </View>
         </View>
 
-        {/* Items Table */}
+        {/* Items Table - Match sample exactly */}
         <View style={styles.table}>
           {/* Table Header */}
           <View style={styles.tableHeader}>
             <View style={[styles.tableCell, styles.colProductNo]}>
-              <Text>PRODUCT NO</Text>
+              <Text>PRODUCT/ SERVICE NO</Text>
             </View>
             <View style={[styles.tableCell, styles.colDescription]}>
               <Text>DESCRIPTION</Text>
@@ -287,13 +317,13 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
               <Text>QTY</Text>
             </View>
             <View style={[styles.tableCell, styles.colWeight]}>
-              <Text>WEIGHT (g)</Text>
+              <Text>WEIGHT (grams)</Text>
             </View>
             <View style={[styles.tableCell, styles.colPrice]}>
-              <Text>PRICE/GRAM (₹)</Text>
+              <Text>PRICE/GRAM</Text>
             </View>
             <View style={[styles.tableCell, styles.colAmount]}>
-              <Text>AMOUNT (₹)</Text>
+              <Text>AMOUNT</Text>
             </View>
           </View>
 
@@ -310,57 +340,42 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                 <Text>{item.quantity}</Text>
               </View>
               <View style={[styles.tableCell, styles.colWeight]}>
-                <Text>{item.weight.toFixed(2)}</Text>
+                <Text>{item.weight.toFixed(1)}</Text>
               </View>
               <View style={[styles.tableCell, styles.colPrice]}>
-                <Text>₹{item.pricePerGram.toFixed(2)}</Text>
+                <Text>{formatCurrency(item.pricePerGram)}</Text>
               </View>
               <View style={[styles.tableCell, styles.colAmount]}>
-                <Text>₹{item.amount.toFixed(2)}</Text>
+                <Text>{formatCurrency(item.amount)}</Text>
               </View>
             </View>
           ))}
         </View>
 
-        {/* Grand Total */}
+        {/* Grand Total - Match sample */}
         <View style={styles.totalSection}>
           <Text style={styles.totalLabel}>GRAND TOTAL</Text>
-          <Text style={styles.totalValue}>₹{data.grandTotal.toFixed(2)}</Text>
+          <Text style={styles.totalValue}>{formatCurrency(data.grandTotal)}</Text>
         </View>
 
-        {/* Payment Information */}
+        {/* Payment Information - Match sample */}
         <View style={styles.paymentSection}>
           <Text style={styles.paymentTitle}>Payment Information</Text>
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>
-              Bank Name: {data.paymentInfo.bankName}
-            </Text>
-          </View>
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>
-              Account No: {data.paymentInfo.accountNo}
-            </Text>
-          </View>
+          <Text style={styles.paymentInfo}>Bank Name: {settings.bankName}</Text>
+          <Text style={styles.paymentInfo}>Account No: {settings.accountNumber}</Text>
         </View>
 
-        {/* Signature Section */}
+        {/* Signature Section - Match sample */}
         <View style={styles.signatureSection}>
           <View style={styles.signatureBox}>
             <View style={styles.signatureLine} />
-            <Text style={styles.signatureLabel}>Customer Signature</Text>
-          </View>
-          <View style={styles.signatureBox}>
-            <View style={styles.signatureLine} />
-            <Text style={styles.signatureLabel}>Authorized Signature</Text>
+            <Text style={styles.signatureLabel}>Customer Signature [2]</Text>
           </View>
         </View>
 
-        {/* Footer */}
+        {/* Footer - Match sample exactly */}
         <View style={styles.footer}>
-          <Text>
-            Thank you for choosing us! We hope you enjoy your exquisite
-            jewellery.
-          </Text>
+          <Text>Thank you for choosing us! We hope you enjoy your exquisite jewellery.</Text>
         </View>
       </Page>
     </Document>
