@@ -55,7 +55,7 @@ export default function Billing() {
   const [showQRCode, setShowQRCode] = useState<boolean>(false);
   const [invoiceData, setInvoiceData] = useState<any>(null);
   const [shopSettings, setShopSettings] = useState({
-    shopName: "JEWELRY COMMERCIAL",
+    shopName: "JEWELRY COMMERCIAL INVOICE",
     gstNumber: "",
   });
 
@@ -70,7 +70,7 @@ export default function Billing() {
       const response = await apiClient.get("/shop-settings");
       if (response.data) {
         setShopSettings({
-          shopName: response.data.shopName || "JEWELRY COMMERCIAL",
+          shopName: response.data.shopName || "JEWELRY COMMERCIAL INVOICE",
           gstNumber: response.data.gstNumber || "",
         });
       }
@@ -119,6 +119,8 @@ export default function Billing() {
     { value: "cash", label: "Cash" },
     { value: "upi", label: "UPI" },
     { value: "card", label: "Card" },
+    { value: "cheque", label: "Cheque" },
+    { value: "metalExchange", label: "Metal Exchange" },
     { value: "bankTransfer", label: "Bank Transfer" },
     { value: "other", label: "Other" },
   ];
