@@ -166,24 +166,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 
-  // Payment Information - Match sample
-  paymentSection: {
-    marginTop: 20,
-    paddingTop: 15,
-    borderTop: "1 solid #ddd",
-  },
-
-  paymentTitle: {
-    fontSize: 11,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-
-  paymentInfo: {
-    fontSize: 10,
-    marginBottom: 4,
-  },
-
   // Signature Section - Match sample
   signatureSection: {
     flexDirection: "row",
@@ -234,17 +216,6 @@ interface InvoiceItem {
   amount: number;
 }
 
-interface ShopSettings {
-  shopName: string;
-  address: string;
-  phone: string;
-  gstNumber?: string;
-  logoUrl?: string;
-  ownerName?: string;
-  bankName?: string;
-  accountNumber?: string;
-}
-
 interface InvoicePDFProps {
   data: {
     invoiceNumber: string;
@@ -257,7 +228,10 @@ interface InvoicePDFProps {
     };
     items: InvoiceItem[];
     grandTotal: number;
-    shopSettings: ShopSettings;
+    shopSettings: {
+      shopName: string;
+      gstNumber?: string;
+    };
   };
 }
 
@@ -274,15 +248,6 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
   // Format currency without symbol, with commas
   const formatCurrency = (amount: number) => {
     return `$ ${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,")}`;
-  };
-
-  // Default bank details if not provided in settings
-  const getBankName = () => {
-    return data.shopSettings.bankName || "Your Bank Name";
-  };
-
-  const getAccountNumber = () => {
-    return data.shopSettings.accountNumber || "0000-0000-0000";
   };
 
   return (
@@ -385,15 +350,6 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
           <Text style={styles.totalLabel}>GRAND TOTAL</Text>
           <Text style={styles.totalValue}>
             {formatCurrency(data.grandTotal)}
-          </Text>
-        </View>
-
-        {/* Payment Information - Match sample */}
-        <View style={styles.paymentSection}>
-          <Text style={styles.paymentTitle}>Payment Information</Text>
-          <Text style={styles.paymentInfo}>Bank Name: {getBankName()}</Text>
-          <Text style={styles.paymentInfo}>
-            Account No: {getAccountNumber()}
           </Text>
         </View>
 
