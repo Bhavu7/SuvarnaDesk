@@ -84,12 +84,35 @@ export default function Billing() {
     }
   };
 
-  const generateInvoiceNumber = () => {
-    const timestamp = Date.now();
-    const randomNum = Math.floor(Math.random() * 1000);
-    const newInvoiceNumber = `INV-${timestamp}-${randomNum}`;
-    setInvoiceNumber(newInvoiceNumber);
-    return newInvoiceNumber;
+  const generateInvoiceNumber = async () => {
+    try {
+      // Get the latest invoice to determine the next number
+      const response = await apiClient.get("/api/invoices/latest");
+      const latestInvoiceNumber = response.data?.invoiceNumber;
+
+      let nextNumber = 1;
+
+      if (latestInvoiceNumber) {
+        // Extract the numeric part from the latest invoice number
+        const match = latestInvoiceNumber.match(/INV-(\d+)/);
+        if (match && match[1]) {
+          nextNumber = parseInt(match[1]) + 1;
+        }
+      }
+
+      // Format with leading zeros (e.g., INV-000001)
+      const newInvoiceNumber = `INV-${nextNumber.toString().padStart(6, "0")}`;
+      setInvoiceNumber(newInvoiceNumber);
+      return newInvoiceNumber;
+    } catch (error) {
+      console.error("Failed to generate invoice number:", error);
+      // Fallback: use timestamp-based number
+      const timestamp = Date.now();
+      const randomNum = Math.floor(Math.random() * 1000);
+      const fallbackNumber = `INV-${timestamp}-${randomNum}`;
+      setInvoiceNumber(fallbackNumber);
+      return fallbackNumber;
+    }
   };
 
   // Custom dropdown options

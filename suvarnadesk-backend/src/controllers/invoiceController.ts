@@ -142,3 +142,16 @@ export const downloadInvoicePDF = async (req: Request, res: Response) => {
     res.status(500).json({ error: "PDF generation failed" });
   }
 };
+
+export const getLatestInvoice = async (_req: Request, res: Response) => {
+  try {
+    const latestInvoice = await Invoice.findOne().sort({ createdAt: -1 });
+    return res.json({
+      invoiceNumber: latestInvoice?.invoiceNumber || null
+    });
+  } catch (err: any) {
+    return res
+      .status(500)
+      .json({ error: err.message || "Failed to fetch latest invoice" });
+  }
+};
