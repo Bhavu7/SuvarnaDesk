@@ -15,19 +15,64 @@ export interface LineItem {
     itemTotal: number;
 }
 
+// In ../hooks/useBilling.ts
 export interface InvoiceInput {
     invoiceNumber: string;
     date: string;
     customerId: string;
-    customerSnapshot: object;
+    customerSnapshot: {
+        name: string;
+        email?: string;
+        phone: string;
+        address?: string;
+        huid?: string;
+    };
     lineItems: LineItem[];
-    totals: { subtotal: number; GSTPercent: number; GSTAmount: number; grandTotal: number };
-    paymentDetails: { paymentMode: string; amountPaid: number; balanceDue: number };
+    totals: {
+        subtotal: number;
+        CGSTPercent: number;
+        CGSTAmount: number;
+        SGSTPercent: number;
+        SGSTAmount: number;
+        grandTotal: number;
+    };
+    paymentDetails: {
+        paymentMode: string;
+        amountPaid: number;
+        balanceDue: number;
+    };
     QRCodeData?: string;
 }
 
-export interface Invoice extends InvoiceInput {
+export interface Invoice {
     _id: string;
+    invoiceNumber: string;
+    date: string;
+    customerId: string;
+    customerSnapshot: {
+        name: string;
+        email?: string;
+        phone: string;
+        address?: string;
+        huid?: string;
+    };
+    lineItems: LineItem[];
+    totals: {
+        subtotal: number;
+        CGSTPercent: number;
+        CGSTAmount: number;
+        SGSTPercent: number;
+        SGSTAmount: number;
+        grandTotal: number;
+    };
+    paymentDetails: {
+        paymentMode: string;
+        amountPaid: number;
+        balanceDue: number;
+    };
+    QRCodeData?: string;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export const useInvoices = () =>
