@@ -38,9 +38,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (token && userData) {
         try {
           // Verify token is still valid with backend
-          const response = await apiClient.get("/auth/verify");
+          const response = await apiClient.get("/admin/verify");
           setIsAuthenticated(true);
-          setUser(JSON.parse(userData));
+          setUser(response.data.admin); // Use fresh data from backend
         } catch (error) {
           // Token is invalid, clear storage
           localStorage.removeItem("token");
