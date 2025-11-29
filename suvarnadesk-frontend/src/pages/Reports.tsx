@@ -101,7 +101,7 @@ export default function Reports() {
                 setDateRange((prev) => ({ ...prev, start: value }))
               }
               placeholder="Start date"
-              className="w-60"
+              className="w-50"
             />
             <span className="flex items-center text-gray-500">to</span>
             <DateDropdown
@@ -110,7 +110,7 @@ export default function Reports() {
                 setDateRange((prev) => ({ ...prev, end: value }))
               }
               placeholder="End date"
-              className="w-60"
+              className="w-50"
             />
           </div>
 
