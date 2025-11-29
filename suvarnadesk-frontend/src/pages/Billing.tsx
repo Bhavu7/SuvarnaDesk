@@ -362,7 +362,7 @@ export default function Billing() {
       QRCodeData: qrCodeData,
     };
 
-    // Prepare data for PDF - Only shop name and GST from settings
+    // Prepare data for PDF
     const pdfData = {
       invoiceNumber,
       invoiceDate,
