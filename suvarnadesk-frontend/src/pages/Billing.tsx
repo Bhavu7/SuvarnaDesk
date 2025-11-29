@@ -1,3 +1,4 @@
+// pages/Billing.tsx
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -80,7 +81,6 @@ export default function Billing() {
       }
     } catch (error) {
       console.error("Failed to fetch shop settings:", error);
-      // Use defaults if fetch fails
     }
   };
 
@@ -163,19 +163,17 @@ export default function Billing() {
         setCustomerEmail(customer.email || "");
         setCustomerPhone(customer.phone);
         setCustomerAddress(customer.address || "");
-        setCustomerHUID(customer.huid || ""); // Add this line
+        setCustomerHUID(customer.huid || "");
       }
     } else {
-      // Reset form for new customer
       setCustomerName("");
       setCustomerEmail("");
       setCustomerPhone("");
       setCustomerAddress("");
-      setCustomerHUID(""); // Add this line
+      setCustomerHUID("");
     }
   };
 
-  // Fix the handleLineItemChange function - update the labourChargeAmount calculation
   const handleLineItemChange = (
     index: number,
     field:
@@ -218,7 +216,6 @@ export default function Billing() {
 
       item.labourChargeAmount = labourChargeAmount;
       item.makingChargesTotal = labourChargeAmount;
-      // Update item total to include other charges
       item.itemTotal = metalPrice + labourChargeAmount + item.otherCharges;
     }
 
@@ -238,14 +235,12 @@ export default function Billing() {
       }
       item.labourChargeAmount = labourChargeAmount;
       item.makingChargesTotal = labourChargeAmount;
-      // Update item total to include other charges
       item.itemTotal =
         weightInGrams * item.ratePerGram +
         labourChargeAmount +
         item.otherCharges;
     }
 
-    // Add handling for other charges
     if (field === "otherCharges") {
       item.otherCharges = Number(value) || 0;
       const weightInGrams = convertToGrams(item.weight.value, item.weight.unit);
@@ -261,7 +256,7 @@ export default function Billing() {
         "otherCharges",
       ].includes(field)
     ) {
-      // @ts-ignore - We know this is a valid field
+      // @ts-ignore
       item[field] = value;
     }
 
@@ -320,6 +315,9 @@ export default function Billing() {
 
     if (createInvoice.isPending) return;
 
+    // Create direct download URL
+    const downloadUrl = `${window.location.origin}/api/invoices/download/${invoiceNumber}`;
+
     const qrCodeData = JSON.stringify({
       invoiceNumber,
       date: invoiceDate,
@@ -330,6 +328,7 @@ export default function Billing() {
         address: customerAddress,
       },
       total: grandTotal,
+      downloadUrl: downloadUrl,
       items: lineItems.map((item) => ({
         type: item.itemType,
         purity: item.purity,
@@ -399,7 +398,6 @@ export default function Billing() {
         showToast.success("Invoice created successfully!");
         setInvoiceData(pdfData);
         setShowQRCode(true);
-        // Generate new invoice number for next invoice
         generateInvoiceNumber();
       },
       onError: (error: any) => {
@@ -970,7 +968,6 @@ export default function Billing() {
               </div>
 
               <motion.button
-                // whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleSubmit}
                 disabled={
@@ -1014,16 +1011,13 @@ export default function Billing() {
 
                 <div className="flex justify-center mb-4">
                   <InvoiceQRCode
-                    data={JSON.stringify({
-                      invoiceNumber: invoiceData.invoiceNumber,
-                      downloadUrl: `${window.location.origin}/invoices/${invoiceData.invoiceNumber}.pdf`,
-                      total: invoiceData.grandTotal,
-                    })}
+                    data={`${window.location.origin}/api/invoices/download/${invoiceData.invoiceNumber}`}
+                    size={200}
                   />
                 </div>
 
                 <p className="mb-4 text-sm text-center text-gray-600">
-                  Scan to download invoice PDF
+                  Scan with any QR scanner to download PDF instantly
                 </p>
 
                 <div className="space-y-2">
