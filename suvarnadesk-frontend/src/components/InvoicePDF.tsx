@@ -338,18 +338,11 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
 
   // Format currency with proper rupee symbol using Unicode
   const formatCurrency = (amount: number) => {
-    // Using Unicode rupee symbol (₹) - works in most modern fonts
     return `₹${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,")}`;
   };
 
-  // Alternative format without symbol if rupee symbol doesn't render
-  const formatCurrencyAlt = (amount: number) => {
-    return `Rs. ${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,")}`;
-  };
-
-  // Calculate dynamic empty rows based on content height
+  // Calculate dynamic empty rows based on content height for single page
   const calculateDynamicEmptyRows = () => {
-    // Fixed heights for different sections
     const titleSectionHeight = 40;
     const metaInfoHeight = 30;
     const customerBoxesHeight = 80;
@@ -359,8 +352,8 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
     const signatureSectionHeight = 70;
     const footerHeight = 30;
 
-    // Total available height on A4 page (approx 700px minus margins)
-    const totalAvailableHeight = 650;
+    // Total available height on A4 page (842 points)
+    const totalAvailableHeight = 842 - 40; // 40px for top/bottom padding
 
     // Calculate used height
     const usedHeight =
@@ -373,13 +366,15 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
       signatureSectionHeight +
       footerHeight;
 
-    // Calculate remaining space
+    // Calculate remaining space and how many empty rows we can fit
     const remainingSpace = totalAvailableHeight - usedHeight;
 
-    // If we have extra space, calculate how many empty rows we can fit
     if (remainingSpace > itemRowHeight) {
       const emptyRowsCount = Math.floor(remainingSpace / itemRowHeight);
-      return Array(Math.max(0, emptyRowsCount)).fill(null);
+      const adjustedEmptyRowsCount = Math.max(0, emptyRowsCount - 7);
+      return Array(adjustedEmptyRowsCount).fill(null);
+      // Ensure we don't create negative rows
+      // return Array(Math.max(0, emptyRowsCount)).fill(null);
     }
 
     return [];
@@ -431,7 +426,6 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                 <Text>{data.customer.address}</Text>
                 <Text>{data.customer.email}</Text>
                 <Text>{data.customer.phone}</Text>
-                {/* HUID Display - Only show if available */}
                 {data.customer.huid && (
                   <Text style={styles.huidText}>
                     HUID: {data.customer.huid}
@@ -491,7 +485,6 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
               >
                 <Text>PRICE/GRAM</Text>
               </View>
-              {/* Other Charges column */}
               <View
                 style={[
                   styles.tableHeaderCell,
@@ -549,7 +542,6 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                 >
                   <Text>{formatCurrency(item.pricePerGram)}</Text>
                 </View>
-                {/* Other Charges cell */}
                 <View
                   style={[
                     styles.tableCell,
@@ -572,7 +564,7 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
               </View>
             ))}
 
-            {/* Dynamic Empty Rows to Fill the Page */}
+            {/* Dynamic Empty Rows to Fill the Page - ONLY THIS CHANGES */}
             {emptyRows.map((_, index) => (
               <View key={`empty-${index}`} style={styles.emptyRow}>
                 <View style={[styles.tableCell, styles.colProductNo]}>
@@ -675,8 +667,7 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
               <Text style={styles.signatureLabel}>Authorized Signature</Text>
             </View>
             <View style={styles.signatureBlock}>
-              <View style={styles.signatureLine} />
-              <Text style={styles.signatureLabel}>Customer Signature</Text>
+              {/* Empty space for customer signature */}
             </View>
           </View>
 

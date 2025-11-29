@@ -87,7 +87,7 @@ export default function Billing() {
   const generateInvoiceNumber = async () => {
     try {
       // Get the latest invoice to determine the next number
-      const response = await apiClient.get("/api/invoices/latest");
+      const response = await apiClient.get("/invoices/latest");
       const latestInvoiceNumber = response.data?.invoiceNumber;
 
       let nextNumber = 1;
@@ -97,19 +97,23 @@ export default function Billing() {
         const match = latestInvoiceNumber.match(/INV-(\d+)/);
         if (match && match[1]) {
           nextNumber = parseInt(match[1]) + 1;
+        } else {
+          // If format doesn't match, try to extract any number
+          const numbers = latestInvoiceNumber.match(/\d+/g);
+          if (numbers && numbers.length > 0) {
+            nextNumber = parseInt(numbers[0]) + 1;
+          }
         }
       }
 
-      // Format with leading zeros (e.g., INV-000001)
-      const newInvoiceNumber = `INV-${nextNumber.toString().padStart(6, "0")}`;
+      // Format as INV-1, INV-2, etc.
+      const newInvoiceNumber = `INV-${nextNumber}`;
       setInvoiceNumber(newInvoiceNumber);
       return newInvoiceNumber;
     } catch (error) {
       console.error("Failed to generate invoice number:", error);
-      // Fallback: use timestamp-based number
-      const timestamp = Date.now();
-      const randomNum = Math.floor(Math.random() * 1000);
-      const fallbackNumber = `INV-${timestamp}-${randomNum}`;
+      // Fallback: start from 1 if no invoices exist
+      const fallbackNumber = "INV-1";
       setInvoiceNumber(fallbackNumber);
       return fallbackNumber;
     }
