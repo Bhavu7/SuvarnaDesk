@@ -100,6 +100,13 @@ const styles = StyleSheet.create({
     lineHeight: 1.4,
   },
 
+  // HUID display style
+  huidText: {
+    fontSize: 8,
+    color: "#666",
+    marginTop: 2,
+  },
+
   // Table section - EXACTLY like receipt sample
   tableSection: {
     marginBottom: 8,
@@ -163,12 +170,13 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
 
-  // Column widths for invoice items
+  // Column widths for invoice items - updated for other charges
   colProductNo: { flex: 1.2 },
   colDescription: { flex: 1.5 },
   colQty: { flex: 0.6 },
   colWeight: { flex: 0.8 },
   colPrice: { flex: 0.8 },
+  colOtherCharges: { flex: 0.8 }, // Add this
   colAmount: { flex: 0.8 },
 
   // Notes & Totals section - EXACTLY like receipt sample
@@ -282,6 +290,7 @@ interface InvoiceItem {
   quantity: number;
   weight: number;
   pricePerGram: number;
+  otherCharges: number; // Add this
   amount: number;
 }
 
@@ -294,6 +303,7 @@ interface InvoicePDFProps {
       address: string;
       email: string;
       phone: string;
+      huid?: string; // Add this
     };
     items: InvoiceItem[];
     grandTotal: number;
@@ -321,9 +331,7 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
 
   // Calculate how many empty rows we need to fill the page
   const calculateEmptyRows = () => {
-    // Adjust this number based on how many rows you want to fill the page
-    // For A4 size with your current layout, 15-20 empty rows usually fill the page well
-    const targetTotalRows = 15; // You can adjust this number
+    const targetTotalRows = 15;
     const emptyRowsCount = Math.max(0, targetTotalRows - data.items.length);
     return Array(emptyRowsCount).fill(null);
   };
@@ -374,6 +382,12 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                 <Text>{data.customer.address}</Text>
                 <Text>{data.customer.email}</Text>
                 <Text>{data.customer.phone}</Text>
+                {/* Add HUID display */}
+                {data.customer.huid && (
+                  <Text style={styles.huidText}>
+                    HUID: {data.customer.huid}
+                  </Text>
+                )}
               </View>
             </View>
 
@@ -393,7 +407,7 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
 
           {/* Table - EXACTLY like receipt sample */}
           <View style={styles.tableSection}>
-            {/* Table Header */}
+            {/* Table Header - Updated for other charges */}
             <View style={styles.tableHeader}>
               <View style={[styles.tableHeaderCell, styles.colProductNo]}>
                 <Text>PRODUCT NO</Text>
@@ -427,6 +441,16 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                 ]}
               >
                 <Text>PRICE/GRAM</Text>
+              </View>
+              {/* Add Other Charges column */}
+              <View
+                style={[
+                  styles.tableHeaderCell,
+                  styles.colOtherCharges,
+                  styles.tableCellRight,
+                ]}
+              >
+                <Text>OTHER CHGS</Text>
               </View>
               <View
                 style={[
@@ -476,6 +500,16 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                 >
                   <Text>{formatCurrency(item.pricePerGram)}</Text>
                 </View>
+                {/* Add Other Charges cell */}
+                <View
+                  style={[
+                    styles.tableCell,
+                    styles.colOtherCharges,
+                    styles.tableCellRight,
+                  ]}
+                >
+                  <Text>{formatCurrency(item.otherCharges)}</Text>
+                </View>
                 <View
                   style={[
                     styles.tableCell,
@@ -520,6 +554,15 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                   style={[
                     styles.tableCell,
                     styles.colPrice,
+                    styles.tableCellRight,
+                  ]}
+                >
+                  <Text> </Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCell,
+                    styles.colOtherCharges,
                     styles.tableCellRight,
                   ]}
                 >

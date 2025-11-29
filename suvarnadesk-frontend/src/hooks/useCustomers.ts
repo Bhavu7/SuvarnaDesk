@@ -8,6 +8,7 @@ export interface Customer {
     name: string;
     phone: string;
     address: string;
+    huid?: string;
     shopName?: string;
     GSTNumber?: string;
     notes?: string;

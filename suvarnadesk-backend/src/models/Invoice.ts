@@ -1,3 +1,4 @@
+// src/models/Invoice.ts
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface ILineItem {
@@ -13,18 +14,20 @@ export interface ILineItem {
     labourChargeType?: "perGram" | "fixed" | null;
     labourChargeAmount: number;
     makingChargesTotal: number;
+    otherCharges: number;
     itemTotal: number;
 }
 
 export interface IInvoice extends Document {
     invoiceNumber: string;
-    date: string; // ISO date
+    date: string;
     customerId: string;
     customerSnapshot: {
         name: string;
         email?: string;
         phone: string;
         address?: string;
+        huid?: string;
     };
     lineItems: ILineItem[];
     totals: {
@@ -57,6 +60,7 @@ const LineItemSchema = new Schema<ILineItem>(
         labourChargeType: { type: String },
         labourChargeAmount: { type: Number, required: true },
         makingChargesTotal: { type: Number, required: true },
+        otherCharges: { type: Number, default: 0 },
         itemTotal: { type: Number, required: true },
     },
     { _id: false }
@@ -72,6 +76,7 @@ const InvoiceSchema = new Schema<IInvoice>(
             email: { type: String },
             phone: { type: String, required: true },
             address: { type: String },
+            huid: { type: String },
         },
         lineItems: { type: [LineItemSchema], required: true },
         totals: {
@@ -90,4 +95,6 @@ const InvoiceSchema = new Schema<IInvoice>(
     { timestamps: true }
 );
 
-export default mongoose.model<IInvoice>("Invoice", InvoiceSchema);
+// Export the model
+const Invoice = mongoose.model<IInvoice>("Invoice", InvoiceSchema);
+export default Invoice;

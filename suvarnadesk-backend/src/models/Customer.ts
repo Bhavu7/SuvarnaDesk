@@ -1,17 +1,25 @@
-import { Schema, model, Document } from "mongoose";
+// In models/Customer.ts (if you have one)
+import mongoose, { Schema, Document } from "mongoose";
 
 export interface ICustomer extends Document {
     name: string;
-    email: string;
+    email?: string;
     phone: string;
     address?: string;
+    huid?: string; // Add this
+    createdAt: Date;
+    updatedAt: Date;
 }
 
-const customerSchema = new Schema<ICustomer>({
-    name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    phone: { type: String, required: true },
-    address: { type: String }
-});
+const CustomerSchema = new Schema<ICustomer>(
+    {
+        name: { type: String, required: true },
+        email: { type: String },
+        phone: { type: String, required: true },
+        address: { type: String },
+        huid: { type: String }, // Add this
+    },
+    { timestamps: true }
+);
 
-export default model<ICustomer>("Customer", customerSchema);
+export default mongoose.model<ICustomer>("Customer", CustomerSchema);

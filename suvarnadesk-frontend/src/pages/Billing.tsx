@@ -31,6 +31,7 @@ export default function Billing() {
     new Date().toISOString().substring(0, 10)
   );
   const [invoiceNumber, setInvoiceNumber] = useState<string>("");
+  const [customerHUID, setCustomerHUID] = useState<string>("");
   const [selectedCustomer, setSelectedCustomer] = useState<string>("");
   const [customerName, setCustomerName] = useState<string>("");
   const [customerEmail, setCustomerEmail] = useState<string>("");
@@ -47,6 +48,7 @@ export default function Billing() {
       labourChargeType: null,
       labourChargeAmount: 0,
       makingChargesTotal: 0,
+      otherCharges: 0,
       itemTotal: 0,
     },
   ]);
@@ -159,6 +161,7 @@ export default function Billing() {
         setCustomerEmail(customer.email || "");
         setCustomerPhone(customer.phone);
         setCustomerAddress(customer.address || "");
+        setCustomerHUID(customer.huid || ""); // Add this line
       }
     } else {
       // Reset form for new customer
@@ -166,16 +169,19 @@ export default function Billing() {
       setCustomerEmail("");
       setCustomerPhone("");
       setCustomerAddress("");
+      setCustomerHUID(""); // Add this line
     }
   };
 
+  // Fix the handleLineItemChange function - update the labourChargeAmount calculation
   const handleLineItemChange = (
     index: number,
     field:
       | keyof LineItem
       | "weightValue"
       | "weightUnit"
-      | "labourChargeReferenceId",
+      | "labourChargeReferenceId"
+      | "otherCharges",
     value: string | number | null
   ) => {
     const updatedItems = [...lineItems];
@@ -210,7 +216,8 @@ export default function Billing() {
 
       item.labourChargeAmount = labourChargeAmount;
       item.makingChargesTotal = labourChargeAmount;
-      item.itemTotal = metalPrice + labourChargeAmount;
+      // Update item total to include other charges
+      item.itemTotal = metalPrice + labourChargeAmount + item.otherCharges;
     }
 
     if (field === "labourChargeReferenceId" && typeof value === "string") {
@@ -229,13 +236,30 @@ export default function Billing() {
       }
       item.labourChargeAmount = labourChargeAmount;
       item.makingChargesTotal = labourChargeAmount;
-      item.itemTotal = weightInGrams * item.ratePerGram + labourChargeAmount;
+      // Update item total to include other charges
+      item.itemTotal =
+        weightInGrams * item.ratePerGram +
+        labourChargeAmount +
+        item.otherCharges;
+    }
+
+    // Add handling for other charges
+    if (field === "otherCharges") {
+      item.otherCharges = Number(value) || 0;
+      const weightInGrams = convertToGrams(item.weight.value, item.weight.unit);
+      const metalPrice = weightInGrams * item.ratePerGram;
+      item.itemTotal = metalPrice + item.labourChargeAmount + item.otherCharges;
     }
 
     if (
-      !["weightValue", "weightUnit", "labourChargeReferenceId"].includes(field)
+      ![
+        "weightValue",
+        "weightUnit",
+        "labourChargeReferenceId",
+        "otherCharges",
+      ].includes(field)
     ) {
-      // @ts-ignore
+      // @ts-ignore - We know this is a valid field
       item[field] = value;
     }
 
@@ -255,6 +279,7 @@ export default function Billing() {
         labourChargeType: null,
         labourChargeAmount: 0,
         makingChargesTotal: 0,
+        otherCharges: 0,
         itemTotal: 0,
       },
     ]);
@@ -320,6 +345,7 @@ export default function Billing() {
         email: customerEmail,
         phone: customerPhone,
         address: customerAddress,
+        huid: customerHUID, // Add this
       },
       lineItems,
       totals: { subtotal, GSTPercent, GSTAmount, grandTotal },
@@ -336,6 +362,7 @@ export default function Billing() {
         address: customerAddress,
         email: customerEmail,
         phone: customerPhone,
+        huid: customerHUID, // Add this
       },
       items: lineItems.map((item, index) => ({
         productNo: `ITEM-${index + 1}`,
@@ -343,6 +370,7 @@ export default function Billing() {
         quantity: 1,
         weight: convertToGrams(item.weight.value, item.weight.unit),
         pricePerGram: item.ratePerGram,
+        otherCharges: item.otherCharges || 0, // Add this
         amount: item.itemTotal,
       })),
       grandTotal,
@@ -513,7 +541,25 @@ export default function Billing() {
                   />
                 </div>
 
+                {/* Add HUID Field */}
                 <div>
+                  <label
+                    htmlFor="customer-huid"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    HUID (Hallmark Unique ID)
+                  </label>
+                  <input
+                    id="customer-huid"
+                    type="text"
+                    value={customerHUID}
+                    onChange={(e) => setCustomerHUID(e.target.value)}
+                    className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter HUID number"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
                   <label
                     htmlFor="customer-address"
                     className="block mb-2 text-sm font-medium text-gray-700"
@@ -681,24 +727,54 @@ export default function Billing() {
                     </div>
 
                     {/* Description */}
-                    <div className="mt-3">
-                      <label className="block mb-1 text-sm font-medium text-gray-700">
-                        Description
-                      </label>
-                      <input
-                        type="text"
-                        value={item.description}
-                        onChange={(e) =>
-                          handleLineItemChange(
-                            index,
-                            "description",
-                            e.target.value
-                          )
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Item description"
-                        aria-label="Enter item description"
-                      />
+                    <div className="grid grid-cols-1 gap-4 mt-3 md:grid-cols-2">
+                      <div>
+                        <label className="block mb-1 text-sm font-medium text-gray-700">
+                          Description
+                        </label>
+                        <input
+                          type="text"
+                          value={item.description}
+                          onChange={(e) =>
+                            handleLineItemChange(
+                              index,
+                              "description",
+                              e.target.value
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Item description"
+                          aria-label="Enter item description"
+                        />
+                      </div>
+
+                      {/* Add Other Charges input */}
+                      <div>
+                        <label className="block mb-1 text-sm font-medium text-gray-700">
+                          Other Charges
+                        </label>
+                        <div className="relative">
+                          <span className="absolute text-gray-500 transform -translate-y-1/2 left-3 top-1/2">
+                            ₹
+                          </span>
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={item.otherCharges || 0}
+                            onChange={(e) =>
+                              handleLineItemChange(
+                                index,
+                                "otherCharges",
+                                e.target.value
+                              )
+                            }
+                            className="w-full px-3 py-2 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="0.00"
+                            aria-label="Enter other charges"
+                          />
+                        </div>
+                      </div>
                     </div>
 
                     {/* Item Summary */}
@@ -716,7 +792,13 @@ export default function Billing() {
                             ₹{item.makingChargesTotal.toFixed(2)}
                           </span>
                         </div>
-                        <div className="md:col-span-2">
+                        <div>
+                          <span className="text-gray-600">Other Charges:</span>
+                          <span className="ml-1 font-medium">
+                            ₹{(item.otherCharges || 0).toFixed(2)}
+                          </span>
+                        </div>
+                        <div>
                           <span className="text-gray-600">Item Total:</span>
                           <span className="ml-1 font-medium text-green-600">
                             ₹{item.itemTotal.toFixed(2)}

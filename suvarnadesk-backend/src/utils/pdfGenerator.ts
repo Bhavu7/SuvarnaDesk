@@ -1,7 +1,7 @@
 import PDFDocument from 'pdfkit';
 import { Response } from 'express';
 
-// More flexible interface that matches Mongoose structure
+// Updated interface to include HUID and otherCharges
 export interface InvoicePDFData {
     invoiceNumber: string;
     date: string | Date;
@@ -10,6 +10,7 @@ export interface InvoicePDFData {
         email: string;
         phone: string;
         address?: string;
+        huid?: string; // Add HUID
     };
     lineItems: Array<{
         itemType: string;
@@ -22,6 +23,7 @@ export interface InvoicePDFData {
         ratePerGram: number;
         itemTotal: number;
         makingChargesTotal?: number;
+        otherCharges?: number; // Add otherCharges
         labourChargeType?: string;
         labourChargeAmount?: number;
         labourChargeReferenceId?: any;
@@ -86,12 +88,17 @@ export function generateInvoicePDF(invoiceData: InvoicePDFData, res: Response): 
 
         doc.moveDown();
 
-        // Customer Details
+        // Customer Details - Updated to include HUID
         doc.fontSize(12).font('Helvetica-Bold').text('Customer Details:');
         doc.fontSize(10).font('Helvetica')
             .text(`Name: ${invoiceData.customerSnapshot.name}`)
             .text(`Phone: ${invoiceData.customerSnapshot.phone}`)
             .text(`Email: ${invoiceData.customerSnapshot.email}`);
+
+        // Display HUID if available
+        if (invoiceData.customerSnapshot.huid) {
+            doc.text(`HUID: ${invoiceData.customerSnapshot.huid}`);
+        }
 
         if (invoiceData.customerSnapshot.address) {
             doc.text(`Address: ${invoiceData.customerSnapshot.address}`);
@@ -99,18 +106,20 @@ export function generateInvoicePDF(invoiceData: InvoicePDFData, res: Response): 
 
         doc.moveDown();
 
-        // Line Items Table Header
+        // Line Items Table Header - Updated for Other Charges
         const tableTop = doc.y;
-        doc.fontSize(10).font('Helvetica-Bold');
-        doc.text('Description', 50, tableTop);
-        doc.text('Purity', 200, tableTop);
-        doc.text('Weight', 250, tableTop);
-        doc.text('Rate/Gram', 300, tableTop);
-        doc.text('Amount', 370, tableTop, { width: 100, align: 'right' });
+        doc.fontSize(9).font('Helvetica-Bold');
+        doc.text('Description', 50, tableTop, { width: 120 });
+        doc.text('Purity', 180, tableTop);
+        doc.text('Weight', 220, tableTop);
+        doc.text('Rate/Gram', 260, tableTop);
+        doc.text('Making Chgs', 310, tableTop, { width: 60, align: 'right' });
+        doc.text('Other Chgs', 380, tableTop, { width: 50, align: 'right' }); // New column
+        doc.text('Amount', 440, tableTop, { width: 60, align: 'right' });
 
         // Line Items
         let yPosition = tableTop + 20;
-        doc.fontSize(9).font('Helvetica');
+        doc.fontSize(8).font('Helvetica');
 
         invoiceData.lineItems.forEach((item, index) => {
             if (yPosition > 700) { // Add new page if needed
@@ -118,11 +127,15 @@ export function generateInvoicePDF(invoiceData: InvoicePDFData, res: Response): 
                 yPosition = 50;
             }
 
-            doc.text(item.description, 50, yPosition, { width: 140 });
-            doc.text(item.purity, 200, yPosition);
-            doc.text(`${item.weight.value} ${item.weight.unit}`, 250, yPosition);
-            doc.text(`₹${item.ratePerGram}`, 300, yPosition);
-            doc.text(`₹${item.itemTotal.toFixed(2)}`, 370, yPosition, { width: 100, align: 'right' });
+            const description = `${item.itemType} - ${item.description}`.substring(0, 30);
+
+            doc.text(description, 50, yPosition, { width: 120 });
+            doc.text(item.purity, 180, yPosition);
+            doc.text(`${item.weight.value} ${item.weight.unit}`, 220, yPosition);
+            doc.text(`₹${item.ratePerGram.toFixed(2)}`, 260, yPosition);
+            doc.text(`₹${(item.makingChargesTotal || 0).toFixed(2)}`, 310, yPosition, { width: 60, align: 'right' });
+            doc.text(`₹${(item.otherCharges || 0).toFixed(2)}`, 380, yPosition, { width: 50, align: 'right' }); // Other charges
+            doc.text(`₹${item.itemTotal.toFixed(2)}`, 440, yPosition, { width: 60, align: 'right' });
 
             yPosition += 20;
         });
@@ -131,20 +144,20 @@ export function generateInvoicePDF(invoiceData: InvoicePDFData, res: Response): 
         const totalsY = Math.max(yPosition + 20, 650);
         doc.fontSize(10).font('Helvetica-Bold');
 
-        doc.text('Subtotal:', 300, totalsY);
-        doc.text(`₹${invoiceData.totals.subtotal.toFixed(2)}`, 370, totalsY, { width: 100, align: 'right' });
+        doc.text('Subtotal:', 350, totalsY);
+        doc.text(`₹${invoiceData.totals.subtotal.toFixed(2)}`, 440, totalsY, { width: 60, align: 'right' });
 
-        doc.text(`GST (${invoiceData.totals.GSTPercent}%):`, 300, totalsY + 15);
-        doc.text(`₹${invoiceData.totals.GSTAmount.toFixed(2)}`, 370, totalsY + 15, { width: 100, align: 'right' });
+        doc.text(`GST (${invoiceData.totals.GSTPercent}%):`, 350, totalsY + 15);
+        doc.text(`₹${invoiceData.totals.GSTAmount.toFixed(2)}`, 440, totalsY + 15, { width: 60, align: 'right' });
 
-        doc.text('Grand Total:', 300, totalsY + 30);
-        doc.text(`₹${invoiceData.totals.grandTotal.toFixed(2)}`, 370, totalsY + 30, { width: 100, align: 'right' });
+        doc.text('Grand Total:', 350, totalsY + 30);
+        doc.text(`₹${invoiceData.totals.grandTotal.toFixed(2)}`, 440, totalsY + 30, { width: 60, align: 'right' });
 
-        doc.text('Amount Paid:', 300, totalsY + 45);
-        doc.text(`₹${invoiceData.paymentDetails.amountPaid.toFixed(2)}`, 370, totalsY + 45, { width: 100, align: 'right' });
+        doc.text('Amount Paid:', 350, totalsY + 45);
+        doc.text(`₹${invoiceData.paymentDetails.amountPaid.toFixed(2)}`, 440, totalsY + 45, { width: 60, align: 'right' });
 
-        doc.text('Balance Due:', 300, totalsY + 60);
-        doc.text(`₹${invoiceData.paymentDetails.balanceDue.toFixed(2)}`, 370, totalsY + 60, { width: 100, align: 'right' });
+        doc.text('Balance Due:', 350, totalsY + 60);
+        doc.text(`₹${invoiceData.paymentDetails.balanceDue.toFixed(2)}`, 440, totalsY + 60, { width: 60, align: 'right' });
 
         // Payment Mode
         doc.text(`Payment Mode: ${invoiceData.paymentDetails.paymentMode}`, 50, totalsY + 80);

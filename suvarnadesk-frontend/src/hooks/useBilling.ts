@@ -3,14 +3,15 @@ import apiClient from "../api/apiClient";
 
 export interface LineItem {
     itemType: "gold" | "silver" | "other";
-    description: string;
     purity: string;
+    description: string;
     weight: { value: number; unit: string };
     ratePerGram: number;
     labourChargeReferenceId?: string;
-    labourChargeType?: "perGram" | "fixedPerItem" | null;
-    labourChargeAmount?: number;
+    labourChargeType?: "perGram" | "fixed" | null;
+    labourChargeAmount: number;
     makingChargesTotal: number;
+    otherCharges: number;
     itemTotal: number;
 }
 
