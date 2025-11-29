@@ -6,7 +6,7 @@ import {
   Text,
   View,
   StyleSheet,
-  Font,
+//   Font,
 } from "@react-pdf/renderer";
 
 const styles = StyleSheet.create({
