@@ -17,7 +17,7 @@ import { useCreateInvoice, LineItem } from "../hooks/useBilling";
 import CustomDropdown from "../components/CustomDropdown";
 import InvoiceQRCode from "../components/InvoiceQRCode";
 import { showToast } from "../components/CustomToast";
-import InvoicePDF from "../components/InvoicePDF";
+import SingleInvoicePDF from "../components/SingleInvoicePDF";
 import DateDropdown from "../components/DateDropdown";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import apiClient from "../api/apiClient";
@@ -38,6 +38,7 @@ export default function Billing() {
   const [customerEmail, setCustomerEmail] = useState<string>("");
   const [customerPhone, setCustomerPhone] = useState<string>("");
   const [customerAddress, setCustomerAddress] = useState<string>("");
+  const [generatingInvoiceNumber, setGeneratingInvoiceNumber] = useState(false);
   const [lineItems, setLineItems] = useState<LineItem[]>([
     {
       itemType: "gold",
@@ -112,10 +113,13 @@ export default function Billing() {
       return newInvoiceNumber;
     } catch (error) {
       console.error("Failed to generate invoice number:", error);
-      // Fallback: start from 1 if no invoices exist
-      const fallbackNumber = "INV-1";
+      // Fallback: use timestamp to ensure uniqueness
+      const timestamp = Date.now();
+      const fallbackNumber = `INV-${timestamp}`;
       setInvoiceNumber(fallbackNumber);
       return fallbackNumber;
+    } finally {
+      setGeneratingInvoiceNumber(false);
     }
   };
 
@@ -319,7 +323,7 @@ export default function Billing() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!customerName.trim()) {
       showToast.error("Please enter customer name");
       return;
@@ -335,62 +339,24 @@ export default function Billing() {
       return;
     }
 
-    if (!invoiceNumber.trim()) {
+    if (createInvoice.isPending) return;
+
+    // Generate invoice number FIRST and wait for it
+    let finalInvoiceNumber = invoiceNumber;
+
+    // If invoice number is empty or seems like a fallback, generate a new one
+    if (!finalInvoiceNumber || finalInvoiceNumber.includes("timestamp")) {
+      finalInvoiceNumber = await generateInvoiceNumber();
+    }
+
+    if (!finalInvoiceNumber.trim()) {
       showToast.error("Invoice number is required");
       return;
     }
 
-    if (createInvoice.isPending) return;
-
-    // Create direct download URL
-    const downloadUrl = `${window.location.origin}/api/invoices/download/${invoiceNumber}`;
-
-    const qrCodeData = JSON.stringify({
-      invoiceNumber,
-      date: invoiceDate,
-      customer: {
-        name: customerName,
-        email: customerEmail,
-        phone: customerPhone,
-        address: customerAddress,
-      },
-      total: grandTotal,
-      downloadUrl: downloadUrl,
-      items: lineItems.map((item) => ({
-        type: item.itemType,
-        purity: item.purity,
-        weight: item.weight,
-        total: item.itemTotal,
-      })),
-    });
-
-    const invoicePayload = {
-      invoiceNumber,
-      date: invoiceDate,
-      customerId: selectedCustomer || "new-customer",
-      customerSnapshot: {
-        name: customerName,
-        email: customerEmail,
-        phone: customerPhone,
-        address: customerAddress,
-        huid: customerHUID,
-      },
-      lineItems,
-      totals: {
-        subtotal,
-        CGSTPercent,
-        CGSTAmount,
-        SGSTPercent,
-        SGSTAmount,
-        grandTotal,
-      },
-      paymentDetails: { paymentMode, amountPaid, balanceDue },
-      QRCodeData: qrCodeData,
-    };
-
-    // Prepare data for PDF
-    const pdfData = {
-      invoiceNumber,
+    // Prepare data for both PDFs
+    const pdfData1 = {
+      invoiceNumber: finalInvoiceNumber,
       invoiceDate,
       customer: {
         name: customerName,
@@ -415,22 +381,88 @@ export default function Billing() {
       SGSTAmount,
       grandTotal,
       shopSettings: {
-        shopName: shopSettings.shopName,
+        shopName: "Jay Krishna Haribhai Soni",
         gstNumber: shopSettings.gstNumber,
       },
+    };
+
+    const pdfData2 = {
+      ...pdfData1,
+      shopSettings: {
+        ...pdfData1.shopSettings,
+        shopName: "Measers Yogeshkumar and Brothers",
+      },
+    };
+
+    const qrCodeData = JSON.stringify({
+      invoiceNumber: finalInvoiceNumber,
+      date: invoiceDate,
+      customer: {
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
+        address: customerAddress,
+      },
+      total: grandTotal,
+      downloadUrls: {
+        pdf1: `${window.location.origin}/api/invoices/download/${finalInvoiceNumber}/1`,
+        pdf2: `${window.location.origin}/api/invoices/download/${finalInvoiceNumber}/2`,
+      },
+      items: lineItems.map((item) => ({
+        type: item.itemType,
+        purity: item.purity,
+        weight: item.weight,
+        total: item.itemTotal,
+      })),
+    });
+
+    const invoicePayload = {
+      invoiceNumber: finalInvoiceNumber,
+      date: invoiceDate,
+      customerId: selectedCustomer || "new-customer",
+      customerSnapshot: {
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
+        address: customerAddress,
+        huid: customerHUID,
+      },
+      lineItems,
+      totals: {
+        subtotal,
+        CGSTPercent,
+        CGSTAmount,
+        SGSTPercent,
+        SGSTAmount,
+        grandTotal,
+      },
+      paymentDetails: { paymentMode, amountPaid, balanceDue },
+      QRCodeData: qrCodeData,
+      pdfData: [pdfData1, pdfData2],
     };
 
     createInvoice.mutate(invoicePayload, {
       onSuccess: (data) => {
         showToast.success("Invoice created successfully!");
-        setInvoiceData(pdfData);
+        setInvoiceData([pdfData1, pdfData2]);
         setShowQRCode(true);
+        // Generate next invoice number for the next invoice
         generateInvoiceNumber();
       },
       onError: (error: any) => {
-        showToast.error(
-          error.response?.data?.error || "Failed to create invoice"
-        );
+        if (error.response?.data?.error?.includes("duplicate key")) {
+          showToast.error(
+            "Invoice number already exists. Generating new number..."
+          );
+          // Regenerate invoice number and retry
+          setTimeout(() => {
+            generateInvoiceNumber();
+          }, 1000);
+        } else {
+          showToast.error(
+            error.response?.data?.error || "Failed to create invoice"
+          );
+        }
       },
     });
   };
@@ -999,14 +1031,16 @@ export default function Billing() {
                 onClick={handleSubmit}
                 disabled={
                   createInvoice.isPending ||
+                  generatingInvoiceNumber ||
                   !customerName.trim() ||
-                  !customerPhone.trim() ||
-                  !invoiceNumber.trim()
+                  !customerPhone.trim()
                 }
                 className="flex items-center justify-center w-full gap-2 py-3 mt-6 font-medium text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <MdCurrencyRupee className="text-xl" />
-                {createInvoice.isPending
+                {generatingInvoiceNumber
+                  ? "Generating Invoice Number..."
+                  : createInvoice.isPending
                   ? "Creating Invoice..."
                   : "Finalize Invoice"}
               </motion.button>
@@ -1038,28 +1072,43 @@ export default function Billing() {
 
                 <div className="flex justify-center mb-4">
                   <InvoiceQRCode
-                    data={`${window.location.origin}/api/invoices/download/${invoiceData.invoiceNumber}`}
+                    data={`${window.location.origin}/api/invoices/download/${invoiceData[0].invoiceNumber}`}
                     size={200}
                   />
                 </div>
 
-                {/* <p className="mb-4 text-sm text-center text-gray-600">
-                  Scan with any QR scanner to download PDF instantly
-                </p> */}
-
                 <div className="space-y-2">
+                  {/* Download both PDFs */}
                   <PDFDownloadLink
-                    document={<InvoicePDF data={invoiceData} />}
-                    fileName={`${invoiceData.invoiceNumber}_${invoiceData.customer.name}_${invoiceData.invoiceDate}.pdf`}
+                    document={<SingleInvoicePDF data={invoiceData[0]} />}
+                    fileName={`${invoiceData[0].invoiceNumber}_${invoiceData[0].customer.name}_${invoiceData[0].invoiceDate}_JayKrishna.pdf`}
                     className="flex items-center justify-center w-full gap-2 py-2 text-sm font-medium text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
                   >
                     {({ loading }) => (
                       <>
                         <MdDownload className="text-lg" />
-                        {loading ? "Preparing PDF..." : "Download PDF"}
+                        {loading
+                          ? "Preparing PDF 1..."
+                          : "Download Jay Krishna PDF"}
                       </>
                     )}
                   </PDFDownloadLink>
+
+                  <PDFDownloadLink
+                    document={<SingleInvoicePDF data={invoiceData[1]} />}
+                    fileName={`${invoiceData[1].invoiceNumber}_${invoiceData[1].customer.name}_${invoiceData[1].invoiceDate}_Yogeshkumar.pdf`}
+                    className="flex items-center justify-center w-full gap-2 py-2 text-sm font-medium text-white transition-colors bg-green-600 rounded-lg hover:bg-green-700"
+                  >
+                    {({ loading }) => (
+                      <>
+                        <MdDownload className="text-lg" />
+                        {loading
+                          ? "Preparing PDF 2..."
+                          : "Download Yogeshkumar PDF"}
+                      </>
+                    )}
+                  </PDFDownloadLink>
+
                   <button
                     onClick={() => setShowQRCode(false)}
                     className="w-full py-2 text-sm text-gray-600 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
