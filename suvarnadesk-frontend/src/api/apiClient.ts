@@ -1,3 +1,4 @@
+// api/apiClient.ts
 import axios from "axios";
 
 const apiClient = axios.create({
@@ -12,5 +13,19 @@ apiClient.interceptors.request.use(config => {
     }
     return config;
 });
+
+// Add response interceptor to handle token expiration
+apiClient.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            // Token is invalid or expired
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            window.location.href = "/login";
+        }
+        return Promise.reject(error);
+    }
+);
 
 export default apiClient;
