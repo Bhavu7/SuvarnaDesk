@@ -1,7 +1,8 @@
+// src/utils/pdfGenerator.ts
 import PDFDocument from 'pdfkit';
 import { Response } from 'express';
 
-// Updated interface to include HUID and otherCharges
+// Updated interface to match your new structure
 export interface InvoicePDFData {
     invoiceNumber: string;
     date: string | Date;
@@ -10,7 +11,7 @@ export interface InvoicePDFData {
         email: string;
         phone: string;
         address?: string;
-        huid?: string; // Add HUID
+        huid?: string;
     };
     lineItems: Array<{
         itemType: string;
@@ -23,15 +24,14 @@ export interface InvoicePDFData {
         ratePerGram: number;
         itemTotal: number;
         makingChargesTotal?: number;
-        otherCharges?: number; // Add otherCharges
-        labourChargeType?: string;
-        labourChargeAmount?: number;
-        labourChargeReferenceId?: any;
+        otherCharges?: number;
     }>;
     totals: {
         subtotal: number;
-        GSTPercent: number;
-        GSTAmount: number;
+        CGSTPercent: number;
+        CGSTAmount: number;
+        SGSTPercent: number;
+        SGSTAmount: number;
         grandTotal: number;
     };
     paymentDetails: {
@@ -44,7 +44,6 @@ export interface InvoicePDFData {
         address: string;
         phone: string;
         gstNumber?: string;
-        logoUrl?: string;
     };
 }
 
@@ -88,14 +87,13 @@ export function generateInvoicePDF(invoiceData: InvoicePDFData, res: Response): 
 
         doc.moveDown();
 
-        // Customer Details - Updated to include HUID
+        // Customer Details
         doc.fontSize(12).font('Helvetica-Bold').text('Customer Details:');
         doc.fontSize(10).font('Helvetica')
             .text(`Name: ${invoiceData.customerSnapshot.name}`)
             .text(`Phone: ${invoiceData.customerSnapshot.phone}`)
             .text(`Email: ${invoiceData.customerSnapshot.email}`);
 
-        // Display HUID if available
         if (invoiceData.customerSnapshot.huid) {
             doc.text(`HUID: ${invoiceData.customerSnapshot.huid}`);
         }
@@ -106,36 +104,30 @@ export function generateInvoicePDF(invoiceData: InvoicePDFData, res: Response): 
 
         doc.moveDown();
 
-        // Line Items Table Header - Updated for Other Charges
+        // Line Items Table
         const tableTop = doc.y;
-        doc.fontSize(9).font('Helvetica-Bold');
-        doc.text('Description', 50, tableTop, { width: 120 });
-        doc.text('Purity', 180, tableTop);
-        doc.text('Weight', 220, tableTop);
-        doc.text('Rate/Gram', 260, tableTop);
-        doc.text('Making Chgs', 310, tableTop, { width: 60, align: 'right' });
-        doc.text('Other Chgs', 380, tableTop, { width: 50, align: 'right' }); // New column
-        doc.text('Amount', 440, tableTop, { width: 60, align: 'right' });
+        doc.fontSize(10).font('Helvetica-Bold');
+        doc.text('Description', 50, tableTop, { width: 200 });
+        doc.text('Weight', 260, tableTop);
+        doc.text('Rate/Gram', 320, tableTop);
+        doc.text('Amount', 400, tableTop, { width: 100, align: 'right' });
 
         // Line Items
         let yPosition = tableTop + 20;
-        doc.fontSize(8).font('Helvetica');
+        doc.fontSize(9).font('Helvetica');
 
         invoiceData.lineItems.forEach((item, index) => {
-            if (yPosition > 700) { // Add new page if needed
+            if (yPosition > 700) {
                 doc.addPage();
                 yPosition = 50;
             }
 
-            const description = `${item.itemType} - ${item.description}`.substring(0, 30);
+            const description = `${item.itemType} ${item.purity} - ${item.description}`;
 
-            doc.text(description, 50, yPosition, { width: 120 });
-            doc.text(item.purity, 180, yPosition);
-            doc.text(`${item.weight.value} ${item.weight.unit}`, 220, yPosition);
-            doc.text(`₹${item.ratePerGram.toFixed(2)}`, 260, yPosition);
-            doc.text(`₹${(item.makingChargesTotal || 0).toFixed(2)}`, 310, yPosition, { width: 60, align: 'right' });
-            doc.text(`₹${(item.otherCharges || 0).toFixed(2)}`, 380, yPosition, { width: 50, align: 'right' }); // Other charges
-            doc.text(`₹${item.itemTotal.toFixed(2)}`, 440, yPosition, { width: 60, align: 'right' });
+            doc.text(description, 50, yPosition, { width: 200 });
+            doc.text(`${item.weight.value} ${item.weight.unit}`, 260, yPosition);
+            doc.text(`₹${item.ratePerGram.toFixed(2)}`, 320, yPosition);
+            doc.text(`₹${item.itemTotal.toFixed(2)}`, 400, yPosition, { width: 100, align: 'right' });
 
             yPosition += 20;
         });
@@ -145,22 +137,25 @@ export function generateInvoicePDF(invoiceData: InvoicePDFData, res: Response): 
         doc.fontSize(10).font('Helvetica-Bold');
 
         doc.text('Subtotal:', 350, totalsY);
-        doc.text(`₹${invoiceData.totals.subtotal.toFixed(2)}`, 440, totalsY, { width: 60, align: 'right' });
+        doc.text(`₹${invoiceData.totals.subtotal.toFixed(2)}`, 400, totalsY, { width: 100, align: 'right' });
 
-        doc.text(`GST (${invoiceData.totals.GSTPercent}%):`, 350, totalsY + 15);
-        doc.text(`₹${invoiceData.totals.GSTAmount.toFixed(2)}`, 440, totalsY + 15, { width: 60, align: 'right' });
+        doc.text(`CGST (${invoiceData.totals.CGSTPercent}%):`, 350, totalsY + 15);
+        doc.text(`₹${invoiceData.totals.CGSTAmount.toFixed(2)}`, 400, totalsY + 15, { width: 100, align: 'right' });
 
-        doc.text('Grand Total:', 350, totalsY + 30);
-        doc.text(`₹${invoiceData.totals.grandTotal.toFixed(2)}`, 440, totalsY + 30, { width: 60, align: 'right' });
+        doc.text(`SGST (${invoiceData.totals.SGSTPercent}%):`, 350, totalsY + 30);
+        doc.text(`₹${invoiceData.totals.SGSTAmount.toFixed(2)}`, 400, totalsY + 30, { width: 100, align: 'right' });
 
-        doc.text('Amount Paid:', 350, totalsY + 45);
-        doc.text(`₹${invoiceData.paymentDetails.amountPaid.toFixed(2)}`, 440, totalsY + 45, { width: 60, align: 'right' });
+        doc.text('Grand Total:', 350, totalsY + 45);
+        doc.text(`₹${invoiceData.totals.grandTotal.toFixed(2)}`, 400, totalsY + 45, { width: 100, align: 'right' });
 
-        doc.text('Balance Due:', 350, totalsY + 60);
-        doc.text(`₹${invoiceData.paymentDetails.balanceDue.toFixed(2)}`, 440, totalsY + 60, { width: 60, align: 'right' });
+        doc.text('Amount Paid:', 350, totalsY + 60);
+        doc.text(`₹${invoiceData.paymentDetails.amountPaid.toFixed(2)}`, 400, totalsY + 60, { width: 100, align: 'right' });
+
+        doc.text('Balance Due:', 350, totalsY + 75);
+        doc.text(`₹${invoiceData.paymentDetails.balanceDue.toFixed(2)}`, 400, totalsY + 75, { width: 100, align: 'right' });
 
         // Payment Mode
-        doc.text(`Payment Mode: ${invoiceData.paymentDetails.paymentMode}`, 50, totalsY + 80);
+        doc.text(`Payment Mode: ${invoiceData.paymentDetails.paymentMode}`, 50, totalsY + 95);
 
         // Footer
         doc.fontSize(8).font('Helvetica')

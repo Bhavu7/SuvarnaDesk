@@ -1,31 +1,37 @@
-// components/InvoiceQRCode.tsx
+// components/InvoiceQRCode.tsx (Enhanced version)
 import React from "react";
-import QRCode from "qrcode.react";
+import { QRCodeSVG } from "qrcode.react";
 
 interface InvoiceQRCodeProps {
   data: string;
   size?: number;
   className?: string;
+  showLabel?: boolean;
 }
 
 const InvoiceQRCode: React.FC<InvoiceQRCodeProps> = ({
   data,
   size = 200,
   className = "",
+  showLabel = true,
 }) => {
   return (
     <div className={`flex flex-col items-center ${className}`}>
-      <QRCode
-        value={data}
-        size={size}
-        level="M" // Error correction level
-        includeMargin={true}
-        renderAs="svg"
-        className="p-2 bg-white border rounded-lg shadow-sm"
-      />
-      <p className="mt-2 text-xs text-center text-gray-500">
-        Scan to download invoice
-      </p>
+      <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-md">
+        <QRCodeSVG
+          value={data}
+          size={size}
+          level="M"
+          includeMargin={true}
+          bgColor="#FFFFFF"
+          fgColor="#000000"
+        />
+      </div>
+      {showLabel && (
+        <p className="mt-3 text-sm text-gray-600 text-center font-medium max-w-[200px]">
+          Scan QR code to download invoice
+        </p>
+      )}
     </div>
   );
 };

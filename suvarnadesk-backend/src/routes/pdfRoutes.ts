@@ -1,3 +1,4 @@
+// src/routes/pdfRoutes.ts
 import { Router } from "express";
 import { authMiddleware } from "../middleware/auth";
 import { generateInvoicePDF, InvoicePDFData } from "../utils/pdfGenerator";
@@ -5,6 +6,36 @@ import Invoice from "../models/Invoice";
 import ShopSettings from "../models/Settings";
 
 const router = Router();
+
+// Helper function to convert old GST structure to new CGST/SGST structure
+const convertTotalsToNewStructure = (totals: any) => {
+    if (totals.CGSTPercent !== undefined && totals.SGSTPercent !== undefined) {
+        return totals;
+    }
+
+    if (totals.GSTPercent !== undefined) {
+        const gstPercent = totals.GSTPercent / 2;
+        const gstAmount = totals.GSTAmount / 2;
+
+        return {
+            subtotal: totals.subtotal,
+            CGSTPercent: gstPercent,
+            CGSTAmount: gstAmount,
+            SGSTPercent: gstPercent,
+            SGSTAmount: gstAmount,
+            grandTotal: totals.grandTotal
+        };
+    }
+
+    return {
+        subtotal: totals.subtotal || 0,
+        CGSTPercent: 1.5,
+        CGSTAmount: 0,
+        SGSTPercent: 1.5,
+        SGSTAmount: 0,
+        grandTotal: totals.grandTotal || 0
+    };
+};
 
 router.get("/invoices/:id/pdf", authMiddleware, async (req, res) => {
     try {
@@ -21,15 +52,18 @@ router.get("/invoices/:id/pdf", authMiddleware, async (req, res) => {
         // Convert Mongoose document to plain object and transform for PDF
         const invoiceObj = invoice.toObject();
 
+        // Convert totals to new structure
+        const convertedTotals = convertTotalsToNewStructure(invoiceObj.totals);
+
         const pdfData: InvoicePDFData = {
             invoiceNumber: invoiceObj.invoiceNumber,
-            date: invoiceObj.date, // This is already a string in your model
+            date: invoiceObj.date,
             customerSnapshot: {
                 name: invoiceObj.customerSnapshot.name,
-                email: invoiceObj.customerSnapshot.email || "", // Default empty string
+                email: invoiceObj.customerSnapshot.email || "",
                 phone: invoiceObj.customerSnapshot.phone,
                 address: invoiceObj.customerSnapshot.address,
-                huid: invoiceObj.customerSnapshot.huid // Add HUID
+                huid: invoiceObj.customerSnapshot.huid
             },
             lineItems: invoiceObj.lineItems.map((item: any) => ({
                 itemType: item.itemType,
@@ -42,9 +76,9 @@ router.get("/invoices/:id/pdf", authMiddleware, async (req, res) => {
                 ratePerGram: item.ratePerGram,
                 itemTotal: item.itemTotal,
                 makingChargesTotal: item.makingChargesTotal,
-                otherCharges: item.otherCharges || 0 // Add other charges
+                otherCharges: item.otherCharges || 0
             })),
-            totals: invoiceObj.totals,
+            totals: convertedTotals, // Use converted totals
             paymentDetails: invoiceObj.paymentDetails,
             shopSettings: shopSettings ? {
                 shopName: shopSettings.shopName,
