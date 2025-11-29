@@ -50,7 +50,8 @@ const Login: React.FC = () => {
     setIsLoading(true);
     try {
       await login(email, password);
-      navigate("/");
+      // Use replace: true and navigate to root
+      navigate("/", { replace: true });
     } catch (error) {
       // Error handled in auth context
     } finally {
