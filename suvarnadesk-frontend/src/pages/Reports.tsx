@@ -22,6 +22,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { showToast } from "../components/CustomToast";
+import DateDropdown from "../components/DateDropdown";
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 
@@ -93,24 +94,23 @@ export default function Reports() {
 
         <div className="flex gap-3">
           <div className="flex gap-2">
-            <input
-              type="date"
+            {/* DateDropdown for start date */}
+            <DateDropdown
               value={dateRange.start}
-              onChange={(e) =>
-                setDateRange((prev) => ({ ...prev, start: e.target.value }))
+              onChange={(value) =>
+                setDateRange((prev) => ({ ...prev, start: value }))
               }
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              aria-label="Start date for report"
+              placeholder="Start date"
+              className="w-40"
             />
             <span className="flex items-center text-gray-500">to</span>
-            <input
-              type="date"
+            <DateDropdown
               value={dateRange.end}
-              onChange={(e) =>
-                setDateRange((prev) => ({ ...prev, end: e.target.value }))
+              onChange={(value) =>
+                setDateRange((prev) => ({ ...prev, end: value }))
               }
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              aria-label="End date for report"
+              placeholder="End date"
+              className="w-40"
             />
           </div>
 

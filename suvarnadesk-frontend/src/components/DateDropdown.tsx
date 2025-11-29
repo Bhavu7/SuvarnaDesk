@@ -70,9 +70,14 @@ const DateDropdown: React.FC<DateDropdownProps> = ({
       selectedDay !== null
     ) {
       const newDate = new Date(selectedYear, selectedMonth, selectedDay);
-      onChange(newDate.toISOString().split("T")[0]); // YYYY-MM-DD format
+      const newDateString = newDate.toISOString().split("T")[0];
+
+      // Only call onChange if the date actually changed
+      if (newDateString !== value) {
+        onChange(newDateString);
+      }
     }
-  }, [selectedYear, selectedMonth, selectedDay, onChange]);
+  }, [selectedYear, selectedMonth, selectedDay, onChange, value]);
 
   const handleDateSelect = (
     type: "year" | "month" | "day",
