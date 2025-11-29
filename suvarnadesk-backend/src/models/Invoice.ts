@@ -81,8 +81,10 @@ const InvoiceSchema = new Schema<IInvoice>(
         lineItems: { type: [LineItemSchema], required: true },
         totals: {
             subtotal: { type: Number, required: true },
-            GSTPercent: { type: Number, required: true },
-            GSTAmount: { type: Number, required: true },
+            CGSTPercent: { type: Number, required: true },
+            CGSTAmount: { type: Number, required: true },
+            SGSTPercent: { type: Number, required: true },
+            SGSTAmount: { type: Number, required: true },
             grandTotal: { type: Number, required: true },
         },
         paymentDetails: {
