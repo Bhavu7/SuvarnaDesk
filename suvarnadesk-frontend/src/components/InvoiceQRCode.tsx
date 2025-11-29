@@ -17,7 +17,7 @@ const InvoiceQRCode: React.FC<InvoiceQRCodeProps> = ({
 }) => {
   return (
     <div className={`flex flex-col items-center ${className}`}>
-      <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-md">
+      <div className="p-4 bg-white rounded-lg">
         <QRCodeSVG
           value={data}
           size={size}
