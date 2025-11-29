@@ -1,3 +1,4 @@
+// suvarnadesk-backend/src/routes/adminRoutes.ts
 import { Router } from "express";
 import {
     loginAdmin,
@@ -7,6 +8,7 @@ import {
     changePassword,
     getShopSettings,
     updateShopSettings,
+    verifyToken,
 } from "../controllers/adminController";
 import { authMiddleware } from "../middleware/auth";
 
@@ -17,6 +19,9 @@ router.post("/register", registerAdmin); // Only initial setup
 router.get("/profile", authMiddleware, getAdminProfile);
 router.put("/profile", authMiddleware, updateAdminProfile);
 router.patch("/change-password", authMiddleware, changePassword);
+
+// Add the verify endpoint
+router.get("/verify", authMiddleware, verifyToken);
 
 // Shop Settings routes
 router.get("/shop-settings", authMiddleware, getShopSettings);
