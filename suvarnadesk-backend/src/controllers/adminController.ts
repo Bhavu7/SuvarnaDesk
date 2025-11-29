@@ -79,6 +79,39 @@ export const updateAdminProfile = async (req: Request, res: Response) => {
 };
 
 
+// GET /api/admin/verify
+export const verifyToken = async (req: Request, res: Response) => {
+    try {
+        // The admin is already attached to req by authMiddleware
+        const adminId = (req as any).admin.adminId;
+
+        // Fetch fresh admin data from database
+        const admin = await Admin.findById(adminId).select("-password");
+
+        if (!admin) {
+            return res.status(404).json({ error: "Admin not found" });
+        }
+
+        res.json({
+            valid: true,
+            admin: {
+                _id: admin._id,
+                name: admin.name,
+                email: admin.email,
+                phone: admin.phone,
+                role: admin.role,
+                shopName: admin.shopName,
+                gstNumber: admin.gstNumber,
+                // Add any other fields you need
+            }
+        });
+    } catch (error) {
+        console.error("Verify token error:", error);
+        res.status(500).json({ error: "Server error during token verification" });
+    }
+};
+
+
 // PATCH /api/admin/change-password
 export const changePassword = async (req: Request, res: Response) => {
     const adminId = (req as any).admin.adminId;
