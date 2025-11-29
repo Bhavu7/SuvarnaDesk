@@ -52,7 +52,8 @@ export default function Billing() {
       itemTotal: 0,
     },
   ]);
-  const [GSTPercent, setGSTPercent] = useState<number>(2.5);
+  const [CGSTPercent, setCGSTPercent] = useState<number>(1.5);
+  const [SGSTPercent, setSGSTPercent] = useState<number>(1.5);
   const [paymentMode, setPaymentMode] = useState<string>("cash");
   const [amountPaid, setAmountPaid] = useState<number>(0);
   const [showQRCode, setShowQRCode] = useState<boolean>(false);
@@ -147,8 +148,9 @@ export default function Billing() {
     (acc, item) => acc + item.itemTotal,
     0
   );
-  const GSTAmount = (subtotal * GSTPercent) / 100;
-  const grandTotal = subtotal + GSTAmount;
+  const CGSTAmount = (subtotal * CGSTPercent) / 100;
+  const SGSTAmount = (subtotal * SGSTPercent) / 100;
+  const grandTotal = subtotal + CGSTAmount + SGSTAmount;
   const balanceDue = grandTotal - amountPaid;
 
   // Handle customer selection from dropdown
@@ -345,10 +347,17 @@ export default function Billing() {
         email: customerEmail,
         phone: customerPhone,
         address: customerAddress,
-        huid: customerHUID, // Add this
+        huid: customerHUID,
       },
       lineItems,
-      totals: { subtotal, GSTPercent, GSTAmount, grandTotal },
+      totals: {
+        subtotal,
+        CGSTPercent,
+        CGSTAmount,
+        SGSTPercent,
+        SGSTAmount,
+        grandTotal,
+      },
       paymentDetails: { paymentMode, amountPaid, balanceDue },
       QRCodeData: qrCodeData,
     };
@@ -362,7 +371,7 @@ export default function Billing() {
         address: customerAddress,
         email: customerEmail,
         phone: customerPhone,
-        huid: customerHUID, // Add this
+        huid: customerHUID,
       },
       items: lineItems.map((item, index) => ({
         productNo: `ITEM-${index + 1}`,
@@ -370,9 +379,14 @@ export default function Billing() {
         quantity: 1,
         weight: convertToGrams(item.weight.value, item.weight.unit),
         pricePerGram: item.ratePerGram,
-        otherCharges: item.otherCharges || 0, // Add this
+        otherCharges: item.otherCharges || 0,
         amount: item.itemTotal,
       })),
+      subtotal,
+      CGSTPercent,
+      CGSTAmount,
+      SGSTPercent,
+      SGSTAmount,
       grandTotal,
       shopSettings: {
         shopName: shopSettings.shopName,
@@ -822,9 +836,10 @@ export default function Billing() {
                 Payment Details
               </h3>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {/* CGST Percentage */}
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700">
-                    GST Percentage
+                    CGST Percentage
                   </label>
                   <div className="relative">
                     <input
@@ -832,10 +847,32 @@ export default function Billing() {
                       min={0}
                       max={100}
                       step="0.1"
-                      value={GSTPercent}
-                      onChange={(e) => setGSTPercent(Number(e.target.value))}
+                      value={CGSTPercent}
+                      onChange={(e) => setCGSTPercent(Number(e.target.value))}
                       className="w-full px-4 py-3 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      aria-label="Enter GST percentage"
+                      aria-label="Enter CGST percentage"
+                    />
+                    <span className="absolute text-gray-500 transform -translate-y-1/2 right-3 top-1/2">
+                      %
+                    </span>
+                  </div>
+                </div>
+
+                {/* SGST Percentage */}
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    SGST Percentage
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="0.1"
+                      value={SGSTPercent}
+                      onChange={(e) => setSGSTPercent(Number(e.target.value))}
+                      className="w-full px-4 py-3 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      aria-label="Enter SGST percentage"
                     />
                     <span className="absolute text-gray-500 transform -translate-y-1/2 right-3 top-1/2">
                       %
@@ -855,11 +892,11 @@ export default function Billing() {
                   />
                 </div>
 
-                <div>
+                <div className="md:col-span-3">
                   <label className="block mb-2 text-sm font-medium text-gray-700">
                     Amount Paid
                   </label>
-                  <div className="relative">
+                  <div className="relative max-w-xs">
                     <span className="absolute text-gray-500 transform -translate-y-1/2 left-3 top-1/2">
                       ₹
                     </span>
@@ -901,8 +938,12 @@ export default function Billing() {
                   <span className="font-medium">₹{subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">GST ({GSTPercent}%):</span>
-                  <span className="font-medium">₹{GSTAmount.toFixed(2)}</span>
+                  <span className="text-gray-600">CGST ({CGSTPercent}%):</span>
+                  <span className="font-medium">₹{CGSTAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-gray-600">SGST ({SGSTPercent}%):</span>
+                  <span className="font-medium">₹{SGSTAmount.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b">
                   <span className="text-gray-600">Amount Paid:</span>

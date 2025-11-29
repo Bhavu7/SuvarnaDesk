@@ -8,13 +8,19 @@ import {
   Font,
 } from "@react-pdf/renderer";
 
-// Register fonts
+// Register fonts with rupee symbol support
 Font.register({
   family: "Helvetica",
   fonts: [
     { src: "/fonts/helvetica-regular.ttf" },
     { src: "/fonts/helvetica-bold.ttf", fontWeight: "bold" },
   ],
+});
+
+// Register a font that supports rupee symbol if needed, or use Unicode
+Font.register({
+  family: "DejaVu",
+  src: "/fonts/DejaVuSans.ttf", // You can use any font that supports rupee symbol
 });
 
 const styles = StyleSheet.create({
@@ -105,6 +111,7 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: "#666",
     marginTop: 2,
+    fontWeight: "bold",
   },
 
   // Table section - EXACTLY like receipt sample
@@ -176,7 +183,7 @@ const styles = StyleSheet.create({
   colQty: { flex: 0.6 },
   colWeight: { flex: 0.8 },
   colPrice: { flex: 0.8 },
-  colOtherCharges: { flex: 0.8 }, // Add this
+  colOtherCharges: { flex: 0.8 },
   colAmount: { flex: 0.8 },
 
   // Notes & Totals section - EXACTLY like receipt sample
@@ -290,7 +297,7 @@ interface InvoiceItem {
   quantity: number;
   weight: number;
   pricePerGram: number;
-  otherCharges: number; // Add this
+  otherCharges: number;
   amount: number;
 }
 
@@ -303,9 +310,14 @@ interface InvoicePDFProps {
       address: string;
       email: string;
       phone: string;
-      huid?: string; // Add this
+      huid?: string;
     };
     items: InvoiceItem[];
+    subtotal: number;
+    CGSTPercent: number;
+    CGSTAmount: number;
+    SGSTPercent: number;
+    SGSTAmount: number;
     grandTotal: number;
     shopSettings: {
       shopName: string;
@@ -324,19 +336,56 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
     return `${day} ${month} ${year}`;
   };
 
-  // Format currency without symbol, with commas
+  // Format currency with proper rupee symbol using Unicode
   const formatCurrency = (amount: number) => {
-    return `₹ ${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,")}`;
+    // Using Unicode rupee symbol (₹) - works in most modern fonts
+    return `₹${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,")}`;
   };
 
-  // Calculate how many empty rows we need to fill the page
-  const calculateEmptyRows = () => {
-    const targetTotalRows = 15;
-    const emptyRowsCount = Math.max(0, targetTotalRows - data.items.length);
-    return Array(emptyRowsCount).fill(null);
+  // Alternative format without symbol if rupee symbol doesn't render
+  const formatCurrencyAlt = (amount: number) => {
+    return `Rs. ${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,")}`;
   };
 
-  const emptyRows = calculateEmptyRows();
+  // Calculate dynamic empty rows based on content height
+  const calculateDynamicEmptyRows = () => {
+    // Fixed heights for different sections
+    const titleSectionHeight = 40;
+    const metaInfoHeight = 30;
+    const customerBoxesHeight = 80;
+    const tableHeaderHeight = 25;
+    const itemRowHeight = 24;
+    const footerSectionHeight = 50;
+    const signatureSectionHeight = 70;
+    const footerHeight = 30;
+
+    // Total available height on A4 page (approx 700px minus margins)
+    const totalAvailableHeight = 650;
+
+    // Calculate used height
+    const usedHeight =
+      titleSectionHeight +
+      metaInfoHeight +
+      customerBoxesHeight +
+      tableHeaderHeight +
+      data.items.length * itemRowHeight +
+      footerSectionHeight +
+      signatureSectionHeight +
+      footerHeight;
+
+    // Calculate remaining space
+    const remainingSpace = totalAvailableHeight - usedHeight;
+
+    // If we have extra space, calculate how many empty rows we can fit
+    if (remainingSpace > itemRowHeight) {
+      const emptyRowsCount = Math.floor(remainingSpace / itemRowHeight);
+      return Array(Math.max(0, emptyRowsCount)).fill(null);
+    }
+
+    return [];
+  };
+
+  const emptyRows = calculateDynamicEmptyRows();
 
   return (
     <Document>
@@ -382,7 +431,7 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                 <Text>{data.customer.address}</Text>
                 <Text>{data.customer.email}</Text>
                 <Text>{data.customer.phone}</Text>
-                {/* Add HUID display */}
+                {/* HUID Display - Only show if available */}
                 {data.customer.huid && (
                   <Text style={styles.huidText}>
                     HUID: {data.customer.huid}
@@ -442,7 +491,7 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
               >
                 <Text>PRICE/GRAM</Text>
               </View>
-              {/* Add Other Charges column */}
+              {/* Other Charges column */}
               <View
                 style={[
                   styles.tableHeaderCell,
@@ -500,7 +549,7 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                 >
                   <Text>{formatCurrency(item.pricePerGram)}</Text>
                 </View>
-                {/* Add Other Charges cell */}
+                {/* Other Charges cell */}
                 <View
                   style={[
                     styles.tableCell,
@@ -523,7 +572,7 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
               </View>
             ))}
 
-            {/* Empty Rows to Fill the Page */}
+            {/* Dynamic Empty Rows to Fill the Page */}
             {emptyRows.map((_, index) => (
               <View key={`empty-${index}`} style={styles.emptyRow}>
                 <View style={[styles.tableCell, styles.colProductNo]}>
@@ -588,6 +637,28 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
               <Text>Thank you for your business!</Text>
             </View>
             <View style={styles.totalsBox}>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Subtotal:</Text>
+                <Text style={styles.totalValue}>
+                  {formatCurrency(data.subtotal)}
+                </Text>
+              </View>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>
+                  CGST ({data.CGSTPercent}%):
+                </Text>
+                <Text style={styles.totalValue}>
+                  {formatCurrency(data.CGSTAmount)}
+                </Text>
+              </View>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>
+                  SGST ({data.SGSTPercent}%):
+                </Text>
+                <Text style={styles.totalValue}>
+                  {formatCurrency(data.SGSTAmount)}
+                </Text>
+              </View>
               <View style={styles.totalRowBold}>
                 <Text style={styles.totalBoldLabel}>GRAND TOTAL</Text>
                 <Text style={styles.totalBoldValue}>
