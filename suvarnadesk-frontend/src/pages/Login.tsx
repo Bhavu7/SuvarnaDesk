@@ -164,7 +164,7 @@ import { useNavigate } from "react-router-dom";
 import { MdLockOutline, MdVisibility, MdVisibilityOff } from "react-icons/md";
 import { motion } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
-import LoadingSpinner from "../components/LoadingSpinner";
+import Favicon from "../assets/favicon.svg"; // Import directly
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState<string>("");
@@ -221,7 +221,14 @@ const Login: React.FC = () => {
   if (isLoading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-blue-700 via-indigo-800 to-blue-900">
-        <LoadingSpinner />
+        <div className="flex flex-col items-center space-y-4">
+          <img
+            src={Favicon}
+            alt="SuvarnaDesk Logo"
+            className="w-20 h-20 animate-pulse"
+          />
+          <p className="text-lg font-semibold text-white">Signing in...</p>
+        </div>
       </div>
     );
   }
@@ -237,7 +244,7 @@ const Login: React.FC = () => {
       >
         <div className="flex flex-col items-center space-y-6">
           <div className="">
-            <LoadingSpinner text="" />
+            <img src={Favicon} alt="SuvarnaDesk Logo" className="w-24 h-24" />
           </div>
           <h1 className="mb-2 text-4xl font-extrabold tracking-tight text-white md:text-5xl drop-shadow-lg">
             SuvarnaDesk
@@ -248,7 +255,7 @@ const Login: React.FC = () => {
         </div>
       </motion.div>
 
-      {/* Right Side - Form */}
+      {/* Rest of your component remains the same... */}
       <motion.div
         initial={{ opacity: 0, x: 40 }}
         animate={{ opacity: 1, x: 0 }}
@@ -256,7 +263,6 @@ const Login: React.FC = () => {
         className="flex items-center justify-center md:w-1/2 bg-slate-50"
       >
         <form
-        // bg-white border-t-8 border-blue-700 shadow-2xl
           className="w-full max-w-md p-8 mx-auto space-y-8 rounded-3xl"
           onSubmit={handleLogin}
           noValidate
