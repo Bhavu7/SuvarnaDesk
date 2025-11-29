@@ -374,7 +374,7 @@ export default function Reports() {
               key={report.label}
               whileTap={{ scale: 0.98 }}
               onClick={() => exportReport(report.format)}
-              className={`p-4 rounded-lg ${report.color} text-center hover:shadow-md transition-all duration-200 border border-transparent hover:border-current focus:outline-none focus:ring-0`}
+              className={`p-4 rounded-lg ${report.color} text-center hover:shadow-md transition-all duration-200 border border-transparent focus:outline-none focus:ring-0`}
               aria-label={`Export ${report.label} as ${report.format}`}
             >
               <MdDownload className="mx-auto mb-2 text-2xl" />
