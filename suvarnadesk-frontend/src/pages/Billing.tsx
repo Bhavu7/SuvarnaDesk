@@ -1016,9 +1016,9 @@ export default function Billing() {
                   />
                 </div>
 
-                <p className="mb-4 text-sm text-center text-gray-600">
+                {/* <p className="mb-4 text-sm text-center text-gray-600">
                   Scan with any QR scanner to download PDF instantly
-                </p>
+                </p> */}
 
                 <div className="space-y-2">
                   <PDFDownloadLink
