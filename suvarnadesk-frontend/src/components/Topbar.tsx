@@ -17,7 +17,7 @@ const Topbar: React.FC<TopbarProps> = ({
     <button
       type="button"
       onClick={onMenuClick}
-      className="p-2 text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
+      className="p-2 text-gray-600 transition-colors rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-0"
       title="Open menu"
       aria-label="Open menu"
     >
@@ -31,7 +31,7 @@ const Topbar: React.FC<TopbarProps> = ({
       <motion.button
         whileTap={{ scale: 0.95 }}
         onClick={onNotificationsClick}
-        className="relative p-2 text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
+        className="relative p-2 text-gray-600 transition-colors rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-0"
         aria-label="Notifications"
       >
         <MdNotifications className="text-xl" />

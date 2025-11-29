@@ -193,10 +193,9 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
           {/* Notifications */}
           <div className="relative" ref={notificationsRef}>
             <motion.button
-              whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={toggleNotifications}
-              className={`relative p-2 rounded-full transition-all duration-300 outline-none ${
+              className={`relative p-2 rounded-full transition-all duration-300 focus:outline-none focus:ring-0 ${
                 showNotifications
                   ? "bg-blue-100 text-blue-600"
                   : "text-gray-600 hover:bg-gray-100"
@@ -239,7 +238,7 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
                     {unreadCount > 0 && (
                       <button
                         onClick={markAllAsRead}
-                        className="text-sm text-blue-600 transition-colors outline-none hover:text-blue-700"
+                        className="text-sm text-blue-600 transition-colors outline-none hover:text-blue-700 focus:outline-none focus:ring-0"
                       >
                         Mark all read
                       </button>
@@ -300,7 +299,7 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
                   <div className="px-4 py-2 border-t border-gray-100">
                     <button
                       onClick={handleViewAllNotifications}
-                      className="w-full py-2 text-sm text-center text-blue-600 transition-colors outline-none hover:text-blue-700"
+                      className="w-full py-2 text-sm text-center text-blue-600 transition-colors focus:outline-none focus:ring-0 hover:text-blue-700"
                     >
                       View all notifications
                     </button>
@@ -313,10 +312,9 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
           {/* Profile Dropdown */}
           <div className="relative" ref={profileRef}>
             <motion.button
-              whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={toggleProfile}
-              className={`flex items-center gap-2 p-1 rounded-lg transition-all duration-300 outline-none ${
+              className={`flex items-center gap-2 p-1 rounded-lg transition-all duration-300 focus:outline-none focus:ring-0 ${
                 showProfileDropdown ? "bg-blue-100" : "hover:bg-gray-100"
               }`}
               aria-label="Profile menu"
@@ -361,14 +359,14 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
                   <div className="px-2 py-2">
                     <button
                       onClick={handleViewProfile}
-                      className="flex items-center w-full gap-2 px-3 py-3 text-sm text-left text-gray-700 transition-colors duration-200 rounded-lg outline-none hover:bg-gray-100/80"
+                      className="flex items-center w-full gap-2 px-3 py-3 text-sm text-left text-gray-700 transition-colors duration-200 rounded-lg focus:outline-none focus:ring-0 hover:bg-gray-100/80"
                     >
                       <MdPerson className="text-lg" />
                       View Profile
                     </button>
                     <button
                       onClick={handleSettings}
-                      className="flex items-center w-full gap-2 px-3 py-3 text-sm text-left text-gray-700 transition-colors duration-200 rounded-lg outline-none hover:bg-gray-100/80"
+                      className="flex items-center w-full gap-2 px-3 py-3 text-sm text-left text-gray-700 transition-colors duration-200 rounded-lg focus:outline-none focus:ring-0 hover:bg-gray-100/80"
                     >
                       <MdSettings className="text-lg" />
                       Settings
@@ -380,7 +378,7 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
                     <motion.button
                       whileTap={{ scale: 0.98 }}
                       onClick={handleLogoutConfirm}
-                      className="flex items-center w-full gap-2 px-3 py-3 text-sm text-red-600 transition-colors duration-200 rounded-lg outline-none hover:bg-red-50/80"
+                      className="flex items-center w-full gap-2 px-3 py-3 text-sm text-red-600 transition-colors duration-200 rounded-lg focus:outline-none focus:ring-0 hover:bg-red-50/80"
                     >
                       <MdLogout />
                       Logout
@@ -453,18 +451,16 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
                 {/* Action Buttons */}
                 <div className="flex gap-3">
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={cancelLogout}
-                    className="flex-1 px-4 py-3 text-sm font-medium text-gray-700 transition-colors bg-gray-100 border border-gray-300 rounded-lg outline-none hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
+                    className="flex-1 px-4 py-3 text-sm font-medium text-gray-700 transition-colors bg-gray-100 border border-gray-300 rounded-lg outline-none hover:bg-gray-200 focus:outline-none focus:ring-0"
                   >
                     Cancel
                   </motion.button>
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleLogout}
-                    className="flex-1 px-4 py-3 text-sm font-medium text-white transition-colors bg-red-600 rounded-lg outline-none hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                    className="flex-1 px-4 py-3 text-sm font-medium text-white transition-colors bg-red-600 rounded-lg outline-none hover:bg-red-700 focus:outline-none focus:ring-0"
                   >
                     Yes, Logout
                   </motion.button>
@@ -474,7 +470,7 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
                 <button
                   title="Close"
                   onClick={cancelLogout}
-                  className="absolute text-gray-400 transition-colors outline-none top-4 right-4 hover:text-gray-600"
+                  className="absolute text-gray-400 transition-colors outline-none top-4 right-4 hover:text-gray-600 focus:outline-none focus:ring-0"
                 >
                   <svg
                     className="w-6 h-6"

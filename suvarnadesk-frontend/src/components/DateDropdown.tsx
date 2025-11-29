@@ -130,7 +130,7 @@ const DateDropdown: React.FC<DateDropdownProps> = ({
         disabled={disabled}
         className={`
           w-full px-4 py-3 text-left bg-white border border-gray-300 rounded-lg 
-          focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200
+          focus:outline-none focus:ring-0 focus:border-transparent transition-all duration-200
           flex items-center justify-between
           ${
             disabled
@@ -169,7 +169,7 @@ const DateDropdown: React.FC<DateDropdownProps> = ({
                   </span>
                   <button
                     onClick={clearSelection}
-                    className="text-sm text-blue-600 transition-colors hover:text-blue-800 focus:outline-none"
+                    className="text-sm text-blue-600 transition-colors hover:text-blue-800 focus:outline-none focus:ring-0"
                   >
                     Clear
                   </button>
@@ -187,7 +187,7 @@ const DateDropdown: React.FC<DateDropdownProps> = ({
                       whileHover={{ backgroundColor: "#f3f4f6" }}
                       onClick={() => handleDateSelect("year", year)}
                       className={`
-                        w-full px-3 py-2 text-left text-sm transition-colors duration-200 rounded
+                        w-full px-3 py-2 text-left text-sm transition-colors duration-200 rounded focus:outline-none focus:ring-0
                         ${
                           selectedYear === year
                             ? "bg-blue-50 text-blue-600"
@@ -212,7 +212,7 @@ const DateDropdown: React.FC<DateDropdownProps> = ({
                       onClick={() => handleDateSelect("month", month.value)}
                       disabled={selectedYear === null}
                       className={`
-                        w-full px-3 py-2 text-left text-sm transition-colors duration-200 rounded
+                        w-full px-3 py-2 text-left text-sm transition-colors duration-200 rounded focus:outline-none focus:ring-0
                         ${
                           selectedMonth === month.value
                             ? "bg-blue-50 text-blue-600"
@@ -242,7 +242,7 @@ const DateDropdown: React.FC<DateDropdownProps> = ({
                       onClick={() => handleDateSelect("day", day)}
                       disabled={selectedMonth === null || selectedYear === null}
                       className={`
-                        w-full px-3 py-2 text-left text-sm transition-colors duration-200 rounded
+                        w-full px-3 py-2 text-left text-sm transition-colors duration-200 rounded focus:outline-none focus:ring-0
                         ${
                           selectedDay === day
                             ? "bg-blue-50 text-blue-600"

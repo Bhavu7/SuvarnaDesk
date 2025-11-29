@@ -297,10 +297,9 @@ const Profile: React.FC = () => {
 
         {!isEditing ? (
           <motion.button
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setIsEditing(true)}
-            className="flex items-center gap-2 px-6 py-3 text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+            className="flex items-center gap-2 px-6 py-3 text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-0"
           >
             <MdEdit className="text-lg" />
             Edit Profile
@@ -308,11 +307,10 @@ const Profile: React.FC = () => {
         ) : (
           <div className="flex gap-3">
             <motion.button
-              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleSave}
               disabled={profileMutation.isPending}
-              className={`flex items-center gap-2 px-6 py-3 text-white transition-all duration-200 rounded-lg ${
+              className={`flex items-center gap-2 px-6 py-3 text-white transition-all duration-200 rounded-lg focus:outline-none focus:ring-0 ${
                 profileMutation.isPending
                   ? "bg-green-400 cursor-not-allowed"
                   : "bg-green-600 hover:bg-green-700"
@@ -324,7 +322,7 @@ const Profile: React.FC = () => {
             <button
               onClick={handleCancel}
               disabled={profileMutation.isPending}
-              className="flex items-center gap-2 px-6 py-3 text-gray-600 transition-all duration-200 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-6 py-3 text-gray-600 transition-all duration-200 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
               type="button"
             >
               <MdCancel className="text-lg" />
@@ -465,7 +463,7 @@ const Profile: React.FC = () => {
             {!showChangePassword ? (
               <button
                 onClick={() => setShowChangePassword(true)}
-                className="flex items-center w-full gap-2 p-4 text-left text-blue-600 transition-colors border border-blue-200 rounded-lg hover:bg-blue-50"
+                className="flex items-center w-full gap-2 p-4 text-left text-blue-600 transition-colors border border-blue-200 rounded-lg hover:bg-blue-50 focus:outline-none focus:ring-0"
               >
                 <MdLock className="text-lg" />
                 Change Password
@@ -495,7 +493,7 @@ const Profile: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => togglePasswordVisibility("current")}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-600"
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-600 focus:outline-none focus:ring-0"
                     >
                       {showPasswords.current ? (
                         <MdVisibilityOff />
@@ -527,7 +525,7 @@ const Profile: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => togglePasswordVisibility("new")}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-600"
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-600 focus:outline-none focus:ring-0"
                     >
                       {showPasswords.new ? (
                         <MdVisibilityOff />
@@ -559,7 +557,7 @@ const Profile: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => togglePasswordVisibility("confirm")}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-600"
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-600 focus:outline-none focus:ring-0"
                     >
                       {showPasswords.confirm ? (
                         <MdVisibilityOff />
@@ -573,11 +571,10 @@ const Profile: React.FC = () => {
                 {/* Password Action Buttons */}
                 <div className="flex gap-3 pt-2">
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handlePasswordChange}
                     disabled={passwordMutation.isPending}
-                    className={`flex items-center gap-2 px-4 py-2 text-white transition-all duration-200 rounded-lg ${
+                    className={`flex items-center gap-2 px-4 py-2 text-white transition-all duration-200 rounded-lg focus:outline-none focus:ring-0 ${
                       passwordMutation.isPending
                         ? "bg-blue-400 cursor-not-allowed"
                         : "bg-blue-600 hover:bg-blue-700"
@@ -591,7 +588,7 @@ const Profile: React.FC = () => {
                   <button
                     onClick={handlePasswordCancel}
                     disabled={passwordMutation.isPending}
-                    className="flex items-center gap-2 px-4 py-2 text-gray-600 transition-all duration-200 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2 text-gray-600 transition-all duration-200 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 focus:outline-none focus:ring-0"
                   >
                     <MdCancel className="text-lg" />
                     Cancel
@@ -705,13 +702,13 @@ const Profile: React.FC = () => {
           >
             <h4 className="mb-4 font-semibold text-gray-800">Quick Actions</h4>
             <div className="space-y-2">
-              <button className="w-full p-3 text-left text-blue-600 transition-colors rounded-lg hover:bg-blue-50">
+              <button className="w-full p-3 text-left text-blue-600 transition-colors rounded-lg hover:bg-blue-50 focus:outline-none focus:ring-0">
                 Notification Settings
               </button>
-              <button className="w-full p-3 text-left text-blue-600 transition-colors rounded-lg hover:bg-blue-50">
+              <button className="w-full p-3 text-left text-blue-600 transition-colors rounded-lg hover:bg-blue-50 focus:outline-none focus:ring-0">
                 Privacy Settings
               </button>
-              <button className="w-full p-3 text-left text-blue-600 transition-colors rounded-lg hover:bg-blue-50">
+              <button className="w-full p-3 text-left text-blue-600 transition-colors rounded-lg hover:bg-blue-50 focus:outline-none focus:ring-0">
                 Two-Factor Authentication
               </button>
             </div>

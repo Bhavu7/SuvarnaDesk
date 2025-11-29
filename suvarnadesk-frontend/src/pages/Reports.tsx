@@ -115,10 +115,9 @@ export default function Reports() {
           </div>
 
           <motion.button
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => exportReport("PDF")}
-            className="flex items-center gap-2 px-4 py-2 text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+            className="flex items-center gap-2 px-4 py-2 text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-0"
             aria-label="Export PDF report"
           >
             <MdDownload className="text-lg" />
@@ -373,10 +372,9 @@ export default function Reports() {
           ].map((report, index) => (
             <motion.button
               key={report.label}
-              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => exportReport(report.format)}
-              className={`p-4 rounded-lg ${report.color} text-center hover:shadow-md transition-all duration-200 border border-transparent hover:border-current`}
+              className={`p-4 rounded-lg ${report.color} text-center hover:shadow-md transition-all duration-200 border border-transparent hover:border-current focus:outline-none focus:ring-0`}
               aria-label={`Export ${report.label} as ${report.format}`}
             >
               <MdDownload className="mx-auto mb-2 text-2xl" />

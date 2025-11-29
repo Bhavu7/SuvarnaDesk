@@ -183,10 +183,9 @@ export default function Repairings() {
           <p className="text-gray-600">Create and manage repair receipts</p>
         </div>
         <motion.button
-          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={resetForm}
-          className="px-4 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50"
+          className="px-4 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 focus:outline-none focus:ring-0"
         >
           Reset Form
         </motion.button>
@@ -463,7 +462,6 @@ export default function Repairings() {
               </div>
               <div className="flex items-end">
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleAddItem}
                   className="w-full px-4 py-3 text-white transition-all duration-200 bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-0"
@@ -517,7 +515,7 @@ export default function Repairings() {
                             onClick={() => handleRemoveItem(index)}
                             aria-label={`Remove ${item.description}`}
                             title="Remove item"
-                            className="p-2 text-red-600 transition-colors rounded-lg hover:bg-red-50"
+                            className="p-2 text-red-600 transition-colors rounded-lg hover:bg-red-50 focus:outline-none focus:ring-0"
                           >
                             <MdDelete className="text-lg" />
                           </button>
@@ -562,7 +560,6 @@ export default function Repairings() {
           {/* Action Buttons */}
           <div className="flex gap-4">
             <motion.button
-              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={generatePDF}
               className="flex items-center justify-center flex-1 gap-2 px-6 py-3 font-semibold text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 focus:outline-none focus:ring-0 hover:from-green-700 hover:to-emerald-700"

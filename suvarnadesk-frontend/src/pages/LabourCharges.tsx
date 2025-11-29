@@ -86,10 +86,9 @@ export default function LabourCharges() {
         </div>
 
         <motion.button
-          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-6 py-3 text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+          className="flex items-center gap-2 px-6 py-3 text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-0"
         >
           <MdAdd className="text-lg" />
           Add Charge
@@ -199,7 +198,6 @@ export default function LabourCharges() {
 
             <div className="flex gap-3 mt-6">
               <motion.button
-                whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleAdd}
                 disabled={
@@ -207,13 +205,13 @@ export default function LabourCharges() {
                   !formData.name ||
                   !formData.amount
                 }
-                className="px-6 py-3 text-white transition-all duration-200 bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-3 text-white transition-all duration-200 bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
               >
                 {createLabourCharge.isPending ? "Creating..." : "Create Charge"}
               </motion.button>
               <button
                 onClick={() => setShowForm(false)}
-                className="px-6 py-3 text-gray-600 transition-all duration-200 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-6 py-3 text-gray-600 transition-all duration-200 border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-0"
               >
                 Cancel
               </button>
@@ -245,13 +243,13 @@ export default function LabourCharges() {
               <div className="flex gap-2 transition-opacity opacity-0 group-hover:opacity-100">
                 <button
                   title="Edit"
-                  className="p-2 text-blue-600 transition-colors rounded-lg hover:bg-blue-50"
+                  className="p-2 text-blue-600 transition-colors rounded-lg hover:bg-blue-50 focus:outline-none focus:ring-0"
                 >
                   <MdEdit className="text-lg" />
                 </button>
                 <button
                   title="Delete"
-                  className="p-2 text-red-600 transition-colors rounded-lg hover:bg-red-50"
+                  className="p-2 text-red-600 transition-colors rounded-lg hover:bg-red-50 focus:outline-none focus:ring-0"
                 >
                   <MdDelete className="text-lg" />
                 </button>
@@ -311,7 +309,7 @@ export default function LabourCharges() {
           </p>
           <button
             onClick={() => setShowForm(true)}
-            className="font-medium text-blue-600 hover:text-blue-700"
+            className="font-medium text-blue-600 hover:text-blue-700 focus:outline-none focus:ring-0"
           >
             Add First Charge
           </button>

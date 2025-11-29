@@ -102,10 +102,9 @@ export default function Rates() {
         </div>
 
         <motion.button
-          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-6 py-3 text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700"
+          className="flex items-center gap-2 px-6 py-3 text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 focus:outline-none focus:ring-0"
           aria-label="Add new metal rate"
         >
           <MdAdd className="text-lg" />
@@ -213,18 +212,17 @@ export default function Rates() {
 
             <div className="flex gap-3 mt-6">
               <motion.button
-                whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleAddOrUpdate}
                 disabled={updateRate.isPending || !formData.ratePerGram}
-                className="px-6 py-3 text-white transition-all duration-200 bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-3 text-white transition-all duration-200 bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
                 aria-label="Save metal rate"
               >
                 {updateRate.isPending ? "Saving..." : "Save Rate"}
               </motion.button>
               <button
                 onClick={() => setShowForm(false)}
-                className="px-6 py-3 text-gray-600 transition-all duration-200 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-6 py-3 text-gray-600 transition-all duration-200 border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-0"
                 aria-label="Cancel adding metal rate"
               >
                 Cancel
@@ -258,14 +256,14 @@ export default function Rates() {
                 </div>
                 <div className="flex gap-2 transition-opacity opacity-0 group-hover:opacity-100">
                   <button
-                    className="p-2 text-blue-600 transition-colors rounded-lg hover:bg-blue-50"
+                    className="p-2 text-blue-600 transition-colors rounded-lg hover:bg-blue-50 focus:outline-none focus:ring-0"
                     aria-label={`Edit ${rate.metalType} rate`}
                     title="Edit rate"
                   >
                     <MdEdit className="text-lg" />
                   </button>
                   <button
-                    className="p-2 text-red-600 transition-colors rounded-lg hover:bg-red-50"
+                    className="p-2 text-red-600 transition-colors rounded-lg hover:bg-red- focus:outline-none focus:ring-0"
                     aria-label={`Delete ${rate.metalType} rate`}
                     title="Delete rate"
                   >
@@ -320,7 +318,7 @@ export default function Rates() {
           </p>
           <button
             onClick={() => setShowForm(true)}
-            className="font-medium text-yellow-600 hover:text-yellow-700"
+            className="font-medium text-yellow-600 hover:text-yellow-700 focus:outline-none focus:ring-0"
             aria-label="Add first metal rate"
           >
             Add First Rate

@@ -47,13 +47,12 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
       <motion.button
-        // whileHover={{ scale: disabled ? 1 : 1.02 }}
         whileTap={{ scale: disabled ? 1 : 0.98 }}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
         className={`
           w-full px-4 py-3 text-left bg-white border border-gray-300 rounded-lg 
-          focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200
+          focus:outline-none focus:ring-0 focus:border-transparent transition-all duration-200
           flex items-center justify-between
           ${
             disabled
@@ -93,7 +92,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
                   setIsOpen(false);
                 }}
                 className={`
-                  w-full px-4 py-3 text-left transition-colors duration-200 flex items-center justify-between
+                  w-full px-4 py-3 text-left transition-colors duration-200 flex items-center justify-between focus:outline-none focus:ring-0
                   ${
                     value === option.value
                       ? "bg-blue-50 text-blue-600"

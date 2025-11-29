@@ -659,10 +659,9 @@ export default function Billing() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-800">Items</h3>
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={addLineItem}
-                  className="flex items-center gap-2 px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
+                  className="flex items-center gap-2 px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-0"
                 >
                   <MdAdd className="text-lg" />
                   Add Item
@@ -685,10 +684,9 @@ export default function Billing() {
                       </h4>
                       {lineItems.length > 1 && (
                         <motion.button
-                          whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => removeLineItem(index)}
-                          className="p-2 text-red-500 transition-colors rounded-lg hover:bg-red-50"
+                          className="p-2 text-red-500 transition-colors rounded-lg hover:bg-red-50 focus:outline-none focus:ring-0"
                           title="Remove item"
                         >
                           <MdDelete className="text-lg" />
@@ -1035,7 +1033,7 @@ export default function Billing() {
                   !customerName.trim() ||
                   !customerPhone.trim()
                 }
-                className="flex items-center justify-center w-full gap-2 py-3 mt-6 font-medium text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center w-full gap-2 py-3 mt-6 font-medium text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-0 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <MdCurrencyRupee className="text-xl" />
                 {generatingInvoiceNumber
@@ -1111,7 +1109,7 @@ export default function Billing() {
 
                   <button
                     onClick={() => setShowQRCode(false)}
-                    className="w-full py-2 text-sm text-gray-600 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
+                    className="w-full py-2 text-sm text-gray-600 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-0"
                   >
                     Hide QR Code
                   </button>

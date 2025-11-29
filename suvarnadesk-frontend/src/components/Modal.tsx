@@ -18,7 +18,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
           onClick={onClose}
           aria-label="Close"
           title="Close modal"
-          className="absolute text-gray-500 transition top-2 right-2 hover:text-gray-700"
+          className="absolute text-gray-500 transition top-2 right-2 hover:text-gray-700 focus:outline-none focus:ring-0"
         >
           <MdClose className="text-xl" />
         </button>

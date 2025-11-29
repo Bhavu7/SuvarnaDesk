@@ -153,7 +153,7 @@ const Login: React.FC = () => {
                 />
                 <button
                   type="button"
-                  className="absolute text-gray-400 -translate-y-1/2 right-4 top-1/2 hover:text-blue-600"
+                  className="absolute text-gray-400 -translate-y-1/2 right-4 top-1/2 hover:text-blue-600 focus:outline-none focus:ring-0"
                   onClick={() => setShowPassword(!showPassword)}
                   tabIndex={-1}
                 >
@@ -174,9 +174,8 @@ const Login: React.FC = () => {
           <motion.button
             type="submit"
             disabled={isLoading}
-            whileHover={{ scale: isLoading ? 1 : 1.02 }}
             whileTap={{ scale: isLoading ? 1 : 0.98 }}
-            className="flex items-center justify-center w-full gap-2 py-3 mt-4 font-semibold text-white transition-all duration-200 shadow-lg rounded-xl bg-gradient-to-r from-blue-600 via-purple-500 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
+            className="flex items-center justify-center w-full gap-2 py-3 mt-4 font-semibold text-white transition-all duration-200 shadow-lg rounded-xl bg-gradient-to-r from-blue-600 via-purple-500 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-0 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             <MdLockOutline className="text-xl" />
             {isLoading ? "Signing In..." : "Sign In"}

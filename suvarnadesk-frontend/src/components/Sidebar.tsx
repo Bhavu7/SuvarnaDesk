@@ -171,7 +171,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           onClick={onToggle}
-          className="fixed z-50 p-2 text-white bg-blue-600 rounded-lg shadow-lg top-4 left-4 lg:hidden hover:bg-blue-700"
+          className="fixed z-50 p-2 text-white bg-blue-600 rounded-lg shadow-lg top-4 left-4 lg:hidden hover:bg-blue-700 focus:outline-none focus:ring-0"
           aria-label="Open menu"
         >
           <MdMenu className="text-2xl" />
@@ -227,7 +227,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             {isMobile && (
               <button
                 onClick={onClose}
-                className="p-2 text-white transition-colors rounded-lg lg:hidden hover:bg-blue-700"
+                className="p-2 text-white transition-colors rounded-lg lg:hidden hover:bg-blue-700 focus:outline-none focus:ring-0"
                 aria-label="Close sidebar"
               >
                 <MdClose className="text-xl" />
