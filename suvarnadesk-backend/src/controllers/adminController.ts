@@ -1,177 +1,418 @@
-import Admin from "../models/Admin";
-import { hashPassword, comparePassword } from "../utils/hashPassword";
-import jwt from "jsonwebtoken";
 import { Request, Response } from "express";
-import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import Admin from "../models/Admin";
+import { comparePassword } from "../utils/hashPassword";
 
-// POST /api/admin/login
-export const loginAdmin = async (req: Request, res: Response) => {
-    const { email, password } = req.body;
-    const admin = await Admin.findOne({ email });
-    if (!admin) return res.status(401).json({ error: "Invalid credentials" });
+interface AuthRequest extends Request {
+    admin?: {
+        adminId: string;
+        role: string;
+        email: string;
+    };
+}
 
-    const valid = await comparePassword(password, admin.password!);
-    if (!valid) return res.status(401).json({ error: "Invalid credentials" });
-
-    const token = jwt.sign(
-        { adminId: admin._id, role: admin.role },
-        process.env.JWT_SECRET!,
-        { expiresIn: "12h" }
-    );
-
-    res.json({
-        token,
-        admin: {
-            _id: admin._id,
-            name: admin.name,
-            email: admin.email,
-            phone: admin.phone,
-            role: admin.role
-        }
-    });
+// Helper function to format toast notifications
+const formatToastResponse = (type: 'success' | 'error', message: string, data?: any) => {
+    return {
+        toast: {
+            type,
+            message,
+            timestamp: new Date().toISOString()
+        },
+        ...data
+    };
 };
 
-// POST /api/admin/register (only for initial setup)
+// Register Admin (for initial setup only)
 export const registerAdmin = async (req: Request, res: Response) => {
-    const { name, email, password, phone } = req.body;
-    const exists = await Admin.findOne({ email });
-    if (exists) return res.status(400).json({ error: "Admin already exists" });
-
-    const hash = await hashPassword(password);
-    const admin = new Admin({ name, email, password: hash, phone });
-    await admin.save();
-    res.status(201).json({ name: admin.name, email: admin.email, phone: admin.phone, role: admin.role });
-};
-
-// GET /api/admin/profile
-export const getAdminProfile = async (req: Request, res: Response) => {
-    const adminId = (req as any).admin.adminId;
-    const admin = await Admin.findById(adminId).select("-password");
-    if (!admin) {
-        return res.status(404).json({ error: "Admin not found" });
-    }
-    res.json(admin);
-};
-
-// PUT /api/admin/profile
-export const updateAdminProfile = async (req: Request, res: Response) => {
-    const adminId = (req as any).admin.adminId;
-    const { name, email, phone } = req.body;
-
-    // Optional uniqueness check if email changed
-    if (email) {
-        const existingAdminWithEmail = await Admin.findOne({ email });
-        if (existingAdminWithEmail && existingAdminWithEmail._id.toString() !== adminId) {
-            return res.status(400).json({ error: "Email already in use" });
-        }
-    }
-
-    const admin = await Admin.findByIdAndUpdate(
-        adminId,
-        { name, email, phone },
-        { new: true }
-    ).select("-password");
-
-    if (!admin) {
-        return res.status(404).json({ error: "Admin not found" });
-    }
-    res.json(admin);
-};
-
-
-// GET /api/admin/verify
-export const verifyToken = async (req: Request, res: Response) => {
     try {
-        // The admin is already attached to req by authMiddleware
-        const adminId = (req as any).admin.adminId;
+        const { name, email, phone, password, role = "admin" } = req.body;
 
-        // Fetch fresh admin data from database
-        const admin = await Admin.findById(adminId).select("-password");
-
-        if (!admin) {
-            return res.status(404).json({ error: "Admin not found" });
+        // Validation
+        if (!name || !email || !password) {
+            return res.status(400).json(
+                formatToastResponse('error', 'Name, email, and password are required')
+            );
         }
 
-        res.json({
-            valid: true,
-            admin: {
-                _id: admin._id,
-                name: admin.name,
-                email: admin.email,
-                phone: admin.phone,
+        // Check if admin already exists
+        const existingAdmin = await Admin.findOne({ email });
+        if (existingAdmin) {
+            return res.status(400).json(
+                formatToastResponse('error', 'An admin with this email already exists')
+            );
+        }
+
+        // Create new admin
+        const admin = new Admin({
+            name,
+            email,
+            phone,
+            password,
+            role,
+            memberSince: new Date(),
+        });
+
+        await admin.save();
+
+        // Generate JWT token
+        const token = jwt.sign(
+            {
+                adminId: admin._id,
                 role: admin.role,
-                shopName: admin.shopName,
-                gstNumber: admin.gstNumber,
-                // Add any other fields you need
-            }
-        });
-    } catch (error) {
-        console.error("Verify token error:", error);
-        res.status(500).json({ error: "Server error during token verification" });
-    }
-};
+                email: admin.email
+            },
+            process.env.JWT_SECRET!,
+            { expiresIn: "7d" }
+        );
 
+        res.status(201).json(
+            formatToastResponse('success', 'Admin registered successfully', {
+                token,
+                admin: {
+                    id: admin._id,
+                    name: admin.name,
+                    email: admin.email,
+                    role: admin.role,
+                    phone: admin.phone,
+                    memberSince: admin.memberSince
+                }
+            })
+        );
+    } catch (error: any) {
+        console.error("Admin registration error:", error);
 
-// PATCH /api/admin/change-password
-export const changePassword = async (req: Request, res: Response) => {
-    const adminId = (req as any).admin.adminId;
-    const { currentPassword, newPassword } = req.body;
-
-    if (!currentPassword || !newPassword) {
-        return res.status(400).json({ error: "Both current and new password are required" });
-    }
-
-    const admin = await Admin.findById(adminId);
-    if (!admin) return res.status(404).json({ error: "Admin not found" });
-
-    const isMatch = await bcrypt.compare(currentPassword, admin.password);
-    if (!isMatch) return res.status(401).json({ error: "Current password is incorrect" });
-
-    admin.password = await hashPassword(newPassword);
-    await admin.save();
-
-    res.json({ message: "Password changed successfully" });
-};
-
-// GET /api/admin/shop-settings
-export const getShopSettings = async (req: Request, res: Response) => {
-    try {
-        const adminId = (req as any).admin.adminId;
-        const admin = await Admin.findById(adminId).select("shopName address phone gstNumber logoUrl ownerName");
-        if (!admin) {
-            return res.status(404).json({ error: "Admin not found" });
+        // Handle duplicate key errors
+        if (error.code === 11000) {
+            return res.status(400).json(
+                formatToastResponse('error', 'This email is already registered')
+            );
         }
-        res.json({
-            shopName: admin.shopName || "",
-            address: admin.address || "",
-            phone: admin.phone || "",
-            gstNumber: admin.gstNumber || "",
-            logoUrl: admin.logoUrl || "",
-            ownerName: admin.ownerName || "",
-        });
-    } catch (error) {
-        res.status(500).json({ error: "Server error" });
+
+        // Handle validation errors
+        if (error.name === 'ValidationError') {
+            const errors = Object.values(error.errors).map((err: any) => err.message);
+            return res.status(400).json(
+                formatToastResponse('error', `Validation failed: ${errors.join(', ')}`)
+            );
+        }
+
+        res.status(500).json(
+            formatToastResponse('error', 'Failed to register admin. Please try again.')
+        );
     }
 };
 
-// PUT /api/admin/shop-settings
-export const updateShopSettings = async (req: Request, res: Response) => {
+// Login Admin
+export const loginAdmin = async (req: Request, res: Response) => {
     try {
-        const adminId = (req as any).admin.adminId;
-        const { shopName, address, phone, gstNumber, logoUrl, ownerName } = req.body;
+        const { email, password } = req.body;
+
+        // Validation
+        if (!email || !password) {
+            return res.status(400).json(
+                formatToastResponse('error', 'Email and password are required')
+            );
+        }
+
+        // Find admin by email
+        const admin = await Admin.findOne({ email });
+        if (!admin) {
+            return res.status(401).json(
+                formatToastResponse('error', 'Invalid email or password')
+            );
+        }
+
+        // Check password
+        const isPasswordValid = await comparePassword(password, admin.password);
+        if (!isPasswordValid) {
+            return res.status(401).json(
+                formatToastResponse('error', 'Invalid email or password')
+            );
+        }
+
+        // Update last login
+        admin.lastLogin = new Date();
+        await admin.save();
+
+        // Generate JWT token
+        const token = jwt.sign(
+            {
+                adminId: admin._id,
+                role: admin.role,
+                email: admin.email
+            },
+            process.env.JWT_SECRET!,
+            { expiresIn: "7d" }
+        );
+
+        res.json(
+            formatToastResponse('success', 'Login successful! Welcome back.', {
+                token,
+                admin: {
+                    id: admin._id,
+                    name: admin.name,
+                    email: admin.email,
+                    role: admin.role,
+                    phone: admin.phone,
+                    memberSince: admin.memberSince,
+                    lastLogin: admin.lastLogin
+                }
+            })
+        );
+    } catch (error: any) {
+        console.error("Admin login error:", error);
+        res.status(500).json(
+            formatToastResponse('error', 'Login failed. Please try again.')
+        );
+    }
+};
+
+// Get Admin Profile
+export const getAdminProfile = async (req: AuthRequest, res: Response) => {
+    try {
+        const admin = await Admin.findById(req.admin?.adminId).select("-password");
+        if (!admin) {
+            return res.status(404).json(
+                formatToastResponse('error', 'Admin profile not found')
+            );
+        }
+
+        res.json(
+            formatToastResponse('success', 'Profile loaded successfully', {
+                admin: {
+                    id: admin._id,
+                    name: admin.name,
+                    email: admin.email,
+                    role: admin.role,
+                    phone: admin.phone,
+                    memberSince: admin.memberSince,
+                    lastLogin: admin.lastLogin,
+                    shopName: admin.shopName,
+                    address: admin.address,
+                    gstNumber: admin.gstNumber,
+                    logoUrl: admin.logoUrl,
+                    ownerName: admin.ownerName
+                }
+            })
+        );
+    } catch (error: any) {
+        console.error("Get profile error:", error);
+        res.status(500).json(
+            formatToastResponse('error', 'Failed to load profile')
+        );
+    }
+};
+
+// Update Admin Profile
+export const updateAdminProfile = async (req: AuthRequest, res: Response) => {
+    try {
+        const { name, phone } = req.body;
+
+        // Validation
+        if (!name) {
+            return res.status(400).json(
+                formatToastResponse('error', 'Name is required')
+            );
+        }
 
         const admin = await Admin.findByIdAndUpdate(
-            adminId,
-            { shopName, address, phone, gstNumber, logoUrl, ownerName },
-            { new: true }
-        ).select("shopName address phone gstNumber logoUrl ownerName");
+            req.admin?.adminId,
+            { name, phone },
+            { new: true, runValidators: true }
+        ).select("-password");
 
         if (!admin) {
-            return res.status(404).json({ error: "Admin not found" });
+            return res.status(404).json(
+                formatToastResponse('error', 'Admin not found')
+            );
         }
 
-        res.json(admin);
-    } catch (error) {
-        res.status(500).json({ error: "Server error" });
+        res.json(
+            formatToastResponse('success', 'Profile updated successfully', {
+                admin: {
+                    id: admin._id,
+                    name: admin.name,
+                    email: admin.email,
+                    role: admin.role,
+                    phone: admin.phone,
+                    memberSince: admin.memberSince,
+                    lastLogin: admin.lastLogin
+                }
+            })
+        );
+    } catch (error: any) {
+        console.error("Update profile error:", error);
+
+        // Handle validation errors
+        if (error.name === 'ValidationError') {
+            const errors = Object.values(error.errors).map((err: any) => err.message);
+            return res.status(400).json(
+                formatToastResponse('error', `Update failed: ${errors.join(', ')}`)
+            );
+        }
+
+        res.status(500).json(
+            formatToastResponse('error', 'Failed to update profile')
+        );
+    }
+};
+
+// Change Password
+export const changePassword = async (req: AuthRequest, res: Response) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+
+        // Validation
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json(
+                formatToastResponse('error', 'Current password and new password are required')
+            );
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json(
+                formatToastResponse('error', 'New password must be at least 6 characters long')
+            );
+        }
+
+        const admin = await Admin.findById(req.admin?.adminId);
+        if (!admin) {
+            return res.status(404).json(
+                formatToastResponse('error', 'Admin not found')
+            );
+        }
+
+        // Verify current password
+        const isCurrentPasswordValid = await comparePassword(currentPassword, admin.password);
+        if (!isCurrentPasswordValid) {
+            return res.status(400).json(
+                formatToastResponse('error', 'Current password is incorrect')
+            );
+        }
+
+        // Update password
+        admin.password = newPassword;
+        await admin.save();
+
+        res.json(
+            formatToastResponse('success', 'Password changed successfully')
+        );
+    } catch (error: any) {
+        console.error("Change password error:", error);
+        res.status(500).json(
+            formatToastResponse('error', 'Failed to change password')
+        );
+    }
+};
+
+// Get Shop Settings
+export const getShopSettings = async (req: AuthRequest, res: Response) => {
+    try {
+        const admin = await Admin.findById(req.admin?.adminId).select("shopName address gstNumber logoUrl ownerName");
+        if (!admin) {
+            return res.status(404).json(
+                formatToastResponse('error', 'Admin not found')
+            );
+        }
+
+        res.json(
+            formatToastResponse('success', 'Shop settings loaded successfully', {
+                shopSettings: {
+                    shopName: admin.shopName,
+                    address: admin.address,
+                    gstNumber: admin.gstNumber,
+                    logoUrl: admin.logoUrl,
+                    ownerName: admin.ownerName
+                }
+            })
+        );
+    } catch (error: any) {
+        console.error("Get shop settings error:", error);
+        res.status(500).json(
+            formatToastResponse('error', 'Failed to load shop settings')
+        );
+    }
+};
+
+// Update Shop Settings
+export const updateShopSettings = async (req: AuthRequest, res: Response) => {
+    try {
+        const { shopName, address, gstNumber, logoUrl, ownerName } = req.body;
+
+        // Validation
+        if (!shopName) {
+            return res.status(400).json(
+                formatToastResponse('error', 'Shop name is required')
+            );
+        }
+
+        const admin = await Admin.findByIdAndUpdate(
+            req.admin?.adminId,
+            { shopName, address, gstNumber, logoUrl, ownerName },
+            { new: true, runValidators: true }
+        ).select("shopName address gstNumber logoUrl ownerName");
+
+        if (!admin) {
+            return res.status(404).json(
+                formatToastResponse('error', 'Admin not found')
+            );
+        }
+
+        res.json(
+            formatToastResponse('success', 'Shop settings updated successfully', {
+                shopSettings: {
+                    shopName: admin.shopName,
+                    address: admin.address,
+                    gstNumber: admin.gstNumber,
+                    logoUrl: admin.logoUrl,
+                    ownerName: admin.ownerName
+                }
+            })
+        );
+    } catch (error: any) {
+        console.error("Update shop settings error:", error);
+
+        // Handle validation errors
+        if (error.name === 'ValidationError') {
+            const errors = Object.values(error.errors).map((err: any) => err.message);
+            return res.status(400).json(
+                formatToastResponse('error', `Update failed: ${errors.join(', ')}`)
+            );
+        }
+
+        res.status(500).json(
+            formatToastResponse('error', 'Failed to update shop settings')
+        );
+    }
+};
+
+// Verify Token
+export const verifyToken = async (req: AuthRequest, res: Response) => {
+    try {
+        const admin = await Admin.findById(req.admin?.adminId).select("-password");
+        if (!admin) {
+            return res.status(404).json(
+                formatToastResponse('error', 'Admin not found')
+            );
+        }
+
+        res.json(
+            formatToastResponse('success', 'Token is valid', {
+                valid: true,
+                admin: {
+                    id: admin._id,
+                    name: admin.name,
+                    email: admin.email,
+                    role: admin.role,
+                    phone: admin.phone
+                }
+            })
+        );
+    } catch (error: any) {
+        console.error("Token verification error:", error);
+        res.status(500).json(
+            formatToastResponse('error', 'Token verification failed')
+        );
     }
 };

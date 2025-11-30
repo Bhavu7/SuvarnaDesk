@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { hashPassword, comparePassword } from "../utils/hashPassword";
 
 export interface IAdmin extends Document {
     name: string;
@@ -15,6 +16,9 @@ export interface IAdmin extends Document {
     gstNumber?: string;
     logoUrl?: string;
     ownerName?: string;
+
+    // Methods
+    comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
 const AdminSchema: Schema = new Schema({
@@ -33,6 +37,31 @@ const AdminSchema: Schema = new Schema({
     logoUrl: { type: String },
     ownerName: { type: String },
 });
+
+// Hash password before saving
+AdminSchema.pre('save', async function (next) {
+    if (!this.isModified('password')) return next();
+    try {
+        // Explicitly type this.password as string
+        const password = this.password as string;
+        this.password = await hashPassword(password);
+        next();
+    } catch (error) {
+        next(error as Error);
+    }
+});
+
+// Compare password method - Fixed TypeScript error
+AdminSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
+    try {
+        // Explicitly type this.password as string
+        const hashedPassword = this.password as string;
+        return await comparePassword(candidatePassword, hashedPassword);
+    } catch (error) {
+        console.error('Password comparison error:', error);
+        return false;
+    }
+};
 
 const Admin = mongoose.model<IAdmin>("Admin", AdminSchema);
 
