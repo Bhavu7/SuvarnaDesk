@@ -23,7 +23,6 @@ import customerRoutes from "./routes/customerRoutes";
 import invoiceRoutes from "./routes/invoiceRoutes";
 import labourChargeRoutes from "./routes/labourChargeRoutes";
 import metalRateRoutes from "./routes/metalRateRoutes";
-import workerJobRoutes from "./routes/workerJobRoutes";
 import shopSettingsRoutes from "./routes/settingsRoutes";
 
 // Connect to MongoDB
@@ -46,7 +45,6 @@ app.use("/api/customers", customerRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/labour-charges", labourChargeRoutes);
 app.use("/api/metal-rates", metalRateRoutes);
-app.use("/api/worker-jobs", workerJobRoutes);
 app.use("/api/shop-settings", shopSettingsRoutes);
 app.use("/api/pdf", pdfRoutes);
 // Routes
