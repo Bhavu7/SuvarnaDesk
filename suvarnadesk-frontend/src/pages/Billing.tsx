@@ -88,7 +88,6 @@ export default function Billing() {
   const [CGSTPercent, setCGSTPercent] = useState<number>(1.5);
   const [SGSTPercent, setSGSTPercent] = useState<number>(1.5);
   const [paymentMode, setPaymentMode] = useState<string>("cash");
-  const [amountPaid, setAmountPaid] = useState<number>(0);
   const [showQRCode, setShowQRCode] = useState<boolean>(false);
   const [invoiceData, setInvoiceData] = useState<PdfData[] | null>(null);
   const [shopSettings, setShopSettings] = useState({
@@ -215,7 +214,7 @@ export default function Billing() {
   const CGSTAmount = (subtotal * CGSTPercent) / 100;
   const SGSTAmount = (subtotal * SGSTPercent) / 100;
   const grandTotal = subtotal + CGSTAmount + SGSTAmount;
-  const balanceDue = grandTotal - amountPaid;
+  const totalGST = CGSTAmount + SGSTAmount;
 
   // Handle customer selection from dropdown
   const handleCustomerSelect = (customerId: string) => {
@@ -557,9 +556,10 @@ export default function Billing() {
         CGSTAmount,
         SGSTPercent,
         SGSTAmount,
+        totalGST,
         grandTotal,
       },
-      paymentDetails: { paymentMode, amountPaid, balanceDue },
+      paymentDetails: { paymentMode, amountPaid: 0, balanceDue: grandTotal },
       QRCodeData: qrCodeData,
       pdfData: pdfDataArray,
     };
@@ -1078,27 +1078,6 @@ export default function Billing() {
                     aria-label="Select payment mode"
                   />
                 </div>
-
-                <div className="md:col-span-3">
-                  <label className="block mb-2 text-sm font-medium text-gray-700">
-                    Amount Paid
-                  </label>
-                  <div className="relative max-w-xs">
-                    <span className="absolute text-gray-500 transform -translate-y-1/2 left-3 top-1/2">
-                      ₹
-                    </span>
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={amountPaid}
-                      onChange={(e) => setAmountPaid(Number(e.target.value))}
-                      className="w-full px-4 py-3 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="0.00"
-                      aria-label="Enter amount paid"
-                    />
-                  </div>
-                </div>
               </div>
             </motion.div>
           </div>
@@ -1132,9 +1111,10 @@ export default function Billing() {
                   <span className="text-gray-600">SGST ({SGSTPercent}%):</span>
                   <span className="font-medium">₹{SGSTAmount.toFixed(2)}</span>
                 </div>
+                {/* Replace Amount Paid and Balance Due with Total GST */}
                 <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Amount Paid:</span>
-                  <span className="font-medium">₹{amountPaid.toFixed(2)}</span>
+                  <span className="text-gray-600">Total GST:</span>
+                  <span className="font-medium">₹{totalGST.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between py-3 border-t border-gray-300">
                   <span className="text-lg font-semibold text-gray-800">
@@ -1142,16 +1122,6 @@ export default function Billing() {
                   </span>
                   <span className="text-lg font-bold text-green-600">
                     ₹{grandTotal.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-gray-600">Balance Due:</span>
-                  <span
-                    className={`font-medium ${
-                      balanceDue > 0 ? "text-red-600" : "text-green-600"
-                    }`}
-                  >
-                    ₹{balanceDue.toFixed(2)}
                   </span>
                 </div>
               </div>
