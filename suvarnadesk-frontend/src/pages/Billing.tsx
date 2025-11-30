@@ -788,20 +788,18 @@ export default function Billing() {
             {/* Toggle Section */}
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-3">
-                <div className="relative inline-flex items-center cursor-pointer">
+                {/* Fixed Toggle Switch */}
+                <label className="relative inline-flex items-center cursor-pointer">
                   <input
+                    title="Use Live Metal Rates"
                     type="checkbox"
                     checked={useLiveRatesEnabled}
                     onChange={(e) => setUseLiveRatesEnabled(e.target.checked)}
                     className="sr-only peer"
-                    id="live-rates-toggle"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </div>
-                <label
-                  htmlFor="live-rates-toggle"
-                  className="text-sm font-semibold text-gray-800 cursor-pointer select-none"
-                >
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-0 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+                <label className="text-sm font-semibold text-gray-800 cursor-pointer select-none">
                   Live Metal Rates
                 </label>
               </div>
@@ -868,7 +866,7 @@ export default function Billing() {
                 <button
                   onClick={handleRefreshRates}
                   disabled={liveRatesLoading}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 transition-all duration-200 bg-white border border-blue-200 rounded-lg shadow-sm hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 transition-all duration-200 bg-white border border-blue-200 rounded-lg shadow-sm hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
                 >
                   <MdRefresh
                     className={`text-lg transition-transform ${
