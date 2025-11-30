@@ -25,6 +25,7 @@ interface SidebarProps {
 const links = [
   { to: "/", label: "Dashboard", icon: <MdDashboard /> },
   { to: "/billing", label: "Billing", icon: <MdReceipt /> },
+  { to: "/manage-customers", label: "Manage Customers", icon: <MdPeople /> },
   { to: "/worker-jobs", label: "Worker Jobs", icon: <MdWork /> },
   { to: "/rates", label: "Rates", icon: <MdCurrencyRupee /> },
   { to: "/labour-charges", label: "Labour Charges", icon: <MdPeople /> },
