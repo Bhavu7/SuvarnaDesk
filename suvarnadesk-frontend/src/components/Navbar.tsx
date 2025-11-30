@@ -24,7 +24,14 @@ interface NavbarProps {
 
 interface Notification {
   id: string;
-  type: "invoice" | "rate" | "settings" | "profile" | "system" | "payment" | "job";
+  type:
+    | "invoice"
+    | "rate"
+    | "settings"
+    | "profile"
+    | "system"
+    | "payment"
+    | "job";
   message: string;
   time: string;
   read: boolean;
@@ -41,8 +48,10 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [lastInvoiceCount, setLastInvoiceCount] = useState(0);
-  const [lastSettingsUpdate, setLastSettingsUpdate] = useState<Date | null>(null);
-  
+  const [lastSettingsUpdate, setLastSettingsUpdate] = useState<Date | null>(
+    null
+  );
+
   const profileRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const logoutConfirmRef = useRef<HTMLDivElement>(null);
@@ -65,11 +74,12 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
       const now = new Date();
 
       // Fetch current data for notifications
-      const [invoicesResponse, settingsResponse, ratesResponse] = await Promise.all([
-        apiClient.get("/invoices?limit=1").catch(() => ({ data: [] })),
-        apiClient.get("/shop-settings").catch(() => ({ data: null })),
-        apiClient.get("/rates/live").catch(() => ({ data: null }))
-      ]);
+      const [invoicesResponse, settingsResponse, ratesResponse] =
+        await Promise.all([
+          apiClient.get("/invoices?limit=1").catch(() => ({ data: [] })),
+          apiClient.get("/shop-settings").catch(() => ({ data: null })),
+          apiClient.get("/rates/live").catch(() => ({ data: null })),
+        ]);
 
       const currentInvoiceCount = invoicesResponse.data.length || 0;
       const shopSettings = settingsResponse.data;
@@ -85,7 +95,7 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
           read: false,
           priority: "medium",
           icon: notificationIcons.invoice,
-          action: () => navigate("/invoices")
+          action: () => navigate("/invoices"),
         });
         setLastInvoiceCount(currentInvoiceCount);
       }
@@ -93,16 +103,19 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
       // 2. Live Rate Updates
       if (liveRates && liveRates.timestamp) {
         const rateUpdateTime = new Date(liveRates.timestamp);
-        if (now.getTime() - rateUpdateTime.getTime() < 300000) { // 5 minutes
+        if (now.getTime() - rateUpdateTime.getTime() < 300000) {
+          // 5 minutes
           newNotifications.push({
             id: `rates-${Date.now()}`,
             type: "rate",
-            message: `Live metal rates updated - Gold: ₹${liveRates.gold?.toFixed(2) || 'N/A'}/g`,
+            message: `Live metal rates updated - Gold: ₹${
+              liveRates.gold?.toFixed(2) || "N/A"
+            }/g`,
             time: "Recently",
             read: false,
             priority: "high",
             icon: notificationIcons.rate,
-            action: () => navigate("/rates")
+            action: () => navigate("/rates"),
           });
         }
       }
@@ -119,14 +132,15 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
             read: false,
             priority: "medium",
             icon: notificationIcons.settings,
-            action: () => navigate("/settings")
+            action: () => navigate("/settings"),
           });
           setLastSettingsUpdate(settingsUpdateTime);
         }
       }
 
       // 4. System Health Notifications (simulated)
-      if (Math.random() > 0.7) { // 30% chance for demo
+      if (Math.random() > 0.7) {
+        // 30% chance for demo
         newNotifications.push({
           id: `system-${Date.now()}`,
           type: "system",
@@ -134,13 +148,14 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
           time: "Today",
           read: false,
           priority: "low",
-          icon: notificationIcons.system
+          icon: notificationIcons.system,
         });
       }
 
       // 5. Daily Summary (at specific times)
       const currentHour = now.getHours();
-      if (currentHour === 9 || currentHour === 18) { // 9 AM and 6 PM
+      if (currentHour === 9 || currentHour === 18) {
+        // 9 AM and 6 PM
         newNotifications.push({
           id: `summary-${Date.now()}`,
           type: "invoice",
@@ -149,71 +164,24 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
           read: false,
           priority: "low",
           icon: notificationIcons.invoice,
-          action: () => navigate("/reports")
+          action: () => navigate("/reports"),
         });
       }
 
       // Add new notifications to the list
       if (newNotifications.length > 0) {
-        setNotifications(prev => [...newNotifications, ...prev]);
-        
+        setNotifications((prev) => [...newNotifications, ...prev]);
+
         // Show toast for high priority notifications
-        const highPriority = newNotifications.filter(n => n.priority === "high");
-        highPriority.forEach(notification => {
+        const highPriority = newNotifications.filter(
+          (n) => n.priority === "high"
+        );
+        highPriority.forEach((notification) => {
           showToast.info(notification.message);
         });
       }
-
     } catch (error) {
       console.error("Error generating notifications:", error);
-    }
-  };
-
-  // Manual notification triggers (for demonstration)
-  const triggerManualNotifications = {
-    profileUpdated: () => {
-      const newNotification: Notification = {
-        id: `profile-${Date.now()}`,
-        type: "profile",
-        message: "Your profile information has been updated successfully",
-        time: "Just now",
-        read: false,
-        priority: "medium",
-        icon: notificationIcons.profile,
-        action: () => navigate("/profile")
-      };
-      setNotifications(prev => [newNotification, ...prev]);
-      showToast.success("Profile updated notification added");
-    },
-
-    priceAlert: () => {
-      const newNotification: Notification = {
-        id: `price-alert-${Date.now()}`,
-        type: "rate",
-        message: "Price alert: Gold rates increased by 2.5% today",
-        time: "Just now",
-        read: false,
-        priority: "high",
-        icon: notificationIcons.rate,
-        action: () => navigate("/rates")
-      };
-      setNotifications(prev => [newNotification, ...prev]);
-      showToast.warning("Price alert notification added");
-    },
-
-    newFeature: () => {
-      const newNotification: Notification = {
-        id: `feature-${Date.now()}`,
-        type: "system",
-        message: "New feature: Advanced reporting dashboard available",
-        time: "Today",
-        read: false,
-        priority: "medium",
-        icon: notificationIcons.system,
-        action: () => navigate("/reports")
-      };
-      setNotifications(prev => [newNotification, ...prev]);
-      showToast.info("New feature notification added");
     }
   };
 
@@ -228,7 +196,7 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
         time: "Today",
         read: false,
         priority: "low",
-        icon: notificationIcons.system
+        icon: notificationIcons.system,
       },
       {
         id: "setup-1",
@@ -238,13 +206,16 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
         read: false,
         priority: "medium",
         icon: notificationIcons.settings,
-        action: () => navigate("/settings")
-      }
+        action: () => navigate("/settings"),
+      },
     ];
     setNotifications(initialNotifications);
 
     // Set up interval for dynamic notifications
-    const notificationInterval = setInterval(generateDynamicNotifications, 60000); // Check every minute
+    const notificationInterval = setInterval(
+      generateDynamicNotifications,
+      60000
+    ); // Check every minute
 
     // Cleanup interval
     return () => clearInterval(notificationInterval);
@@ -285,16 +256,16 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
   };
 
   const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(notification =>
+    setNotifications((prev) =>
+      prev.map((notification) =>
         notification.id === id ? { ...notification, read: true } : notification
       )
     );
   };
 
   const markAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(notification => ({ ...notification, read: true }))
+    setNotifications((prev) =>
+      prev.map((notification) => ({ ...notification, read: true }))
     );
     showToast.success("All notifications marked as read");
   };
@@ -508,7 +479,11 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
                                       : "bg-blue-100 text-blue-800"
                                   }`}
                                 >
-                                  {notification.priority.charAt(0).toUpperCase() + notification.priority.slice(1)} Priority
+                                  {notification.priority
+                                    .charAt(0)
+                                    .toUpperCase() +
+                                    notification.priority.slice(1)}{" "}
+                                  Priority
                                 </span>
                                 <span className="text-xs text-gray-500">
                                   {formatRelativeTime(notification.time)}
