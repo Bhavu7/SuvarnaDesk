@@ -11,6 +11,9 @@ router.use(authMiddleware);
 // Get all active live rates
 router.get('/', liveRateController.getActiveRates);
 
+// Get rates by metal type
+router.get('/type/:metalType', liveRateController.getRatesByMetalType);
+
 // Get rates summary
 router.get('/summary', liveRateController.getRatesSummary);
 
@@ -28,5 +31,17 @@ router.post('/bulk', liveRateController.bulkUpdateRates);
 
 // Update rates from external source
 router.post('/refresh-external', liveRateController.updateFromExternalSource);
+
+// Sync to metal rates
+router.post('/sync-to-metal', liveRateController.syncToMetalRates);
+
+// Compare with metal rates
+router.get('/compare/metal-rates', liveRateController.compareWithMetalRates);
+
+// Check if rates need update
+router.get('/check/needs-update', liveRateController.checkRatesNeedUpdate);
+
+// Get last update time
+router.get('/last-update', liveRateController.getLastUpdateTime);
 
 export default router;
