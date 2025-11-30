@@ -14,6 +14,7 @@ import {
 } from "react-icons/md";
 import { showToast } from "../components/CustomToast";
 import apiClient from "../api/apiClient";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 interface Customer {
   _id: string;
@@ -281,14 +282,7 @@ ${
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
-          <p className="mt-4 text-gray-600">Loading customers...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner text="Loading customers..." />;
   }
 
   return (
