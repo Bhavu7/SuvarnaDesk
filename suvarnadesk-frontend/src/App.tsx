@@ -14,14 +14,30 @@ import PrivateRoute from "./components/PrivateRoute";
 import Repairings from "./pages/Repairings";
 import ManageCustomers from "./pages/ManageCustomers";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { ComponentType } from "react";
 
-// Error wrapper for components
-const withErrorBoundary = (Component) => (props) =>
-  (
+// Define props interface for components
+interface ComponentProps {
+  [key: string]: any;
+}
+
+// Error wrapper for components with proper TypeScript types
+const withErrorBoundary = <P extends ComponentProps>(
+  Component: ComponentType<P>
+) => {
+  const WrappedComponent = (props: P) => (
     <ErrorBoundary>
       <Component {...props} />
     </ErrorBoundary>
   );
+
+  // Set display name for better debugging
+  WrappedComponent.displayName = `WithErrorBoundary(${
+    Component.displayName || Component.name
+  })`;
+
+  return WrappedComponent;
+};
 
 // Wrap all page components with error boundary
 const DashboardWithErrorBoundary = withErrorBoundary(Dashboard);
