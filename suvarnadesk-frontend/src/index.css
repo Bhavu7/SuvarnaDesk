@@ -35,8 +35,15 @@ button:focus {
     /* Tailwind's blue-500 */
 }
 
-a{
-    outline: none;
+/* Smooth toggle transition */
+input:checked~.peer-checked\:bg-blue-600 {
+    transition: background-color 0.2s ease-in-out;
+}
+
+/* Refresh button hover effects */
+.hover-rotate:hover {
+    transform: rotate(180deg);
+    transition: transform 0.3s ease-in-out;
 }
 
 /* Custom scrollbar */

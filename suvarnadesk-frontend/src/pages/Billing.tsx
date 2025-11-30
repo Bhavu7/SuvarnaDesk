@@ -408,43 +408,111 @@ export default function Billing() {
       ? Math.floor((new Date().getTime() - lastUpdated.getTime()) / 60000)
       : null;
 
+    // Get available metal types for status
+    const availableMetals = liveRates
+      ? Array.from(new Set(liveRates.map((rate) => rate.metalType)))
+      : [];
+
     return (
-      <div className="p-3 mb-4 border border-blue-200 rounded-lg bg-blue-50">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div
-              className={`w-2 h-2 rounded-full ${
-                liveRatesLoading
-                  ? "bg-yellow-500 animate-pulse"
+      <div className="p-4 mt-4 bg-white border border-blue-100 rounded-lg">
+        <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+          {/* Connection Status */}
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600">Connection Status:</span>
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  liveRatesLoading
+                    ? "bg-yellow-500 animate-pulse"
+                    : liveRates && liveRates.length > 0
+                    ? "bg-green-500"
+                    : "bg-red-500"
+                }`}
+              />
+              <span
+                className={`font-medium ${
+                  liveRatesLoading
+                    ? "text-yellow-600"
+                    : liveRates && liveRates.length > 0
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}
+              >
+                {liveRatesLoading
+                  ? "Connecting..."
                   : liveRates && liveRates.length > 0
-                  ? "bg-green-500 animate-pulse"
-                  : "bg-red-500"
-              }`}
-            ></div>
-            <span className="text-sm font-medium text-blue-800">
-              {liveRatesLoading
-                ? "Loading Live Rates..."
-                : liveRates && liveRates.length > 0
-                ? "Live Rates Active"
-                : "Live Rates Unavailable"}
-            </span>
-            {minutesAgo !== null && (
-              <span className="text-xs text-blue-600">
-                Updated {minutesAgo} minute{minutesAgo !== 1 ? "s" : ""} ago
+                  ? "Connected"
+                  : "Disconnected"}
               </span>
+            </div>
+          </div>
+
+          {/* Last Update */}
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600">Last Update:</span>
+            <span className="font-medium text-gray-800">
+              {minutesAgo !== null
+                ? `${minutesAgo} minute${minutesAgo !== 1 ? "s" : ""} ago`
+                : "Never"}
+            </span>
+          </div>
+
+          {/* Available Metals */}
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600">Available Metals:</span>
+            <div className="flex gap-2">
+              {availableMetals.length > 0 ? (
+                availableMetals.map((metal) => (
+                  <span
+                    key={metal}
+                    className="px-2 py-1 text-xs font-medium text-blue-800 capitalize bg-blue-100 rounded"
+                  >
+                    {metal}
+                  </span>
+                ))
+              ) : (
+                <span className="text-xs text-red-500">No rates loaded</span>
+              )}
+            </div>
+          </div>
+
+          {/* Rate Count */}
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600">Active Rates:</span>
+            <span className="font-medium text-gray-800">
+              {liveRates ? liveRates.length : 0}
+            </span>
+          </div>
+        </div>
+
+        {/* Current Rates Preview */}
+        {liveRates && liveRates.length > 0 && (
+          <div className="pt-3 mt-3 border-t border-gray-100">
+            <h4 className="mb-2 text-xs font-semibold text-gray-700">
+              Current Rates:
+            </h4>
+            <div className="grid grid-cols-2 gap-2">
+              {liveRates.slice(0, 4).map((rate, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-2 text-xs rounded bg-gray-50"
+                >
+                  <span className="text-gray-600 capitalize">
+                    {rate.metalType} {rate.purity}
+                  </span>
+                  <span className="font-semibold text-green-600">
+                    ₹{rate.ratePerGram.toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {liveRates.length > 4 && (
+              <div className="mt-2 text-xs text-center text-gray-500">
+                +{liveRates.length - 4} more rates available
+              </div>
             )}
           </div>
-          <button
-            onClick={handleRefreshRates}
-            disabled={liveRatesLoading}
-            className="flex items-center gap-1 px-2 py-1 text-xs text-blue-800 bg-blue-100 rounded hover:bg-blue-200 disabled:opacity-50"
-          >
-            <MdRefresh
-              className={`text-sm ${liveRatesLoading ? "animate-spin" : ""}`}
-            />
-            Refresh
-          </button>
-        </div>
+        )}
       </div>
     );
   };
@@ -715,42 +783,106 @@ export default function Billing() {
         </div>
 
         {/* Live Rates Toggle and Status */}
-        <div className="p-4 mb-6 bg-white border border-gray-200 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={useLiveRatesEnabled}
-                  onChange={(e) => setUseLiveRatesEnabled(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                />
-                <span className="font-medium text-gray-700">
-                  Use Live Rates
-                </span>
-              </label>
+        <div className="p-6 mb-6 border border-blue-200 shadow-sm bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            {/* Toggle Section */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={useLiveRatesEnabled}
+                    onChange={(e) => setUseLiveRatesEnabled(e.target.checked)}
+                    className="sr-only peer"
+                    id="live-rates-toggle"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </div>
+                <label
+                  htmlFor="live-rates-toggle"
+                  className="text-sm font-semibold text-gray-800 cursor-pointer select-none"
+                >
+                  Live Metal Rates
+                </label>
+              </div>
+
               {useLiveRatesEnabled && (
-                <span className="px-2 py-1 text-sm text-green-600 rounded bg-green-50">
-                  Real-time Pricing
-                </span>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 border border-green-200 rounded-full">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs font-medium text-green-700">
+                    Live Active
+                  </span>
+                </div>
               )}
             </div>
-            {useLiveRatesEnabled && (
-              <button
-                onClick={handleRefreshRates}
-                disabled={liveRatesLoading}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-blue-700 bg-blue-100 rounded-lg hover:bg-blue-200 disabled:opacity-50"
-              >
-                <MdRefresh
-                  className={`text-lg ${
-                    liveRatesLoading ? "animate-spin" : ""
-                  }`}
-                />
-                Refresh Rates
-              </button>
-            )}
+
+            {/* Status and Refresh Section */}
+            <div className="flex items-center gap-4">
+              {/* Status Indicator */}
+              {useLiveRatesEnabled && (
+                <div className="flex items-center gap-2 text-sm">
+                  <div
+                    className={`flex items-center gap-1.5 ${
+                      liveRatesLoading
+                        ? "text-yellow-600"
+                        : liveRates && liveRates.length > 0
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        liveRatesLoading
+                          ? "bg-yellow-500 animate-pulse"
+                          : liveRates && liveRates.length > 0
+                          ? "bg-green-500 animate-pulse"
+                          : "bg-red-500"
+                      }`}
+                    ></div>
+                    <span className="font-medium">
+                      {liveRatesLoading
+                        ? "Updating rates..."
+                        : liveRates && liveRates.length > 0
+                        ? "Rates synced"
+                        : "No rates available"}
+                    </span>
+                  </div>
+
+                  {/* Last Updated Time */}
+                  {liveRates && liveRates.length > 0 && !liveRatesLoading && (
+                    <span className="text-xs text-gray-500">
+                      {(() => {
+                        const lastUpdated = new Date(liveRates[0].lastUpdated);
+                        const minutesAgo = Math.floor(
+                          (new Date().getTime() - lastUpdated.getTime()) / 60000
+                        );
+                        return `Updated ${minutesAgo} min ago`;
+                      })()}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Refresh Button */}
+              {useLiveRatesEnabled && (
+                <button
+                  onClick={handleRefreshRates}
+                  disabled={liveRatesLoading}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 transition-all duration-200 bg-white border border-blue-200 rounded-lg shadow-sm hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <MdRefresh
+                    className={`text-lg transition-transform ${
+                      liveRatesLoading ? "animate-spin" : "hover:rotate-180"
+                    }`}
+                  />
+                  {liveRatesLoading ? "Refreshing..." : "Refresh"}
+                </button>
+              )}
+            </div>
           </div>
-          {renderLiveRatesIndicator()}
+
+          {/* Additional Status Information */}
+          {useLiveRatesEnabled && renderLiveRatesIndicator()}
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
