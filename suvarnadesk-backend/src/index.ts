@@ -3,6 +3,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import pdfRoutes from "./routes/pdfRoutes";
+import liveRatesRouter from './routes/liveRates';
+import { rateUpdateJob } from './jobs/rateUpdateJob';
 
 dotenv.config();
 
@@ -46,6 +48,10 @@ app.use("/api/metal-rates", metalRateRoutes);
 app.use("/api/worker-jobs", workerJobRoutes);
 app.use("/api/shop-settings", shopSettingsRoutes);
 app.use("/api/pdf", pdfRoutes);
+// Routes
+app.use('/api/live-rates', liveRatesRouter);
+// Start rate update job
+rateUpdateJob.start();
 
 // Basic healthcheck route
 app.get("/", (req, res) => {
