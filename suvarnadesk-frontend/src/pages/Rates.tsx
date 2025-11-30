@@ -9,6 +9,7 @@ import {
 } from "react-icons/md";
 import { showToast } from "../components/CustomToast";
 import LoadingSpinner from "../components/LoadingSpinner";
+import apiClient from "../api/apiClient"; // Your existing API client
 
 // Types for live rates
 interface LiveMetalRate {
@@ -29,12 +30,9 @@ export default function Rates() {
   const [updateCount, setUpdateCount] = useState(0);
   const previousRatesRef = useRef<LiveMetalRate[]>([]);
 
-  const METAL_PRICE_API_KEY = "da6b6cedefa5fee3e3a303d8040e86cd";
-
   // Real-time price fluctuation simulation
   const simulatePriceFluctuation = useCallback(
     (basePrice: number, volatility: number = 0.001) => {
-      // Small random fluctuation (±0.1% typically)
       const fluctuation = (Math.random() - 0.5) * 2 * volatility;
       return basePrice * (1 + fluctuation);
     },
@@ -55,61 +53,54 @@ export default function Rates() {
     return (usdPerTroyOunce * usdToInr) / gramsPerTroyOunce;
   }, []);
 
-  // Fetch initial rates from API
+  // Fetch initial rates from your backend API
   const fetchInitialRates = useCallback(async () => {
     try {
       setLoadingLiveRates(true);
 
-      const response = await fetch(
-        `https://api.metalpriceapi.com/v1/latest?api_key=${METAL_PRICE_API_KEY}&base=USD&currencies=XAU,XAG`
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch live rates");
-      }
-
-      const data = await response.json();
+      const response = await apiClient.get("/rates/live");
+      const data = response.data;
 
       const initialRates: LiveMetalRate[] = [
         {
           metal: "gold",
-          price: convertGoldPrice(data.rates.XAU),
+          price: convertGoldPrice(data.gold),
           purity: "24K",
           unit: "gram",
           timestamp: Date.now(),
           change: 0,
           changePercent: 0,
-          previousPrice: convertGoldPrice(data.rates.XAU),
+          previousPrice: convertGoldPrice(data.gold),
         },
         {
           metal: "silver",
-          price: convertSilverPrice(data.rates.XAG),
+          price: convertSilverPrice(data.silver),
           purity: "999",
           unit: "gram",
           timestamp: Date.now(),
           change: 0,
           changePercent: 0,
-          previousPrice: convertSilverPrice(data.rates.XAG),
+          previousPrice: convertSilverPrice(data.silver),
         },
         {
           metal: "rose gold",
-          price: convertGoldPrice(data.rates.XAU) * 0.75,
+          price: convertGoldPrice(data.gold) * 0.75,
           purity: "18K",
           unit: "gram",
           timestamp: Date.now(),
           change: 0,
           changePercent: 0,
-          previousPrice: convertGoldPrice(data.rates.XAU) * 0.75,
+          previousPrice: convertGoldPrice(data.gold) * 0.75,
         },
         {
           metal: "sterling silver",
-          price: convertSilverPrice(data.rates.XAG) * 0.925,
+          price: convertSilverPrice(data.silver) * 0.925,
           purity: "925",
           unit: "gram",
           timestamp: Date.now(),
           change: 0,
           changePercent: 0,
-          previousPrice: convertSilverPrice(data.rates.XAG) * 0.925,
+          previousPrice: convertSilverPrice(data.silver) * 0.925,
         },
       ];
 
@@ -175,9 +166,7 @@ export default function Rates() {
   const updateRatesInRealTime = useCallback(() => {
     setLiveRates((prevRates) => {
       const updatedRates = prevRates.map((rate) => {
-        // Different volatility for different metals
         const volatility = rate.metal.includes("gold") ? 0.0005 : 0.001;
-
         const newPrice = simulatePriceFluctuation(
           rate.previousPrice,
           volatility
@@ -214,11 +203,11 @@ export default function Rates() {
 
   // Real-time update effect
   useEffect(() => {
-    const interval = setInterval(updateRatesInRealTime, 1000); // Update every second
-
+    const interval = setInterval(updateRatesInRealTime, 1000);
     return () => clearInterval(interval);
   }, [updateRatesInRealTime]);
 
+  // ... rest of your component remains the same
   const getMetalBgColor = (metalType: string) => {
     const colors = {
       gold: "bg-yellow-50 border-yellow-200",
@@ -443,7 +432,7 @@ export default function Rates() {
             Prices update every second with realistic market fluctuations. Gold
             typically has lower volatility (±0.05%) while silver has higher
             volatility (±0.1%). Click "Refresh Base" to get fresh market prices
-            from the API.
+            from our secure API.
           </p>
         </div>
       </div>
