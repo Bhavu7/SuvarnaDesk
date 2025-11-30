@@ -1,5 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import apiClient from "../api/apiClient";
+// hooks/useBilling.ts
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import apiClient from '../api/apiClient';
 
 export interface LineItem {
     itemType: "gold" | "silver" | "other";
@@ -7,41 +8,12 @@ export interface LineItem {
     description: string;
     weight: { value: number; unit: string };
     ratePerGram: number;
-    labourChargeReferenceId?: string;
-    labourChargeType?: "perGram" | "fixed" | null;
+    labourChargeReferenceId: string;
+    labourChargeType: 'perGram' | 'fixed' | null;
     labourChargeAmount: number;
     makingChargesTotal: number;
     otherCharges: number;
     itemTotal: number;
-}
-
-// In ../hooks/useBilling.ts
-export interface InvoiceInput {
-    invoiceNumber: string;
-    date: string;
-    customerId: string;
-    customerSnapshot: {
-        name: string;
-        email?: string;
-        phone: string;
-        address?: string;
-        huid?: string;
-    };
-    lineItems: LineItem[];
-    totals: {
-        subtotal: number;
-        CGSTPercent: number;
-        CGSTAmount: number;
-        SGSTPercent: number;
-        SGSTAmount: number;
-        grandTotal: number;
-    };
-    paymentDetails: {
-        paymentMode: string;
-        amountPaid: number;
-        balanceDue: number;
-    };
-    QRCodeData?: string;
 }
 
 export interface Invoice {
@@ -63,6 +35,7 @@ export interface Invoice {
         CGSTAmount: number;
         SGSTPercent: number;
         SGSTAmount: number;
+        totalGST: number;
         grandTotal: number;
     };
     paymentDetails: {
@@ -70,21 +43,44 @@ export interface Invoice {
         amountPaid: number;
         balanceDue: number;
     };
-    QRCodeData?: string;
-    createdAt: string;
-    updatedAt: string;
+    QRCodeData: string;
+    pdfData: any[];
+    ratesSource: 'live' | 'manual';
+    createdAt: Date;
+    updatedAt: Date;
 }
 
-export const useInvoices = () =>
-    useQuery<Invoice[], Error>({
-        queryKey: ["invoices"],
-        queryFn: () => apiClient.get("/invoices").then(res => res.data),
-    });
-
-export const useCreateInvoice = () => {
+export function useCreateInvoice() {
     const queryClient = useQueryClient();
-    return useMutation<Invoice, Error, InvoiceInput>({
-        mutationFn: (data) => apiClient.post("/invoices", data).then(res => res.data),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["invoices"] }),
+
+    return useMutation({
+        mutationFn: async (invoiceData: Omit<Invoice, '_id' | 'createdAt' | 'updatedAt'>) => {
+            const response = await apiClient.post('/invoices', invoiceData);
+            return response.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['invoices'] });
+        },
     });
-};
+}
+
+export function useInvoices() {
+    return useQuery({
+        queryKey: ['invoices'],
+        queryFn: async () => {
+            const response = await apiClient.get('/invoices');
+            return response.data as Invoice[];
+        },
+    });
+}
+
+export function useInvoice(id: string) {
+    return useQuery({
+        queryKey: ['invoice', id],
+        queryFn: async () => {
+            const response = await apiClient.get(`/invoices/${id}`);
+            return response.data as Invoice;
+        },
+        enabled: !!id,
+    });
+}
