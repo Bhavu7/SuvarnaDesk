@@ -134,15 +134,16 @@ const DateDropdown: React.FC<DateDropdownProps> = ({
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
         className={`
-    w-full px-3 py-2 text-left bg-white border border-gray-300 rounded-lg 
-    focus:outline-none focus:ring-0 focus:border-transparent transition-all duration-200
-    flex items-center justify-between
-    ${
-      disabled
-        ? "opacity-50 cursor-not-allowed"
-        : "cursor-pointer hover:border-gray-400"
-    }
-  `}
+          w-full px-4 py-3 text-left bg-white border border-gray-300 rounded-lg 
+          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent 
+          transition-all duration-200
+          flex items-center justify-between
+          ${
+            disabled
+              ? "opacity-50 cursor-not-allowed"
+              : "cursor-pointer hover:border-gray-400"
+          }
+        `}
       >
         <div className="flex items-center gap-2">
           <MdCalendarToday className="text-sm text-gray-400" />
@@ -194,13 +195,14 @@ const DateDropdown: React.FC<DateDropdownProps> = ({
                       whileHover={{ backgroundColor: "#f3f4f6" }}
                       onClick={() => handleDateSelect("year", year)}
                       className={`
-              w-full px-2 sm:px-3 py-1 sm:py-2 text-left text-xs sm:text-sm transition-colors duration-200 rounded focus:outline-none focus:ring-0
-              ${
-                selectedYear === year
-                  ? "bg-blue-50 text-blue-600"
-                  : "text-gray-700"
-              }
-            `}
+                        w-full px-2 sm:px-3 py-1 sm:py-2 text-left text-xs sm:text-sm 
+                        transition-colors duration-200 rounded focus:outline-none focus:ring-0
+                        ${
+                          selectedYear === year
+                            ? "bg-blue-50 text-blue-600"
+                            : "text-gray-700"
+                        }
+                      `}
                     >
                       {year}
                     </motion.button>
@@ -218,14 +220,19 @@ const DateDropdown: React.FC<DateDropdownProps> = ({
                       onClick={() => handleDateSelect("month", month.value)}
                       disabled={selectedYear === null}
                       className={`
-              w-full px-2 sm:px-3 py-1 sm:py-2 text-left text-xs sm:text-sm transition-colors duration-200 rounded focus:outline-none focus:ring-0
-              ${
-                selectedMonth === month.value
-                  ? "bg-blue-50 text-blue-600"
-                  : "text-gray-700"
-              }
-              ${selectedYear === null ? "opacity-50 cursor-not-allowed" : ""}
-            `}
+                        w-full px-2 sm:px-3 py-1 sm:py-2 text-left text-xs sm:text-sm 
+                        transition-colors duration-200 rounded focus:outline-none focus:ring-0
+                        ${
+                          selectedMonth === month.value
+                            ? "bg-blue-50 text-blue-600"
+                            : "text-gray-700"
+                        }
+                        ${
+                          selectedYear === null
+                            ? "opacity-50 cursor-not-allowed"
+                            : ""
+                        }
+                      `}
                     >
                       {month.label}
                     </motion.button>
@@ -243,18 +250,19 @@ const DateDropdown: React.FC<DateDropdownProps> = ({
                       onClick={() => handleDateSelect("day", day)}
                       disabled={selectedMonth === null || selectedYear === null}
                       className={`
-              w-full px-2 sm:px-3 py-1 sm:py-2 text-left text-xs sm:text-sm transition-colors duration-200 rounded focus:outline-none focus:ring-0
-              ${
-                selectedDay === day
-                  ? "bg-blue-50 text-blue-600"
-                  : "text-gray-700"
-              }
-              ${
-                selectedMonth === null || selectedYear === null
-                  ? "opacity-50 cursor-not-allowed"
-                  : ""
-              }
-            `}
+                        w-full px-2 sm:px-3 py-1 sm:py-2 text-left text-xs sm:text-sm 
+                        transition-colors duration-200 rounded focus:outline-none focus:ring-0
+                        ${
+                          selectedDay === day
+                            ? "bg-blue-50 text-blue-600"
+                            : "text-gray-700"
+                        }
+                        ${
+                          selectedMonth === null || selectedYear === null
+                            ? "opacity-50 cursor-not-allowed"
+                            : ""
+                        }
+                      `}
                     >
                       {day}
                     </motion.button>
