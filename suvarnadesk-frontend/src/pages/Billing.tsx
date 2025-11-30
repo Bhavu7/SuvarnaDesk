@@ -14,7 +14,7 @@ import {
 import { useCustomers, Customer } from "../hooks/useCustomers";
 import { useLabourCharges, LabourCharge } from "../hooks/useLabourCharges";
 import { useMetalRates, MetalRate } from "../hooks/useMetalRates";
-import { useLiveRates, LiveRate } from "../hooks/useLiveRates"; // Add this import
+import { useLiveRates, LiveRate } from "../hooks/useLiveRates";
 import { useCreateInvoice, LineItem } from "../hooks/useBilling";
 import CustomDropdown from "../components/CustomDropdown";
 import InvoiceQRCode from "../components/InvoiceQRCode";
@@ -630,6 +630,11 @@ export default function Billing() {
       ratesSource: useLiveRatesEnabled ? "live" : "manual",
     });
 
+    // Fix: Explicitly type the ratesSource to match the expected type
+    const ratesSource: "live" | "manual" = useLiveRatesEnabled
+      ? "live"
+      : "manual";
+
     const invoicePayload = {
       invoiceNumber: finalInvoiceNumber,
       date: invoiceDate,
@@ -654,7 +659,7 @@ export default function Billing() {
       paymentDetails: { paymentMode, amountPaid: 0, balanceDue: grandTotal },
       QRCodeData: qrCodeData,
       pdfData: pdfDataArray,
-      ratesSource: useLiveRatesEnabled ? "live" : "manual",
+      ratesSource, // Use the typed variable here
     };
 
     createInvoice.mutate(invoicePayload, {

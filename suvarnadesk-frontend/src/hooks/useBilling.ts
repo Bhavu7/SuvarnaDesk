@@ -50,11 +50,14 @@ export interface Invoice {
     updatedAt: Date;
 }
 
+// Create a type for the invoice payload without the auto-generated fields
+export type CreateInvoicePayload = Omit<Invoice, '_id' | 'createdAt' | 'updatedAt'>;
+
 export function useCreateInvoice() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (invoiceData: Omit<Invoice, '_id' | 'createdAt' | 'updatedAt'>) => {
+        mutationFn: async (invoiceData: CreateInvoicePayload) => {
             const response = await apiClient.post('/invoices', invoiceData);
             return response.data;
         },
