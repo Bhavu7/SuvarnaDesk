@@ -1,45 +1,36 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import apiClient from "../api/apiClient";
+// hooks/useLabourCharges.ts
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import apiClient from '../api/apiClient';
 
 export interface LabourCharge {
     _id: string;
     name: string;
-    chargeType: "perGram" | "fixedPerItem";
+    chargeType: 'perGram' | 'fixed';
     amount: number;
-    description?: string;
     isActive: boolean;
-    createdAt: string;
-    updatedAt: string;
+    description?: string;
 }
 
-export interface CreateLabourChargeInput {
-    name: string;
-    chargeType: "perGram" | "fixedPerItem";
-    amount: number;
-    description?: string;
-    isActive: boolean;
-}
-
-export const useLabourCharges = () => {
+export function useLabourCharges() {
     return useQuery({
-        queryKey: ["labourCharges"],
-        queryFn: async (): Promise<LabourCharge[]> => {
-            const response = await apiClient.get("/labour-charges");
-            return response.data;
+        queryKey: ['labourCharges'],
+        queryFn: async () => {
+            const response = await apiClient.get('/labour-charges');
+            return response.data as LabourCharge[];
         },
     });
-};
+}
 
-export const useCreateLabourCharge = () => {
+export function useCreateLabourCharge() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (data: CreateLabourChargeInput): Promise<LabourCharge> => {
-            const response = await apiClient.post("/labour-charges", data);
+        mutationFn: async (chargeData: Omit<LabourCharge, '_id'>) => {
+            const response = await apiClient.post('/labour-charges', chargeData);
             return response.data;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["labourCharges"] });
+            queryClient.invalidateQueries({ queryKey: ['labourCharges'] });
         },
     });
-};
+}
