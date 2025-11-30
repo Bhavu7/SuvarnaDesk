@@ -14,6 +14,7 @@ import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import PrivateRoute from "./components/PrivateRoute";
 import Repairings from "./pages/Repairings";
+import ManageCustomers from "./pages/ManageCustomers";
 
 function App() {
   return (
@@ -64,6 +65,7 @@ function App() {
               <Route path="/" element={<Layout />}>
                 <Route index element={<Dashboard />} />
                 <Route path="billing" element={<Billing />} />
+                <Route path="/manage-customers" element={<ManageCustomers />} />
                 <Route path="worker-jobs" element={<WorkerJobs />} />
                 <Route path="rates" element={<Rates />} />
                 <Route path="labour-charges" element={<LabourCharges />} />
