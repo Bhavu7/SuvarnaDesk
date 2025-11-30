@@ -1,18 +1,18 @@
 // models/LiveRate.ts
 import { Schema, model, Document } from 'mongoose';
 
-export interface ILiveRateDocument extends Document {
+export interface ILiveRate extends Document {
     metalType: 'gold' | 'silver';
     purity: string;
     ratePerGram: number;
     source: 'manual' | 'api';
     lastUpdated: Date;
     isActive: boolean;
-    createdAt: Date;
-    updatedAt: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
-const liveRateSchema = new Schema<ILiveRateDocument>({
+const liveRateSchema = new Schema<ILiveRate>({
     metalType: {
         type: String,
         enum: ['gold', 'silver'],
@@ -49,4 +49,4 @@ liveRateSchema.index({ metalType: 1, purity: 1, isActive: 1 }, {
     partialFilterExpression: { isActive: true }
 });
 
-export const LiveRate = model<ILiveRateDocument>('LiveRate', liveRateSchema);
+export const LiveRate = model<ILiveRate>('LiveRate', liveRateSchema);
