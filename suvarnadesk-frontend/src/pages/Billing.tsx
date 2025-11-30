@@ -1157,6 +1157,7 @@ export default function Billing() {
             </motion.div>
 
             {/* QR Code & Download Section */}
+
             {invoiceData && showQRCode && invoiceData.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}

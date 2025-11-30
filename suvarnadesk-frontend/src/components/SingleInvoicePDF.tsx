@@ -149,29 +149,72 @@ const styles = StyleSheet.create({
   },
   colProductNo: { flex: 1.2 },
   colDescription: { flex: 1.5 },
+  colHUID: { flex: 1.0 },
   colQty: { flex: 0.6 },
   colWeight: { flex: 0.8 },
   colPrice: { flex: 0.8 },
   colOtherCharges: { flex: 0.8 },
   colAmount: { flex: 0.8 },
+
+  // Footer Section Styles - Table Format
   footerSection: {
     flexDirection: "row",
     marginTop: 8,
     justifyContent: "space-between",
+    borderTop: "1 solid #1f9e4d",
+    paddingTop: 8,
   },
-  notesBox: {
+  notesTable: {
     flex: 1,
-    borderTop: "1 solid #1f9e4d",
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    fontSize: 9,
-    color: "#333",
+    border: "1 solid #1f9e4d",
+    marginRight: 8,
   },
-  totalsBox: {
-    borderTop: "1 solid #1f9e4d",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+  notesHeader: {
+    backgroundColor: "#1f9e4d",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  notesHeaderText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 9,
+  },
+  notesBody: {
+    padding: 8,
+    minHeight: 80,
+  },
+  notesTitle: {
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 4,
+    fontSize: 9,
+  },
+  notesList: {
+    marginLeft: 8,
+  },
+  noteItem: {
+    fontSize: 8,
+    color: "#333",
+    marginBottom: 2,
+    lineHeight: 1.2,
+  },
+  totalsTable: {
     width: "200px",
+    border: "1 solid #1f9e4d",
+  },
+  totalsHeader: {
+    backgroundColor: "#1f9e4d",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  totalsHeaderText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 9,
+    textAlign: "center",
+  },
+  totalsBody: {
+    padding: 8,
   },
   totalRow: {
     flexDirection: "row",
@@ -239,6 +282,15 @@ const styles = StyleSheet.create({
     color: "#666",
     marginTop: 2,
   },
+  pageNumber: {
+    position: "absolute",
+    bottom: 20,
+    left: 0,
+    right: 0,
+    textAlign: "center",
+    fontSize: 9,
+    color: "#666",
+  },
 });
 
 interface InvoiceItem {
@@ -289,327 +341,381 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
     return `₹${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,")}`;
   };
 
-  const calculateDynamicEmptyRows = () => {
-    const titleSectionHeight = 40;
-    const metaInfoHeight = 30;
-    const customerBoxesHeight = 80;
-    const tableHeaderHeight = 25;
-    const itemRowHeight = 24;
-    const footerSectionHeight = 50;
-    const signatureSectionHeight = 70;
-    const footerHeight = 30;
+  // Fixed 11 rows per page
+  const ITEMS_PER_PAGE = 11;
+  const totalPages = Math.ceil(data.items.length / ITEMS_PER_PAGE);
 
-    const totalAvailableHeight = 842 - 40;
-
-    const usedHeight =
-      titleSectionHeight +
-      metaInfoHeight +
-      customerBoxesHeight +
-      tableHeaderHeight +
-      data.items.length * itemRowHeight +
-      footerSectionHeight +
-      signatureSectionHeight +
-      footerHeight;
-
-    const remainingSpace = totalAvailableHeight - usedHeight;
-
-    if (remainingSpace > itemRowHeight) {
-      const emptyRowsCount = Math.floor(remainingSpace / itemRowHeight);
-      const adjustedEmptyRowsCount = Math.max(0, emptyRowsCount - 7);
-      return Array(adjustedEmptyRowsCount).fill(null);
-    }
-
-    return [];
+  // Get items for specific page
+  const getItemsForPage = (pageIndex: number) => {
+    const startIndex = pageIndex * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return data.items.slice(startIndex, endIndex);
   };
 
-  const emptyRows = calculateDynamicEmptyRows();
+  // Calculate empty rows for specific page
+  const getEmptyRows = (pageIndex: number) => {
+    const itemsForPage = getItemsForPage(pageIndex);
+    const emptyRowsCount = Math.max(0, ITEMS_PER_PAGE - itemsForPage.length);
+    return Array(emptyRowsCount).fill(null);
+  };
+
+  // Common header component
+  const HeaderSection = () => (
+    <>
+      {/* Title - with dynamic shop name */}
+      <View style={styles.titleSection}>
+        <Text style={styles.title}>{data.shopSettings.shopName}</Text>
+        {data.shopSettings.gstNumber && (
+          <Text style={styles.gstNumber}>
+            GST: {data.shopSettings.gstNumber}
+          </Text>
+        )}
+      </View>
+
+      {/* Rest of your PDF content */}
+      <View style={styles.metaInfoRow}>
+        <View style={styles.metaInfoItem}>
+          <Text style={styles.metaLabel}>Invoice Number:</Text>
+          <Text style={styles.metaValue}>{data.invoiceNumber}</Text>
+        </View>
+        <View style={styles.metaInfoItem}>
+          <Text style={styles.metaLabel}>Issued To:</Text>
+          <Text style={styles.metaValue}>{data.customer.name}</Text>
+        </View>
+        <View style={styles.metaInfoItem}>
+          <Text style={styles.metaLabel}>Date Issued:</Text>
+          <Text style={styles.metaValue}>{formatDate(data.invoiceDate)}</Text>
+        </View>
+      </View>
+
+      <View style={styles.boxesRow}>
+        <View style={styles.box}>
+          <View style={styles.boxHeader}>
+            <Text>Customer</Text>
+          </View>
+          <View style={styles.boxBody}>
+            <Text>{data.customer.name}</Text>
+            <Text>{data.customer.address}</Text>
+            <Text>{data.customer.email}</Text>
+            <Text>{data.customer.phone}</Text>
+          </View>
+        </View>
+
+        <View style={styles.box}>
+          <View style={styles.boxHeader}>
+            <Text>Seller</Text>
+          </View>
+          <View style={styles.boxBody}>
+            <Text>{data.shopSettings.shopName}</Text>
+            <Text>Professional Jewelry Services</Text>
+          </View>
+        </View>
+      </View>
+    </>
+  );
+
+  // Table header component
+  const TableHeader = () => (
+    <View style={styles.tableHeader}>
+      <View style={[styles.tableHeaderCell, styles.colProductNo]}>
+        <Text>PRODUCT NO</Text>
+      </View>
+      <View style={[styles.tableHeaderCell, styles.colDescription]}>
+        <Text>DESCRIPTION</Text>
+      </View>
+      {/* Added HUID Column */}
+      <View
+        style={[styles.tableHeaderCell, styles.colHUID, styles.tableCellCenter]}
+      >
+        <Text>HUID</Text>
+      </View>
+      <View
+        style={[styles.tableHeaderCell, styles.colQty, styles.tableCellCenter]}
+      >
+        <Text>QTY</Text>
+      </View>
+      <View
+        style={[
+          styles.tableHeaderCell,
+          styles.colWeight,
+          styles.tableCellRight,
+        ]}
+      >
+        <Text>WEIGHT (g)</Text>
+      </View>
+      <View
+        style={[styles.tableHeaderCell, styles.colPrice, styles.tableCellRight]}
+      >
+        <Text>PRICE/GRAM</Text>
+      </View>
+      <View
+        style={[
+          styles.tableHeaderCell,
+          styles.colOtherCharges,
+          styles.tableCellRight,
+        ]}
+      >
+        <Text>OTHER CHGS</Text>
+      </View>
+      <View
+        style={[
+          styles.tableHeaderCell,
+          styles.colAmount,
+          styles.tableCellRight,
+          styles.tableHeaderCellLast,
+        ]}
+      >
+        <Text>AMOUNT</Text>
+      </View>
+    </View>
+  );
+
+  // Footer section component (only show on last page)
+  const FooterSection = () => (
+    <>
+      {/* Updated Footer Sections with Table Format */}
+      <View style={styles.footerSection}>
+        {/* Notes Table */}
+        <View style={styles.notesTable}>
+          <View style={styles.notesHeader}>
+            <Text style={styles.notesHeaderText}>NOTES</Text>
+          </View>
+          <View style={styles.notesBody}>
+            <View style={styles.notesList}>
+              <Text style={styles.noteItem}>• All weights are in grams</Text>
+              <Text style={styles.noteItem}>• GST included as applicable</Text>
+              <Text style={styles.noteItem}>
+                • Goods once sold cannot be returned
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Totals Table */}
+        <View style={styles.totalsTable}>
+          <View style={styles.totalsHeader}>
+            <Text style={styles.totalsHeaderText}>TOTALS</Text>
+          </View>
+          <View style={styles.totalsBody}>
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Subtotal:</Text>
+              <Text style={styles.totalValue}>
+                {formatCurrency(data.subtotal)}
+              </Text>
+            </View>
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>CGST ({data.CGSTPercent}%):</Text>
+              <Text style={styles.totalValue}>
+                {formatCurrency(data.CGSTAmount)}
+              </Text>
+            </View>
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>SGST ({data.SGSTPercent}%):</Text>
+              <Text style={styles.totalValue}>
+                {formatCurrency(data.SGSTAmount)}
+              </Text>
+            </View>
+            {/* Add Total GST row */}
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Total GST (3%):</Text>
+              <Text style={styles.totalValue}>
+                {formatCurrency(data.CGSTAmount + data.SGSTAmount)}
+              </Text>
+            </View>
+            <View style={styles.totalRowBold}>
+              <Text style={styles.totalBoldLabel}>GRAND TOTAL</Text>
+              <Text style={styles.totalBoldValue}>
+                {formatCurrency(data.grandTotal)}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.signatureSection}>
+        <View style={styles.signatureBlock}>
+          <View style={styles.signatureLine} />
+          <Text style={styles.signatureLabel}>Authorized Signature</Text>
+        </View>
+        <View style={styles.signatureBlock}>
+          {/* Empty space for customer signature */}
+        </View>
+      </View>
+
+      <View style={styles.footer}>
+        <Text>
+          Thank you for choosing us! We hope you enjoy your exquisite jewellery.
+        </Text>
+      </View>
+    </>
+  );
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
-        <View style={styles.container}>
-          {/* Title - with dynamic shop name */}
-          <View style={styles.titleSection}>
-            <Text style={styles.title}>{data.shopSettings.shopName}</Text>
-            {data.shopSettings.gstNumber && (
-              <Text style={styles.gstNumber}>
-                GST: {data.shopSettings.gstNumber}
+      {Array.from({ length: totalPages }, (_, pageIndex) => (
+        <Page key={pageIndex} size="A4" style={styles.page}>
+          <View style={styles.container}>
+            {/* Header Section - Show on every page */}
+            <HeaderSection />
+
+            {/* Table Section */}
+            <View style={styles.tableSection}>
+              <TableHeader />
+
+              {/* Table Rows - Items for current page */}
+              {getItemsForPage(pageIndex).map((item, index) => {
+                const globalIndex = pageIndex * ITEMS_PER_PAGE + index;
+                return (
+                  <View key={globalIndex} style={styles.tableRow}>
+                    <View style={[styles.tableCell, styles.colProductNo]}>
+                      <Text>{item.productNo}</Text>
+                    </View>
+                    <View style={[styles.tableCell, styles.colDescription]}>
+                      <Text>{item.description}</Text>
+                    </View>
+                    {/* Add HUID Cell */}
+                    <View
+                      style={[
+                        styles.tableCell,
+                        styles.colHUID,
+                        styles.tableCellCenter,
+                      ]}
+                    >
+                      <Text>{data.customer.huid || "-"}</Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.tableCell,
+                        styles.colQty,
+                        styles.tableCellCenter,
+                      ]}
+                    >
+                      <Text>{item.quantity}</Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.tableCell,
+                        styles.colWeight,
+                        styles.tableCellRight,
+                      ]}
+                    >
+                      <Text>{item.weight.toFixed(1)}</Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.tableCell,
+                        styles.colPrice,
+                        styles.tableCellRight,
+                      ]}
+                    >
+                      <Text>{formatCurrency(item.pricePerGram)}</Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.tableCell,
+                        styles.colOtherCharges,
+                        styles.tableCellRight,
+                      ]}
+                    >
+                      <Text>{formatCurrency(item.otherCharges)}</Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.tableCell,
+                        styles.colAmount,
+                        styles.tableCellRight,
+                        styles.tableCellLast,
+                      ]}
+                    >
+                      <Text>{formatCurrency(item.amount)}</Text>
+                    </View>
+                  </View>
+                );
+              })}
+
+              {/* Empty Rows for current page */}
+              {getEmptyRows(pageIndex).map((_, index) => (
+                <View
+                  key={`empty-${pageIndex}-${index}`}
+                  style={styles.emptyRow}
+                >
+                  <View style={[styles.tableCell, styles.colProductNo]}>
+                    <Text> </Text>
+                  </View>
+                  <View style={[styles.tableCell, styles.colDescription]}>
+                    <Text> </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.tableCell,
+                      styles.colHUID,
+                      styles.tableCellCenter,
+                    ]}
+                  >
+                    <Text> </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.tableCell,
+                      styles.colQty,
+                      styles.tableCellCenter,
+                    ]}
+                  >
+                    <Text> </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.tableCell,
+                      styles.colWeight,
+                      styles.tableCellRight,
+                    ]}
+                  >
+                    <Text> </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.tableCell,
+                      styles.colPrice,
+                      styles.tableCellRight,
+                    ]}
+                  >
+                    <Text> </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.tableCell,
+                      styles.colOtherCharges,
+                      styles.tableCellRight,
+                    ]}
+                  >
+                    <Text> </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.tableCell,
+                      styles.colAmount,
+                      styles.tableCellRight,
+                      styles.tableCellLast,
+                    ]}
+                  >
+                    <Text> </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            {/* Footer Section - Show only on last page */}
+            {pageIndex === totalPages - 1 && <FooterSection />}
+
+            {/* Page Number - Show on every page */}
+            <View style={styles.pageNumber}>
+              <Text>
+                Page {pageIndex + 1} of {totalPages}
               </Text>
-            )}
-          </View>
-
-          {/* Rest of your PDF content */}
-          <View style={styles.metaInfoRow}>
-            <View style={styles.metaInfoItem}>
-              <Text style={styles.metaLabel}>Invoice Number:</Text>
-              <Text style={styles.metaValue}>{data.invoiceNumber}</Text>
-            </View>
-            <View style={styles.metaInfoItem}>
-              <Text style={styles.metaLabel}>Issued To:</Text>
-              <Text style={styles.metaValue}>{data.customer.name}</Text>
-            </View>
-            <View style={styles.metaInfoItem}>
-              <Text style={styles.metaLabel}>Date Issued:</Text>
-              <Text style={styles.metaValue}>
-                {formatDate(data.invoiceDate)}
-              </Text>
             </View>
           </View>
-
-          <View style={styles.boxesRow}>
-            <View style={styles.box}>
-              <View style={styles.boxHeader}>
-                <Text>Customer</Text>
-              </View>
-              <View style={styles.boxBody}>
-                <Text>{data.customer.name}</Text>
-                <Text>{data.customer.address}</Text>
-                <Text>{data.customer.email}</Text>
-                <Text>{data.customer.phone}</Text>
-                {data.customer.huid && (
-                  <Text style={styles.huidText}>
-                    HUID: {data.customer.huid}
-                  </Text>
-                )}
-              </View>
-            </View>
-
-            <View style={styles.box}>
-              <View style={styles.boxHeader}>
-                <Text>Seller</Text>
-              </View>
-              <View style={styles.boxBody}>
-                <Text>{data.shopSettings.shopName}</Text>
-                <Text>Professional Jewelry Services</Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.tableSection}>
-            <View style={styles.tableHeader}>
-              <View style={[styles.tableHeaderCell, styles.colProductNo]}>
-                <Text>PRODUCT NO</Text>
-              </View>
-              <View style={[styles.tableHeaderCell, styles.colDescription]}>
-                <Text>DESCRIPTION</Text>
-              </View>
-              <View
-                style={[
-                  styles.tableHeaderCell,
-                  styles.colQty,
-                  styles.tableCellCenter,
-                ]}
-              >
-                <Text>QTY</Text>
-              </View>
-              <View
-                style={[
-                  styles.tableHeaderCell,
-                  styles.colWeight,
-                  styles.tableCellRight,
-                ]}
-              >
-                <Text>WEIGHT (g)</Text>
-              </View>
-              <View
-                style={[
-                  styles.tableHeaderCell,
-                  styles.colPrice,
-                  styles.tableCellRight,
-                ]}
-              >
-                <Text>PRICE/GRAM</Text>
-              </View>
-              <View
-                style={[
-                  styles.tableHeaderCell,
-                  styles.colOtherCharges,
-                  styles.tableCellRight,
-                ]}
-              >
-                <Text>OTHER CHGS</Text>
-              </View>
-              <View
-                style={[
-                  styles.tableHeaderCell,
-                  styles.colAmount,
-                  styles.tableCellRight,
-                  styles.tableHeaderCellLast,
-                ]}
-              >
-                <Text>AMOUNT</Text>
-              </View>
-            </View>
-
-            {data.items.map((item, index) => (
-              <View key={index} style={styles.tableRow}>
-                <View style={[styles.tableCell, styles.colProductNo]}>
-                  <Text>{item.productNo}</Text>
-                </View>
-                <View style={[styles.tableCell, styles.colDescription]}>
-                  <Text>{item.description}</Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCell,
-                    styles.colQty,
-                    styles.tableCellCenter,
-                  ]}
-                >
-                  <Text>{item.quantity}</Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCell,
-                    styles.colWeight,
-                    styles.tableCellRight,
-                  ]}
-                >
-                  <Text>{item.weight.toFixed(1)}</Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCell,
-                    styles.colPrice,
-                    styles.tableCellRight,
-                  ]}
-                >
-                  <Text>{formatCurrency(item.pricePerGram)}</Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCell,
-                    styles.colOtherCharges,
-                    styles.tableCellRight,
-                  ]}
-                >
-                  <Text>{formatCurrency(item.otherCharges)}</Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCell,
-                    styles.colAmount,
-                    styles.tableCellRight,
-                    styles.tableCellLast,
-                  ]}
-                >
-                  <Text>{formatCurrency(item.amount)}</Text>
-                </View>
-              </View>
-            ))}
-
-            {emptyRows.map((_, index) => (
-              <View key={`empty-${index}`} style={styles.emptyRow}>
-                <View style={[styles.tableCell, styles.colProductNo]}>
-                  <Text> </Text>
-                </View>
-                <View style={[styles.tableCell, styles.colDescription]}>
-                  <Text> </Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCell,
-                    styles.colQty,
-                    styles.tableCellCenter,
-                  ]}
-                >
-                  <Text> </Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCell,
-                    styles.colWeight,
-                    styles.tableCellRight,
-                  ]}
-                >
-                  <Text> </Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCell,
-                    styles.colPrice,
-                    styles.tableCellRight,
-                  ]}
-                >
-                  <Text> </Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCell,
-                    styles.colOtherCharges,
-                    styles.tableCellRight,
-                  ]}
-                >
-                  <Text> </Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCell,
-                    styles.colAmount,
-                    styles.tableCellRight,
-                    styles.tableCellLast,
-                  ]}
-                >
-                  <Text> </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-
-          <View style={styles.footerSection}>
-            <View style={styles.notesBox}>
-              <Text>Thank you for your business!</Text>
-            </View>
-            <View style={styles.totalsBox}>
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Subtotal:</Text>
-                <Text style={styles.totalValue}>
-                  {formatCurrency(data.subtotal)}
-                </Text>
-              </View>
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>
-                  CGST ({data.CGSTPercent}%):
-                </Text>
-                <Text style={styles.totalValue}>
-                  {formatCurrency(data.CGSTAmount)}
-                </Text>
-              </View>
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>
-                  SGST ({data.SGSTPercent}%):
-                </Text>
-                <Text style={styles.totalValue}>
-                  {formatCurrency(data.SGSTAmount)}
-                </Text>
-              </View>
-              <View style={styles.totalRowBold}>
-                <Text style={styles.totalBoldLabel}>GRAND TOTAL</Text>
-                <Text style={styles.totalBoldValue}>
-                  {formatCurrency(data.grandTotal)}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.signatureSection}>
-            <View style={styles.signatureBlock}>
-              <View style={styles.signatureLine} />
-              <Text style={styles.signatureLabel}>Authorized Signature</Text>
-            </View>
-            <View style={styles.signatureBlock}>
-              {/* Empty space for customer signature */}
-            </View>
-          </View>
-
-          <View style={styles.footer}>
-            <Text>
-              Thank you for choosing us! We hope you enjoy your exquisite
-              jewellery.
-            </Text>
-          </View>
-        </View>
-      </Page>
+        </Page>
+      ))}
     </Document>
   );
 };
