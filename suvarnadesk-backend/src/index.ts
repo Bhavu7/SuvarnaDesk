@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import pdfRoutes from "./routes/pdfRoutes";
 import liveRatesRouter from './routes/liveRates';
 import { rateUpdateJob } from './jobs/rateUpdateJob';
+import ratesRoutes from './routes/ratesRoutes';
 
 dotenv.config();
 
@@ -50,6 +51,7 @@ app.use("/api/shop-settings", shopSettingsRoutes);
 app.use("/api/pdf", pdfRoutes);
 // Routes
 app.use('/api/live-rates', liveRatesRouter);
+app.use('/api/rates', ratesRoutes);
 // Start rate update job
 rateUpdateJob.start();
 
