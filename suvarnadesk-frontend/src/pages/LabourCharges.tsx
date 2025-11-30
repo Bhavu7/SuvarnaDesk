@@ -14,7 +14,7 @@ import { AnimatePresence } from "framer-motion";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 export default function LabourCharges() {
-  const { data: labourCharges, isLoading, refetch } = useLabourCharges();
+  const { data: labourCharges, isLoading } = useLabourCharges();
   const createLabourCharge = useCreateLabourCharge();
   const updateLabourCharge = useUpdateLabourCharge();
   const deleteLabourCharge = useDeleteLabourCharge();
