@@ -4,14 +4,33 @@ import {
   MdPerson,
   MdNotifications,
   MdSettings,
+  MdReceipt,
+  MdTrendingUp,
+  MdBuild,
+  MdSecurity,
+  MdAccountCircle,
+  MdAttachMoney,
+  MdInventory,
 } from "react-icons/md";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
 import { showToast } from "../components/CustomToast";
 import { useNavigate } from "react-router-dom";
+import apiClient from "../api/apiClient";
 
 interface NavbarProps {
   sidebarExpanded?: boolean;
+}
+
+interface Notification {
+  id: string;
+  type: "invoice" | "rate" | "settings" | "profile" | "system" | "payment" | "job";
+  message: string;
+  time: string;
+  read: boolean;
+  priority: "low" | "medium" | "high";
+  icon: React.ReactNode;
+  action?: () => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
@@ -19,47 +38,219 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
   const navigate = useNavigate();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false); // New state for logout confirmation
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [lastInvoiceCount, setLastInvoiceCount] = useState(0);
+  const [lastSettingsUpdate, setLastSettingsUpdate] = useState<Date | null>(null);
+  
   const profileRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const logoutConfirmRef = useRef<HTMLDivElement>(null);
 
-  // Enhanced notifications data
-  const notifications = [
-    {
-      id: 1,
-      type: "invoice",
-      message: "New invoice created successfully",
-      time: "2 min ago",
-      read: false,
-      priority: "high",
-    },
-    {
-      id: 2,
-      type: "job",
-      message: "Worker job completed by Rajesh",
-      time: "1 hour ago",
-      read: true,
-      priority: "medium",
-    },
-    {
-      id: 3,
-      type: "rate",
-      message: "Gold rates updated to ₹5,800/g",
-      time: "3 hours ago",
-      read: true,
-      priority: "medium",
-    },
-    {
-      id: 4,
-      type: "payment",
-      message: "Payment of ₹15,000 received from Priya",
-      time: "5 hours ago",
-      read: false,
-      priority: "high",
-    },
-  ];
+  // Notification icons mapping
+  const notificationIcons = {
+    invoice: <MdReceipt className="text-blue-600" />,
+    rate: <MdTrendingUp className="text-green-600" />,
+    settings: <MdSettings className="text-purple-600" />,
+    profile: <MdAccountCircle className="text-orange-600" />,
+    system: <MdSecurity className="text-red-600" />,
+    payment: <MdAttachMoney className="text-green-600" />,
+    job: <MdBuild className="text-blue-600" />,
+  };
 
+  // Generate dynamic notifications
+  const generateDynamicNotifications = async () => {
+    try {
+      const newNotifications: Notification[] = [];
+      const now = new Date();
+
+      // Fetch current data for notifications
+      const [invoicesResponse, settingsResponse, ratesResponse] = await Promise.all([
+        apiClient.get("/invoices?limit=1").catch(() => ({ data: [] })),
+        apiClient.get("/shop-settings").catch(() => ({ data: null })),
+        apiClient.get("/rates/live").catch(() => ({ data: null }))
+      ]);
+
+      const currentInvoiceCount = invoicesResponse.data.length || 0;
+      const shopSettings = settingsResponse.data;
+      const liveRates = ratesResponse.data;
+
+      // 1. New Invoice Notification
+      if (currentInvoiceCount > lastInvoiceCount) {
+        newNotifications.push({
+          id: `invoice-${Date.now()}`,
+          type: "invoice",
+          message: `New invoice #INV-${currentInvoiceCount} generated successfully`,
+          time: "Just now",
+          read: false,
+          priority: "medium",
+          icon: notificationIcons.invoice,
+          action: () => navigate("/invoices")
+        });
+        setLastInvoiceCount(currentInvoiceCount);
+      }
+
+      // 2. Live Rate Updates
+      if (liveRates && liveRates.timestamp) {
+        const rateUpdateTime = new Date(liveRates.timestamp);
+        if (now.getTime() - rateUpdateTime.getTime() < 300000) { // 5 minutes
+          newNotifications.push({
+            id: `rates-${Date.now()}`,
+            type: "rate",
+            message: `Live metal rates updated - Gold: ₹${liveRates.gold?.toFixed(2) || 'N/A'}/g`,
+            time: "Recently",
+            read: false,
+            priority: "high",
+            icon: notificationIcons.rate,
+            action: () => navigate("/rates")
+          });
+        }
+      }
+
+      // 3. Settings Changes
+      if (shopSettings && shopSettings.updatedAt) {
+        const settingsUpdateTime = new Date(shopSettings.updatedAt);
+        if (!lastSettingsUpdate || settingsUpdateTime > lastSettingsUpdate) {
+          newNotifications.push({
+            id: `settings-${Date.now()}`,
+            type: "settings",
+            message: "Shop settings have been updated",
+            time: "Recently",
+            read: false,
+            priority: "medium",
+            icon: notificationIcons.settings,
+            action: () => navigate("/settings")
+          });
+          setLastSettingsUpdate(settingsUpdateTime);
+        }
+      }
+
+      // 4. System Health Notifications (simulated)
+      if (Math.random() > 0.7) { // 30% chance for demo
+        newNotifications.push({
+          id: `system-${Date.now()}`,
+          type: "system",
+          message: "System running optimally. All services active.",
+          time: "Today",
+          read: false,
+          priority: "low",
+          icon: notificationIcons.system
+        });
+      }
+
+      // 5. Daily Summary (at specific times)
+      const currentHour = now.getHours();
+      if (currentHour === 9 || currentHour === 18) { // 9 AM and 6 PM
+        newNotifications.push({
+          id: `summary-${Date.now()}`,
+          type: "invoice",
+          message: `Daily summary: ${currentInvoiceCount} invoices processed today`,
+          time: "Today",
+          read: false,
+          priority: "low",
+          icon: notificationIcons.invoice,
+          action: () => navigate("/reports")
+        });
+      }
+
+      // Add new notifications to the list
+      if (newNotifications.length > 0) {
+        setNotifications(prev => [...newNotifications, ...prev]);
+        
+        // Show toast for high priority notifications
+        const highPriority = newNotifications.filter(n => n.priority === "high");
+        highPriority.forEach(notification => {
+          showToast.info(notification.message);
+        });
+      }
+
+    } catch (error) {
+      console.error("Error generating notifications:", error);
+    }
+  };
+
+  // Manual notification triggers (for demonstration)
+  const triggerManualNotifications = {
+    profileUpdated: () => {
+      const newNotification: Notification = {
+        id: `profile-${Date.now()}`,
+        type: "profile",
+        message: "Your profile information has been updated successfully",
+        time: "Just now",
+        read: false,
+        priority: "medium",
+        icon: notificationIcons.profile,
+        action: () => navigate("/profile")
+      };
+      setNotifications(prev => [newNotification, ...prev]);
+      showToast.success("Profile updated notification added");
+    },
+
+    priceAlert: () => {
+      const newNotification: Notification = {
+        id: `price-alert-${Date.now()}`,
+        type: "rate",
+        message: "Price alert: Gold rates increased by 2.5% today",
+        time: "Just now",
+        read: false,
+        priority: "high",
+        icon: notificationIcons.rate,
+        action: () => navigate("/rates")
+      };
+      setNotifications(prev => [newNotification, ...prev]);
+      showToast.warning("Price alert notification added");
+    },
+
+    newFeature: () => {
+      const newNotification: Notification = {
+        id: `feature-${Date.now()}`,
+        type: "system",
+        message: "New feature: Advanced reporting dashboard available",
+        time: "Today",
+        read: false,
+        priority: "medium",
+        icon: notificationIcons.system,
+        action: () => navigate("/reports")
+      };
+      setNotifications(prev => [newNotification, ...prev]);
+      showToast.info("New feature notification added");
+    }
+  };
+
+  // Initialize and update notifications
+  useEffect(() => {
+    // Initial notifications setup
+    const initialNotifications: Notification[] = [
+      {
+        id: "welcome-1",
+        type: "system",
+        message: "Welcome to SuvarnaDesk! System is ready for use.",
+        time: "Today",
+        read: false,
+        priority: "low",
+        icon: notificationIcons.system
+      },
+      {
+        id: "setup-1",
+        type: "settings",
+        message: "Complete your shop setup to get started",
+        time: "Today",
+        read: false,
+        priority: "medium",
+        icon: notificationIcons.settings,
+        action: () => navigate("/settings")
+      }
+    ];
+    setNotifications(initialNotifications);
+
+    // Set up interval for dynamic notifications
+    const notificationInterval = setInterval(generateDynamicNotifications, 60000); // Check every minute
+
+    // Cleanup interval
+    return () => clearInterval(notificationInterval);
+  }, []);
+
+  // Calculate notification counts
   const unreadCount = notifications.filter((n) => !n.read).length;
   const highPriorityCount = notifications.filter(
     (n) => n.priority === "high" && !n.read
@@ -93,14 +284,24 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
     setShowNotifications(false);
   };
 
-  const markAsRead = (id: number) => {
-    showToast.success("Notification marked as read");
-    // In real app, update notification status via API
+  const markAsRead = (id: string) => {
+    setNotifications(prev =>
+      prev.map(notification =>
+        notification.id === id ? { ...notification, read: true } : notification
+      )
+    );
   };
 
   const markAllAsRead = () => {
+    setNotifications(prev =>
+      prev.map(notification => ({ ...notification, read: true }))
+    );
     showToast.success("All notifications marked as read");
-    // In real app, update all notifications status via API
+  };
+
+  const clearAllNotifications = () => {
+    setNotifications([]);
+    showToast.success("All notifications cleared");
   };
 
   // Navigation handlers
@@ -116,7 +317,8 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
 
   const handleViewAllNotifications = () => {
     setShowNotifications(false);
-    navigate("/notifications");
+    // Navigate to notifications page if you have one
+    showToast.info("Notifications page coming soon!");
   };
 
   // Close dropdowns when clicking outside
@@ -159,6 +361,26 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
   }, []);
+
+  // Format relative time
+  const formatRelativeTime = (timeString: string) => {
+    // Simple implementation - in real app, you'd parse actual timestamps
+    return timeString;
+  };
+
+  // Get priority color
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "high":
+        return "bg-red-100 text-red-800 border-l-red-500";
+      case "medium":
+        return "bg-orange-100 text-orange-800 border-l-orange-500";
+      case "low":
+        return "bg-blue-100 text-blue-800 border-l-blue-500";
+      default:
+        return "bg-gray-100 text-gray-800 border-l-gray-500";
+    }
+  };
 
   return (
     <>
@@ -213,7 +435,7 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
                       : "w-4 h-4 bg-orange-500"
                   }`}
                 >
-                  {unreadCount}
+                  {unreadCount > 99 ? "99+" : unreadCount}
                 </motion.span>
               )}
             </motion.button>
@@ -235,14 +457,24 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
                         </span>
                       )}
                     </h3>
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={markAllAsRead}
-                        className="text-sm text-blue-600 transition-colors outline-none hover:text-blue-700 focus:outline-none focus:ring-0"
-                      >
-                        Mark all read
-                      </button>
-                    )}
+                    <div className="flex gap-2">
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={markAllAsRead}
+                          className="text-sm text-blue-600 transition-colors outline-none hover:text-blue-700 focus:outline-none focus:ring-0"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                      {notifications.length > 0 && (
+                        <button
+                          onClick={clearAllNotifications}
+                          className="text-sm text-gray-600 transition-colors outline-none hover:text-gray-700 focus:outline-none focus:ring-0"
+                        >
+                          Clear all
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="overflow-y-auto max-h-96">
@@ -250,16 +482,18 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
                       notifications.map((notification) => (
                         <div
                           key={notification.id}
-                          className={`px-4 py-3 border-b border-gray-50 last:border-b-0 hover:bg-gray-50/80 cursor-pointer transition-colors group ${
+                          className={`px-4 py-3 border-b border-gray-50 last:border-b-0 hover:bg-gray-50/80 cursor-pointer transition-colors group border-l-4 ${
                             !notification.read ? "bg-blue-50/50" : ""
-                          } ${
-                            notification.priority === "high"
-                              ? "border-l-4 border-l-red-500"
-                              : ""
-                          }`}
-                          onClick={() => markAsRead(notification.id)}
+                          } ${getPriorityColor(notification.priority)}`}
+                          onClick={() => {
+                            markAsRead(notification.id);
+                            notification.action?.();
+                          }}
                         >
-                          <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 mt-1">
+                              {notification.icon}
+                            </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-gray-800">
                                 {notification.message}
@@ -269,20 +503,20 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
                                   className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                                     notification.priority === "high"
                                       ? "bg-red-100 text-red-800"
+                                      : notification.priority === "medium"
+                                      ? "bg-orange-100 text-orange-800"
                                       : "bg-blue-100 text-blue-800"
                                   }`}
                                 >
-                                  {notification.priority === "high"
-                                    ? "High Priority"
-                                    : "Medium Priority"}
+                                  {notification.priority.charAt(0).toUpperCase() + notification.priority.slice(1)} Priority
                                 </span>
                                 <span className="text-xs text-gray-500">
-                                  {notification.time}
+                                  {formatRelativeTime(notification.time)}
                                 </span>
                               </div>
                             </div>
                             {!notification.read && (
-                              <div className="flex-shrink-0 w-2 h-2 ml-2 bg-blue-500 rounded-full"></div>
+                              <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full"></div>
                             )}
                           </div>
                         </div>
