@@ -5,9 +5,7 @@ import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Billing from "./pages/Billing";
-import WorkerJobs from "./pages/WorkerJobs";
 import Rates from "./pages/Rates";
-import LabourCharges from "./pages/LabourCharges";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
@@ -66,9 +64,7 @@ function App() {
                 <Route index element={<Dashboard />} />
                 <Route path="billing" element={<Billing />} />
                 <Route path="/manage-customers" element={<ManageCustomers />} />
-                <Route path="worker-jobs" element={<WorkerJobs />} />
                 <Route path="rates" element={<Rates />} />
-                <Route path="labour-charges" element={<LabourCharges />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="repairings" element={<Repairings />} />
                 <Route path="settings" element={<Settings />} />
