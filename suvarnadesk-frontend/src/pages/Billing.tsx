@@ -22,6 +22,37 @@ import DateDropdown from "../components/DateDropdown";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import apiClient from "../api/apiClient";
 
+interface PdfData {
+  invoiceNumber: string;
+  invoiceDate: string;
+  customer: {
+    name: string;
+    address: string;
+    email: string;
+    phone: string;
+    huid: string;
+  };
+  items: Array<{
+    productNo: string;
+    description: string;
+    quantity: number;
+    weight: number;
+    pricePerGram: number;
+    otherCharges: number;
+    amount: number;
+  }>;
+  subtotal: number;
+  CGSTPercent: number;
+  CGSTAmount: number;
+  SGSTPercent: number;
+  SGSTAmount: number;
+  grandTotal: number;
+  shopSettings: {
+    shopName: string;
+    gstNumber?: string;
+  };
+}
+
 export default function Billing() {
   const { data: customers } = useCustomers();
   const { data: labourCharges } = useLabourCharges();
@@ -59,7 +90,7 @@ export default function Billing() {
   const [paymentMode, setPaymentMode] = useState<string>("cash");
   const [amountPaid, setAmountPaid] = useState<number>(0);
   const [showQRCode, setShowQRCode] = useState<boolean>(false);
-  const [invoiceData, setInvoiceData] = useState<any>(null);
+  const [invoiceData, setInvoiceData] = useState<PdfData[] | null>(null);
   const [shopSettings, setShopSettings] = useState({
     shopName: "JEWELRY COMMERCIAL INVOICE",
     gstNumber: "",
@@ -85,8 +116,10 @@ export default function Billing() {
     }
   };
 
-  const generateInvoiceNumber = async () => {
+  const generateInvoiceNumber = async (): Promise<string> => {
     try {
+      setGeneratingInvoiceNumber(true);
+
       // Get the latest invoice to determine the next number
       const response = await apiClient.get("/invoices/latest");
       const latestInvoiceNumber = response.data?.invoiceNumber;
@@ -94,7 +127,7 @@ export default function Billing() {
       let nextNumber = 1;
 
       if (latestInvoiceNumber) {
-        // Extract the numeric part from the latest invoice number
+        // Extract the numeric part from the latest invoice number (INV-1, INV-2, etc.)
         const match = latestInvoiceNumber.match(/INV-(\d+)/);
         if (match && match[1]) {
           nextNumber = parseInt(match[1]) + 1;
@@ -113,8 +146,8 @@ export default function Billing() {
       return newInvoiceNumber;
     } catch (error) {
       console.error("Failed to generate invoice number:", error);
-      // Fallback: use timestamp to ensure uniqueness
-      const timestamp = Date.now();
+      // Fallback: use sequential number based on timestamp
+      const timestamp = new Date().getTime();
       const fallbackNumber = `INV-${timestamp}`;
       setInvoiceNumber(fallbackNumber);
       return fallbackNumber;
@@ -354,46 +387,134 @@ export default function Billing() {
       return;
     }
 
-    // Prepare data for both PDFs
-    const pdfData1 = {
-      invoiceNumber: finalInvoiceNumber,
-      invoiceDate,
-      customer: {
-        name: customerName,
-        address: customerAddress,
-        email: customerEmail,
-        phone: customerPhone,
-        huid: customerHUID,
-      },
-      items: lineItems.map((item, index) => ({
-        productNo: `ITEM-${index + 1}`,
-        description: `${item.itemType} ${item.purity} ${item.description}`,
-        quantity: 1,
-        weight: convertToGrams(item.weight.value, item.weight.unit),
-        pricePerGram: item.ratePerGram,
-        otherCharges: item.otherCharges || 0,
-        amount: item.itemTotal,
-      })),
-      subtotal,
-      CGSTPercent,
-      CGSTAmount,
-      SGSTPercent,
-      SGSTAmount,
-      grandTotal,
-      shopSettings: {
-        shopName: "Jay Krishna Haribhai Soni",
-        gstNumber: shopSettings.gstNumber,
-      },
+    // Separate items by type
+    const goldItems = lineItems.filter((item) => item.itemType === "gold");
+    const silverItems = lineItems.filter((item) => item.itemType === "silver");
+    const otherItems = lineItems.filter((item) => item.itemType === "other");
+
+    // Calculate totals for each type
+    const calculateTotals = (items: LineItem[]) => {
+      const subtotal = items.reduce((acc, item) => acc + item.itemTotal, 0);
+      const CGSTAmount = (subtotal * CGSTPercent) / 100;
+      const SGSTAmount = (subtotal * SGSTPercent) / 100;
+      const grandTotal = subtotal + CGSTAmount + SGSTAmount;
+
+      return { subtotal, CGSTAmount, SGSTAmount, grandTotal };
     };
 
-    const pdfData2 = {
-      ...pdfData1,
-      shopSettings: {
-        ...pdfData1.shopSettings,
-        shopName: "Measers Yogeshkumar and Brothers",
-      },
-    };
+    const goldTotals = calculateTotals(goldItems);
+    const silverTotals = calculateTotals(silverItems);
+    const otherTotals = calculateTotals(otherItems);
 
+    // Prepare PDF data arrays
+    const pdfDataArray: PdfData[] = [];
+
+    // Gold PDF - Jay Krishna Haribhai Soni
+    if (goldItems.length > 0) {
+      const goldPdfData = {
+        invoiceNumber: finalInvoiceNumber, // Same invoice number for both
+        invoiceDate,
+        customer: {
+          name: customerName,
+          address: customerAddress,
+          email: customerEmail,
+          phone: customerPhone,
+          huid: customerHUID,
+        },
+        items: goldItems.map((item, index) => ({
+          productNo: `GOLD-${index + 1}`,
+          description: `${item.itemType} ${item.purity} ${item.description}`,
+          quantity: 1,
+          weight: convertToGrams(item.weight.value, item.weight.unit),
+          pricePerGram: item.ratePerGram,
+          otherCharges: item.otherCharges || 0,
+          amount: item.itemTotal,
+        })),
+        subtotal: goldTotals.subtotal,
+        CGSTPercent,
+        CGSTAmount: goldTotals.CGSTAmount,
+        SGSTPercent,
+        SGSTAmount: goldTotals.SGSTAmount,
+        grandTotal: goldTotals.grandTotal,
+        shopSettings: {
+          shopName: "Jay Krishna Haribhai Soni",
+          gstNumber: shopSettings.gstNumber,
+        },
+      };
+      pdfDataArray.push(goldPdfData);
+    }
+
+    // Silver PDF - Measers Yogeshkumar and Brothers
+    if (silverItems.length > 0) {
+      const silverPdfData = {
+        invoiceNumber: finalInvoiceNumber, // Same invoice number for both
+        invoiceDate,
+        customer: {
+          name: customerName,
+          address: customerAddress,
+          email: customerEmail,
+          phone: customerPhone,
+          huid: customerHUID,
+        },
+        items: silverItems.map((item, index) => ({
+          productNo: `SILVER-${index + 1}`,
+          description: `${item.itemType} ${item.purity} ${item.description}`,
+          quantity: 1,
+          weight: convertToGrams(item.weight.value, item.weight.unit),
+          pricePerGram: item.ratePerGram,
+          otherCharges: item.otherCharges || 0,
+          amount: item.itemTotal,
+        })),
+        subtotal: silverTotals.subtotal,
+        CGSTPercent,
+        CGSTAmount: silverTotals.CGSTAmount,
+        SGSTPercent,
+        SGSTAmount: silverTotals.SGSTAmount,
+        grandTotal: silverTotals.grandTotal,
+        shopSettings: {
+          shopName: "Measers Yogeshkumar and Brothers",
+          gstNumber: shopSettings.gstNumber,
+        },
+      };
+      pdfDataArray.push(silverPdfData);
+    }
+
+    // Other items PDF - Default to Jay Krishna
+    if (otherItems.length > 0) {
+      const otherPdfData = {
+        invoiceNumber: finalInvoiceNumber,
+        invoiceDate,
+        customer: {
+          name: customerName,
+          address: customerAddress,
+          email: customerEmail,
+          phone: customerPhone,
+          huid: customerHUID,
+        },
+        items: otherItems.map((item, index) => ({
+          productNo: `OTHER-${index + 1}`,
+          description: `${item.itemType} ${item.purity} ${item.description}`,
+          quantity: 1,
+          weight: convertToGrams(item.weight.value, item.weight.unit),
+          pricePerGram: item.ratePerGram,
+          otherCharges: item.otherCharges || 0,
+          amount: item.itemTotal,
+        })),
+        subtotal: otherTotals.subtotal,
+        CGSTPercent,
+        CGSTAmount: otherTotals.CGSTAmount,
+        SGSTPercent,
+        SGSTAmount: otherTotals.SGSTAmount,
+        grandTotal: otherTotals.grandTotal,
+        shopSettings: {
+          shopName: "Jay Krishna Haribhai Soni",
+          gstNumber: shopSettings.gstNumber,
+        },
+      };
+      pdfDataArray.push(otherPdfData);
+    }
+
+    // QR Code data with all PDF URLs
     const qrCodeData = JSON.stringify({
       invoiceNumber: finalInvoiceNumber,
       date: invoiceDate,
@@ -403,11 +524,13 @@ export default function Billing() {
         phone: customerPhone,
         address: customerAddress,
       },
-      total: grandTotal,
-      downloadUrls: {
-        pdf1: `${window.location.origin}/api/invoices/download/${finalInvoiceNumber}/1`,
-        pdf2: `${window.location.origin}/api/invoices/download/${finalInvoiceNumber}/2`,
-      },
+      total: grandTotal, // Overall total for reference
+      downloadUrls: pdfDataArray.map((pdfData, index) => ({
+        type: pdfData.shopSettings.shopName,
+        url: `${
+          window.location.origin
+        }/api/invoices/download/${finalInvoiceNumber}/${index + 1}`,
+      })),
       items: lineItems.map((item) => ({
         type: item.itemType,
         purity: item.purity,
@@ -438,14 +561,23 @@ export default function Billing() {
       },
       paymentDetails: { paymentMode, amountPaid, balanceDue },
       QRCodeData: qrCodeData,
-      pdfData: [pdfData1, pdfData2],
+      pdfData: pdfDataArray,
     };
 
     createInvoice.mutate(invoicePayload, {
       onSuccess: (data) => {
         showToast.success("Invoice created successfully!");
-        setInvoiceData([pdfData1, pdfData2]);
+        setInvoiceData(pdfDataArray);
         setShowQRCode(true);
+
+        // Show success message with PDF types generated
+        const pdfTypes = [];
+        if (goldItems.length > 0) pdfTypes.push("Gold (Jay Krishna)");
+        if (silverItems.length > 0) pdfTypes.push("Silver (Yogeshkumar)");
+        if (otherItems.length > 0) pdfTypes.push("Other Items");
+
+        showToast.success(`Generated ${pdfTypes.join(", ")} PDFs`);
+
         // Generate next invoice number for the next invoice
         generateInvoiceNumber();
       },
@@ -1055,7 +1187,7 @@ export default function Billing() {
             </motion.div>
 
             {/* QR Code & Download Section */}
-            {invoiceData && showQRCode && (
+            {invoiceData && showQRCode && invoiceData.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1076,36 +1208,29 @@ export default function Billing() {
                 </div>
 
                 <div className="space-y-2">
-                  {/* Download both PDFs */}
-                  <PDFDownloadLink
-                    document={<SingleInvoicePDF data={invoiceData[0]} />}
-                    fileName={`${invoiceData[0].invoiceNumber}_${invoiceData[0].customer.name}_${invoiceData[0].invoiceDate}_JayKrishna.pdf`}
-                    className="flex items-center justify-center w-full gap-2 py-2 text-sm font-medium text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
-                  >
-                    {({ loading }) => (
-                      <>
-                        <MdDownload className="text-lg" />
-                        {loading
-                          ? "Preparing PDF 1..."
-                          : "Download Jay Krishna PDF"}
-                      </>
-                    )}
-                  </PDFDownloadLink>
-
-                  <PDFDownloadLink
-                    document={<SingleInvoicePDF data={invoiceData[1]} />}
-                    fileName={`${invoiceData[1].invoiceNumber}_${invoiceData[1].customer.name}_${invoiceData[1].invoiceDate}_Yogeshkumar.pdf`}
-                    className="flex items-center justify-center w-full gap-2 py-2 text-sm font-medium text-white transition-colors bg-green-600 rounded-lg hover:bg-green-700"
-                  >
-                    {({ loading }) => (
-                      <>
-                        <MdDownload className="text-lg" />
-                        {loading
-                          ? "Preparing PDF 2..."
-                          : "Download Yogeshkumar PDF"}
-                      </>
-                    )}
-                  </PDFDownloadLink>
+                  {/* Dynamic PDF downloads based on item types */}
+                  {invoiceData.map((pdfData: PdfData, index: number) => (
+                    <PDFDownloadLink
+                      key={index}
+                      document={<SingleInvoicePDF data={pdfData} />}
+                      fileName={`${pdfData.invoiceNumber}_${
+                        pdfData.customer.name
+                      }_${pdfData.shopSettings.shopName.replace(
+                        /\s+/g,
+                        "_"
+                      )}.pdf`}
+                      className="flex items-center justify-center w-full gap-2 py-2 text-sm font-medium text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
+                    >
+                      {({ loading }) => (
+                        <>
+                          <MdDownload className="text-lg" />
+                          {loading
+                            ? `Preparing ${pdfData.shopSettings.shopName}...`
+                            : `Download ${pdfData.invoiceNumber} - ${pdfData.shopSettings.shopName}`}
+                        </>
+                      )}
+                    </PDFDownloadLink>
+                  ))}
 
                   <button
                     onClick={() => setShowQRCode(false)}
