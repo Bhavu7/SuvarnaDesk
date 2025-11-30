@@ -11,6 +11,8 @@ import {
   MdLocationOn,
   MdPerson,
   MdReceipt,
+  MdCalendarToday,
+  MdAttachMoney,
 } from "react-icons/md";
 import { showToast } from "../components/CustomToast";
 import apiClient from "../api/apiClient";
@@ -87,19 +89,25 @@ export default function ManageCustomers() {
   const fetchCustomers = async () => {
     try {
       setLoading(true);
+      console.log("Fetching invoices from API...");
+
       const response = await apiClient.get("/invoices");
+      console.log("API Response:", response.data);
+
       const invoices: Invoice[] = response.data || [];
+      console.log("Invoices found:", invoices.length);
 
       // Group invoices by customer
       const customerMap = new Map<string, Customer>();
 
       invoices.forEach((invoice) => {
         const customerData = invoice.customerSnapshot;
-        const customerKey = `${customerData.phone}-${customerData.email}`;
+        const customerKey =
+          `${customerData.phone}-${customerData.email}`.toLowerCase();
 
         if (!customerMap.has(customerKey)) {
           customerMap.set(customerKey, {
-            _id: invoice._id, // Use invoice ID as temporary customer ID
+            _id: customerKey, // Use customerKey as unique ID
             name: customerData.name,
             email: customerData.email,
             phone: customerData.phone,
@@ -128,11 +136,15 @@ export default function ManageCustomers() {
       });
 
       const customersArray = Array.from(customerMap.values());
+      console.log("Customers grouped:", customersArray.length);
       setCustomers(customersArray);
       setFilteredCustomers(customersArray);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching customers:", error);
-      showToast.error("Failed to load customers");
+      showToast.error(
+        "Failed to load customers: " +
+          (error.response?.data?.error || error.message)
+      );
     } finally {
       setLoading(false);
     }
@@ -152,7 +164,8 @@ export default function ManageCustomers() {
           customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           customer.phone.includes(searchTerm) ||
           customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          customer.address.toLowerCase().includes(searchTerm.toLowerCase())
+          (customer.address &&
+            customer.address.toLowerCase().includes(searchTerm.toLowerCase()))
       );
       setFilteredCustomers(filtered);
     }
@@ -161,9 +174,12 @@ export default function ManageCustomers() {
   // Delete customer and all their invoices
   const deleteCustomer = async (customerId: string) => {
     try {
-      // Find all invoices for this customer
+      // Find the customer
       const customer = customers.find((c) => c._id === customerId);
-      if (!customer) return;
+      if (!customer) {
+        showToast.error("Customer not found");
+        return;
+      }
 
       // Delete all invoices for this customer
       const deletePromises = customer.invoices.map((invoice) =>
@@ -177,88 +193,79 @@ export default function ManageCustomers() {
       );
       setDeleteConfirm(null);
       fetchCustomers(); // Refresh the list
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting customer:", error);
-      showToast.error("Failed to delete customer");
+      showToast.error(
+        "Failed to delete customer: " +
+          (error.response?.data?.error || error.message)
+      );
     }
   };
 
-  // Download single invoice
+  // Download single invoice as text file
   const downloadInvoice = async (invoice: Invoice) => {
     try {
       setDownloadingInvoice(invoice._id);
 
-      // Create a simple PDF download using window.open for invoice data
-      const pdfData = {
-        invoiceNumber: invoice.invoiceNumber,
-        invoiceDate: invoice.date,
-        customer: invoice.customerSnapshot,
-        items: invoice.lineItems.map((item, index) => ({
-          productNo: `${item.itemType.toUpperCase()}-${index + 1}`,
-          description: `${item.itemType} ${item.purity} ${item.description}`,
-          quantity: 1,
-          weight: item.weight.value,
-          pricePerGram: item.ratePerGram,
-          otherCharges: item.otherCharges,
-          amount: item.itemTotal,
-        })),
-        subtotal: invoice.totals.subtotal,
-        CGSTPercent: invoice.totals.CGSTPercent,
-        CGSTAmount: invoice.totals.CGSTAmount,
-        SGSTPercent: invoice.totals.SGSTPercent,
-        SGSTAmount: invoice.totals.SGSTAmount,
-        grandTotal: invoice.totals.grandTotal,
-        shopSettings: invoice.shopSettings || {
-          shopName: "JEWELRY COMMERCIAL INVOICE",
-        },
-      };
-
-      // For now, we'll create a simple text file download
-      // In a real implementation, you would generate a PDF
       const invoiceText = `
-INVOICE: ${pdfData.invoiceNumber}
-Date: ${pdfData.invoiceDate}
-Customer: ${pdfData.customer.name}
-Phone: ${pdfData.customer.phone}
-Email: ${pdfData.customer.email}
-Address: ${pdfData.customer.address}
+INVOICE: ${invoice.invoiceNumber}
+Date: ${formatDate(invoice.date)}
+Customer: ${invoice.customerSnapshot.name}
+Phone: ${invoice.customerSnapshot.phone}
+Email: ${invoice.customerSnapshot.email || "N/A"}
+Address: ${invoice.customerSnapshot.address || "N/A"}
+HUID: ${invoice.customerSnapshot.huid || "N/A"}
 
 ITEMS:
-${pdfData.items
+${invoice.lineItems
   .map(
-    (item) => `
-  ${item.productNo}: ${item.description}
-  Weight: ${item.weight}g | Rate: ₹${item.pricePerGram}/g
-  Other Charges: ₹${item.otherCharges} | Total: ₹${item.amount}
+    (item, index) => `
+${index + 1}. ${item.itemType.toUpperCase()} ${item.purity}
+   Description: ${item.description}
+   Weight: ${item.weight.value} ${item.weight.unit}
+   Rate: ₹${item.ratePerGram}/g
+   Labour Charges: ₹${item.labourChargeAmount}
+   Other Charges: ₹${item.otherCharges}
+   Item Total: ₹${item.itemTotal}
 `
   )
   .join("")}
 
-SUBTOTAL: ₹${pdfData.subtotal}
-CGST (${pdfData.CGSTPercent}%): ₹${pdfData.CGSTAmount}
-SGST (${pdfData.SGSTPercent}%): ₹${pdfData.SGSTAmount}
-GRAND TOTAL: ₹${pdfData.grandTotal}
+SUMMARY:
+Subtotal: ₹${invoice.totals.subtotal.toFixed(2)}
+CGST (${invoice.totals.CGSTPercent}%): ₹${invoice.totals.CGSTAmount.toFixed(2)}
+SGST (${invoice.totals.SGSTPercent}%): ₹${invoice.totals.SGSTAmount.toFixed(2)}
+Total GST: ₹${invoice.totals.totalGST.toFixed(2)}
+Grand Total: ₹${invoice.totals.grandTotal.toFixed(2)}
 
-${pdfData.shopSettings.shopName}
+${invoice.shopSettings?.shopName || "JEWELRY COMMERCIAL INVOICE"}
 ${
-  pdfData.shopSettings.gstNumber ? `GST: ${pdfData.shopSettings.gstNumber}` : ""
+  invoice.shopSettings?.gstNumber
+    ? `GST: ${invoice.shopSettings.gstNumber}`
+    : ""
 }
+Generated on: ${new Date().toLocaleDateString()}
       `.trim();
 
       const blob = new Blob([invoiceText], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${pdfData.invoiceNumber}_${pdfData.customer.name}.txt`;
+      link.download = `${
+        invoice.invoiceNumber
+      }_${invoice.customerSnapshot.name.replace(/\s+/g, "_")}.txt`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
       showToast.success(`Invoice ${invoice.invoiceNumber} downloaded`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error downloading invoice:", error);
-      showToast.error("Failed to download invoice");
+      showToast.error(
+        "Failed to download invoice: " +
+          (error.response?.data?.error || error.message)
+      );
     } finally {
       setDownloadingInvoice(null);
     }
@@ -278,9 +285,11 @@ ${
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
+      minimumFractionDigits: 2,
     }).format(amount);
   };
 
+  // Loading state with proper LoadingSpinner usage
   if (loading) {
     return <LoadingSpinner text="Loading customers..." />;
   }
@@ -320,6 +329,83 @@ ${
           </div>
         </div>
 
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-4">
+          <div className="p-4 bg-white border border-gray-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <MdPeople className="text-blue-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {customers.length}
+                </div>
+                <div className="text-sm text-gray-600">Total Customers</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 bg-white border border-gray-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <MdReceipt className="text-green-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {customers.reduce(
+                    (total, customer) => total + customer.totalInvoices,
+                    0
+                  )}
+                </div>
+                <div className="text-sm text-gray-600">Total Invoices</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 bg-white border border-gray-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <MdAttachMoney className="text-purple-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {formatCurrency(
+                    customers.reduce(
+                      (total, customer) => total + customer.totalAmount,
+                      0
+                    )
+                  )}
+                </div>
+                <div className="text-sm text-gray-600">Total Revenue</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 bg-white border border-gray-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <MdCalendarToday className="text-orange-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {customers.length > 0
+                    ? formatDate(
+                        customers.reduce(
+                          (latest, customer) =>
+                            new Date(customer.lastPurchase) > new Date(latest)
+                              ? customer.lastPurchase
+                              : latest,
+                          customers[0].lastPurchase
+                        )
+                      )
+                    : "N/A"}
+                </div>
+                <div className="text-sm text-gray-600">Last Purchase</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Search Bar */}
         <div className="p-6 mb-6 bg-white border border-gray-200 rounded-xl">
           <div className="relative">
@@ -338,6 +424,7 @@ ${
         <div className="mb-6">
           <div className="text-sm text-gray-600">
             Showing {filteredCustomers.length} of {customers.length} customers
+            {searchTerm && ` for "${searchTerm}"`}
           </div>
         </div>
 
@@ -347,13 +434,23 @@ ${
             <div className="p-12 text-center">
               <MdPeople className="mx-auto mb-4 text-4xl text-gray-400" />
               <h3 className="mb-2 text-lg font-semibold text-gray-800">
-                No customers found
+                {customers.length === 0
+                  ? "No customers found"
+                  : "No matching customers"}
               </h3>
-              <p className="text-gray-600">
-                {searchTerm
-                  ? "No customers match your search criteria"
-                  : "No customers have been added yet. Create your first invoice to add customers."}
+              <p className="mb-4 text-gray-600">
+                {customers.length === 0
+                  ? "No customers have been added yet. Create your first invoice to add customers."
+                  : "No customers match your search criteria. Try different search terms."}
               </p>
+              {customers.length === 0 && (
+                <button
+                  onClick={() => (window.location.href = "/billing")}
+                  className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                >
+                  Create First Invoice
+                </button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -454,6 +551,12 @@ ${
                         <div className="font-semibold text-green-600">
                           {formatCurrency(customer.totalAmount)}
                         </div>
+                        <div className="text-xs text-gray-500">
+                          Avg:{" "}
+                          {formatCurrency(
+                            customer.totalAmount / customer.totalInvoices
+                          )}
+                        </div>
                       </td>
 
                       {/* Last Purchase */}
@@ -467,7 +570,7 @@ ${
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           {/* Download Invoices Dropdown */}
-                          <div className="relative dropdown">
+                          <div className="relative group">
                             <motion.button
                               whileTap={{ scale: 0.95 }}
                               className="flex items-center gap-1 px-3 py-2 text-sm text-blue-600 transition-colors rounded-lg bg-blue-50 hover:bg-blue-100"
@@ -475,7 +578,7 @@ ${
                               <MdDownload className="text-lg" />
                               Download
                             </motion.button>
-                            <div className="absolute left-0 z-50 hidden mt-1 bg-white border border-gray-200 rounded-lg shadow-lg dropdown-menu min-w-48 top-full">
+                            <div className="absolute left-0 z-50 hidden mt-1 bg-white border border-gray-200 rounded-lg shadow-lg group-hover:block min-w-48 top-full">
                               {customer.invoices.map((invoice) => (
                                 <button
                                   key={invoice._id}
