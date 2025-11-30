@@ -1,5 +1,5 @@
 // pages/Billing.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MdAdd,
@@ -9,10 +9,12 @@ import {
   MdCurrencyRupee,
   MdCalculate,
   MdDownload,
+  MdRefresh,
 } from "react-icons/md";
 import { useCustomers, Customer } from "../hooks/useCustomers";
 import { useLabourCharges, LabourCharge } from "../hooks/useLabourCharges";
 import { useMetalRates, MetalRate } from "../hooks/useMetalRates";
+import { useLiveRates, LiveRate } from "../hooks/useLiveRates"; // Add this import
 import { useCreateInvoice, LineItem } from "../hooks/useBilling";
 import CustomDropdown from "../components/CustomDropdown";
 import InvoiceQRCode from "../components/InvoiceQRCode";
@@ -57,6 +59,11 @@ export default function Billing() {
   const { data: customers } = useCustomers();
   const { data: labourCharges } = useLabourCharges();
   const { data: metalRates } = useMetalRates();
+  const {
+    data: liveRates,
+    refetch: refetchLiveRates,
+    isLoading: liveRatesLoading,
+  } = useLiveRates(); // Add live rates
   const createInvoice = useCreateInvoice();
 
   const [invoiceDate, setInvoiceDate] = useState<string>(
@@ -70,6 +77,7 @@ export default function Billing() {
   const [customerPhone, setCustomerPhone] = useState<string>("");
   const [customerAddress, setCustomerAddress] = useState<string>("");
   const [generatingInvoiceNumber, setGeneratingInvoiceNumber] = useState(false);
+  const [useLiveRatesEnabled, setUseLiveRatesEnabled] = useState(true); // Toggle for live rates
   const [lineItems, setLineItems] = useState<LineItem[]>([
     {
       itemType: "gold",
@@ -101,6 +109,13 @@ export default function Billing() {
     generateInvoiceNumber();
   }, []);
 
+  // Auto-refresh live rates when component mounts
+  useEffect(() => {
+    if (useLiveRatesEnabled) {
+      refetchLiveRates();
+    }
+  }, [useLiveRatesEnabled, refetchLiveRates]);
+
   const fetchShopSettings = async () => {
     try {
       const response = await apiClient.get("/shop-settings");
@@ -118,15 +133,11 @@ export default function Billing() {
   const generateInvoiceNumber = async (): Promise<string> => {
     try {
       setGeneratingInvoiceNumber(true);
-
-      // Get ALL invoices to find the highest number
       const response = await apiClient.get("/invoices");
       const invoices = response.data || [];
 
       let highestNumber = 0;
-
       if (invoices.length > 0) {
-        // Extract numbers from all invoice numbers and find the highest
         invoices.forEach((invoice: any) => {
           const match = invoice.invoiceNumber.match(/INV-(\d+)/);
           if (match && match[1]) {
@@ -138,16 +149,12 @@ export default function Billing() {
         });
       }
 
-      // Next number is highest + 1, or start from 1 if no invoices
       const nextNumber = highestNumber + 1;
-
-      // Format as INV-1, INV-2, etc.
       const newInvoiceNumber = `INV-${nextNumber}`;
       setInvoiceNumber(newInvoiceNumber);
       return newInvoiceNumber;
     } catch (error) {
       console.error("Failed to generate invoice number:", error);
-      // Fallback: start from INV-1
       const fallbackNumber = "INV-1";
       setInvoiceNumber(fallbackNumber);
       return fallbackNumber;
@@ -155,6 +162,7 @@ export default function Billing() {
       setGeneratingInvoiceNumber(false);
     }
   };
+
   // Custom dropdown options
   const itemTypeOptions = [
     { value: "gold", label: "Gold" },
@@ -207,6 +215,26 @@ export default function Billing() {
     }
   };
 
+  // Get rate for item - uses live rates if enabled, falls back to metal rates
+  const getRateForItem = (itemType: string, purity: string): number => {
+    if (useLiveRatesEnabled && liveRates && liveRates.length > 0) {
+      const liveRate = liveRates.find(
+        (rate: LiveRate) =>
+          rate.metalType === itemType && rate.purity === purity && rate.isActive
+      );
+      if (liveRate) {
+        return liveRate.ratePerGram;
+      }
+    }
+
+    // Fallback to metal rates
+    const metalRate = metalRates?.find(
+      (rate: MetalRate) =>
+        rate.metalType === itemType && rate.purity === purity && rate.isActive
+    );
+    return metalRate?.ratePerGram || 0;
+  };
+
   const subtotal: number = lineItems.reduce(
     (acc, item) => acc + item.itemTotal,
     0
@@ -254,13 +282,8 @@ export default function Billing() {
       if (field === "weightValue") item.weight.value = Number(value) || 0;
       else if (typeof value === "string") item.weight.unit = value;
 
-      const rateEntry = metalRates?.find(
-        (rate: MetalRate) =>
-          rate.metalType === item.itemType &&
-          rate.purity === item.purity &&
-          rate.isActive
-      );
-      if (rateEntry) item.ratePerGram = rateEntry.ratePerGram;
+      // Use live rates or metal rates based on toggle
+      item.ratePerGram = getRateForItem(item.itemType, item.purity);
 
       const weightInGrams = convertToGrams(item.weight.value, item.weight.unit);
       const metalPrice = weightInGrams * item.ratePerGram;
@@ -334,7 +357,7 @@ export default function Billing() {
         purity: "24K",
         description: "",
         weight: { value: 0, unit: "g" },
-        ratePerGram: 0,
+        ratePerGram: getRateForItem("gold", "24K"), // Set initial rate
         labourChargeReferenceId: "",
         labourChargeType: null,
         labourChargeAmount: 0,
@@ -355,6 +378,77 @@ export default function Billing() {
     }
   };
 
+  // Refresh rates manually
+  const handleRefreshRates = async () => {
+    try {
+      await refetchLiveRates();
+      showToast.success("Rates refreshed successfully");
+
+      // Update all line items with new rates
+      const updatedItems = lineItems.map((item) => ({
+        ...item,
+        ratePerGram: getRateForItem(item.itemType, item.purity),
+      }));
+      setLineItems(updatedItems);
+    } catch (error) {
+      showToast.error("Failed to refresh rates");
+    }
+  };
+
+  // Live Rates Status Indicator
+  const renderLiveRatesIndicator = () => {
+    if (!useLiveRatesEnabled) return null;
+
+    const lastUpdated =
+      liveRates && liveRates.length > 0
+        ? new Date(liveRates[0].lastUpdated)
+        : null;
+
+    const minutesAgo = lastUpdated
+      ? Math.floor((new Date().getTime() - lastUpdated.getTime()) / 60000)
+      : null;
+
+    return (
+      <div className="p-3 mb-4 border border-blue-200 rounded-lg bg-blue-50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-2 h-2 rounded-full ${
+                liveRatesLoading
+                  ? "bg-yellow-500 animate-pulse"
+                  : liveRates && liveRates.length > 0
+                  ? "bg-green-500 animate-pulse"
+                  : "bg-red-500"
+              }`}
+            ></div>
+            <span className="text-sm font-medium text-blue-800">
+              {liveRatesLoading
+                ? "Loading Live Rates..."
+                : liveRates && liveRates.length > 0
+                ? "Live Rates Active"
+                : "Live Rates Unavailable"}
+            </span>
+            {minutesAgo !== null && (
+              <span className="text-xs text-blue-600">
+                Updated {minutesAgo} minute{minutesAgo !== 1 ? "s" : ""} ago
+              </span>
+            )}
+          </div>
+          <button
+            onClick={handleRefreshRates}
+            disabled={liveRatesLoading}
+            className="flex items-center gap-1 px-2 py-1 text-xs text-blue-800 bg-blue-100 rounded hover:bg-blue-200 disabled:opacity-50"
+          >
+            <MdRefresh
+              className={`text-sm ${liveRatesLoading ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const handleSubmit = async () => {
     if (!customerName.trim()) {
       showToast.error("Please enter customer name");
@@ -373,10 +467,7 @@ export default function Billing() {
 
     if (createInvoice.isPending) return;
 
-    // Generate invoice number FIRST and wait for it
     let finalInvoiceNumber = invoiceNumber;
-
-    // If invoice number is empty or seems like a fallback, generate a new one
     if (!finalInvoiceNumber || finalInvoiceNumber.includes("timestamp")) {
       finalInvoiceNumber = await generateInvoiceNumber();
     }
@@ -411,7 +502,7 @@ export default function Billing() {
     // Gold PDF - Jay Krishna Haribhai Soni
     if (goldItems.length > 0) {
       const goldPdfData = {
-        invoiceNumber: finalInvoiceNumber, // Same invoice number for both
+        invoiceNumber: finalInvoiceNumber,
         invoiceDate,
         customer: {
           name: customerName,
@@ -446,7 +537,7 @@ export default function Billing() {
     // Silver PDF - Measers Yogeshkumar and Brothers
     if (silverItems.length > 0) {
       const silverPdfData = {
-        invoiceNumber: finalInvoiceNumber, // Same invoice number for both
+        invoiceNumber: finalInvoiceNumber,
         invoiceDate,
         customer: {
           name: customerName,
@@ -523,7 +614,7 @@ export default function Billing() {
         phone: customerPhone,
         address: customerAddress,
       },
-      total: grandTotal, // Overall total for reference
+      total: grandTotal,
       downloadUrls: pdfDataArray.map((pdfData, index) => ({
         type: pdfData.shopSettings.shopName,
         url: `${
@@ -536,6 +627,7 @@ export default function Billing() {
         weight: item.weight,
         total: item.itemTotal,
       })),
+      ratesSource: useLiveRatesEnabled ? "live" : "manual",
     });
 
     const invoicePayload = {
@@ -562,6 +654,7 @@ export default function Billing() {
       paymentDetails: { paymentMode, amountPaid: 0, balanceDue: grandTotal },
       QRCodeData: qrCodeData,
       pdfData: pdfDataArray,
+      ratesSource: useLiveRatesEnabled ? "live" : "manual",
     };
 
     createInvoice.mutate(invoicePayload, {
@@ -570,15 +663,12 @@ export default function Billing() {
         setInvoiceData(pdfDataArray);
         setShowQRCode(true);
 
-        // Show success message with PDF types generated
         const pdfTypes = [];
         if (goldItems.length > 0) pdfTypes.push("Gold (Jay Krishna)");
         if (silverItems.length > 0) pdfTypes.push("Silver (Yogeshkumar)");
         if (otherItems.length > 0) pdfTypes.push("Other Items");
 
         showToast.success(`Generated ${pdfTypes.join(", ")} PDFs`);
-
-        // Generate next invoice number for the next invoice
         generateInvoiceNumber();
       },
       onError: (error: any) => {
@@ -586,7 +676,6 @@ export default function Billing() {
           showToast.error(
             "Invoice number already exists. Generating new number..."
           );
-          // Regenerate invoice number and retry
           setTimeout(() => {
             generateInvoiceNumber();
           }, 1000);
@@ -615,9 +704,48 @@ export default function Billing() {
           <div>
             <h2 className="text-2xl font-bold text-gray-800">Create Invoice</h2>
             <p className="text-gray-600">
-              Generate new invoices for your customers
+              Generate new invoices with live metal rates
             </p>
           </div>
+        </div>
+
+        {/* Live Rates Toggle and Status */}
+        <div className="p-4 mb-6 bg-white border border-gray-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useLiveRatesEnabled}
+                  onChange={(e) => setUseLiveRatesEnabled(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                />
+                <span className="font-medium text-gray-700">
+                  Use Live Rates
+                </span>
+              </label>
+              {useLiveRatesEnabled && (
+                <span className="px-2 py-1 text-sm text-green-600 rounded bg-green-50">
+                  Real-time Pricing
+                </span>
+              )}
+            </div>
+            {useLiveRatesEnabled && (
+              <button
+                onClick={handleRefreshRates}
+                disabled={liveRatesLoading}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-blue-700 bg-blue-100 rounded-lg hover:bg-blue-200 disabled:opacity-50"
+              >
+                <MdRefresh
+                  className={`text-lg ${
+                    liveRatesLoading ? "animate-spin" : ""
+                  }`}
+                />
+                Refresh Rates
+              </button>
+            )}
+          </div>
+          {renderLiveRatesIndicator()}
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -744,7 +872,6 @@ export default function Billing() {
                   />
                 </div>
 
-                {/* Add HUID Field */}
                 <div>
                   <label
                     htmlFor="customer-huid"
@@ -949,7 +1076,6 @@ export default function Billing() {
                         />
                       </div>
 
-                      {/* Add Other Charges input */}
                       <div>
                         <label className="block mb-1 text-sm font-medium text-gray-700">
                           Other Charges
@@ -986,6 +1112,11 @@ export default function Billing() {
                           <span className="ml-1 font-medium">
                             ₹{item.ratePerGram.toFixed(2)}
                           </span>
+                          {useLiveRatesEnabled && (
+                            <span className="ml-1 text-xs text-green-600">
+                              (Live)
+                            </span>
+                          )}
                         </div>
                         <div>
                           <span className="text-gray-600">Making Charges:</span>
@@ -1023,7 +1154,6 @@ export default function Billing() {
                 Payment Details
               </h3>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                {/* CGST Percentage */}
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700">
                     CGST Percentage
@@ -1045,7 +1175,6 @@ export default function Billing() {
                   </div>
                 </div>
 
-                {/* SGST Percentage */}
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700">
                     SGST Percentage
@@ -1111,7 +1240,6 @@ export default function Billing() {
                   <span className="text-gray-600">SGST ({SGSTPercent}%):</span>
                   <span className="font-medium">₹{SGSTAmount.toFixed(2)}</span>
                 </div>
-                {/* Replace Amount Paid and Balance Due with Total GST */}
                 <div className="flex justify-between py-2 border-b">
                   <span className="text-gray-600">Total GST:</span>
                   <span className="font-medium">₹{totalGST.toFixed(2)}</span>
@@ -1178,7 +1306,6 @@ export default function Billing() {
                 </div>
 
                 <div className="space-y-2">
-                  {/* Dynamic PDF downloads based on item types */}
                   {invoiceData.map((pdfData: PdfData, index: number) => (
                     <PDFDownloadLink
                       key={index}
