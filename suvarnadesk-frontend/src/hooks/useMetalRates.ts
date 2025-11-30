@@ -1,4 +1,4 @@
-// hooks/useMetalRates.ts
+// src/hooks/useMetalRates.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../api/apiClient';
 

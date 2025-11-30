@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   MdTrendingUp,
@@ -32,17 +32,31 @@ export default function Rates() {
   const METAL_PRICE_API_KEY = "da6b6cedefa5fee3e3a303d8040e86cd";
 
   // Real-time price fluctuation simulation
-  const simulatePriceFluctuation = (
-    basePrice: number,
-    volatility: number = 0.001
-  ) => {
-    // Small random fluctuation (±0.1% typically)
-    const fluctuation = (Math.random() - 0.5) * 2 * volatility;
-    return basePrice * (1 + fluctuation);
-  };
+  const simulatePriceFluctuation = useCallback(
+    (basePrice: number, volatility: number = 0.001) => {
+      // Small random fluctuation (±0.1% typically)
+      const fluctuation = (Math.random() - 0.5) * 2 * volatility;
+      return basePrice * (1 + fluctuation);
+    },
+    []
+  );
+
+  // Convert gold price from USD per troy ounce to INR per gram
+  const convertGoldPrice = useCallback((usdPerTroyOunce: number): number => {
+    const usdToInr = 83;
+    const gramsPerTroyOunce = 31.1035;
+    return (usdPerTroyOunce * usdToInr) / gramsPerTroyOunce;
+  }, []);
+
+  // Convert silver price from USD per troy ounce to INR per gram
+  const convertSilverPrice = useCallback((usdPerTroyOunce: number): number => {
+    const usdToInr = 83;
+    const gramsPerTroyOunce = 31.1035;
+    return (usdPerTroyOunce * usdToInr) / gramsPerTroyOunce;
+  }, []);
 
   // Fetch initial rates from API
-  const fetchInitialRates = async () => {
+  const fetchInitialRates = useCallback(async () => {
     try {
       setLoadingLiveRates(true);
 
@@ -155,10 +169,10 @@ export default function Rates() {
     } finally {
       setLoadingLiveRates(false);
     }
-  };
+  }, [convertGoldPrice, convertSilverPrice]);
 
   // Update rates every second with realistic fluctuations
-  const updateRatesInRealTime = () => {
+  const updateRatesInRealTime = useCallback(() => {
     setLiveRates((prevRates) => {
       const updatedRates = prevRates.map((rate) => {
         // Different volatility for different metals
@@ -185,49 +199,25 @@ export default function Rates() {
 
     setLastUpdated(new Date());
     setUpdateCount((prev) => prev + 1);
-  };
-
-  // Convert gold price from USD per troy ounce to INR per gram
-  const convertGoldPrice = (usdPerTroyOunce: number): number => {
-    const usdToInr = 83;
-    const gramsPerTroyOunce = 31.1035;
-    return (usdPerTroyOunce * usdToInr) / gramsPerTroyOunce;
-  };
-
-  // Convert silver price from USD per troy ounce to INR per gram
-  const convertSilverPrice = (usdPerTroyOunce: number): number => {
-    const usdToInr = 83;
-    const gramsPerTroyOunce = 31.1035;
-    return (usdPerTroyOunce * usdToInr) / gramsPerTroyOunce;
-  };
+  }, [simulatePriceFluctuation]);
 
   // Reset to initial API prices
-  const refreshBasePrices = async () => {
+  const refreshBasePrices = useCallback(async () => {
     await fetchInitialRates();
     showToast.success("Base prices refreshed from market!");
-  };
+  }, [fetchInitialRates]);
 
   // Initialize and start real-time updates
   useEffect(() => {
     fetchInitialRates();
-  }, []);
+  }, [fetchInitialRates]);
 
   // Real-time update effect
   useEffect(() => {
     const interval = setInterval(updateRatesInRealTime, 1000); // Update every second
 
     return () => clearInterval(interval);
-  }, []);
-
-  const getMetalColor = (metalType: string) => {
-    const colors = {
-      gold: "text-yellow-600",
-      silver: "text-gray-600",
-      "rose gold": "text-rose-600",
-      "sterling silver": "text-blue-600",
-    };
-    return colors[metalType as keyof typeof colors] || "text-gray-600";
-  };
+  }, [updateRatesInRealTime]);
 
   const getMetalBgColor = (metalType: string) => {
     const colors = {
@@ -391,10 +381,6 @@ export default function Rates() {
             <div className="mb-4 text-center">
               <motion.div
                 key={`${rate.metal}-${rate.price}`}
-                // initial={{
-                //   scale: 1.05,
-                //   backgroundColor: rate.change >= 0 ? "#dcfce7" : "#fee2e2",
-                // }}
                 animate={{ scale: 1, backgroundColor: "transparent" }}
                 transition={{ duration: 0.5 }}
                 className="p-2 mb-1 text-3xl font-bold text-gray-900 rounded"
@@ -407,7 +393,6 @@ export default function Rates() {
             {/* Price Change */}
             <motion.div
               key={`${rate.metal}-change-${rate.change}`}
-              // initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               className={`flex items-center justify-center gap-2 p-3 rounded-lg border ${getChangeBgColor(
                 rate.change
