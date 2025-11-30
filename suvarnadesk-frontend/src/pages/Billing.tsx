@@ -120,25 +120,27 @@ export default function Billing() {
     try {
       setGeneratingInvoiceNumber(true);
 
-      // Get the latest invoice to determine the next number
-      const response = await apiClient.get("/invoices/latest");
-      const latestInvoiceNumber = response.data?.invoiceNumber;
+      // Get ALL invoices to find the highest number
+      const response = await apiClient.get("/invoices");
+      const invoices = response.data || [];
 
-      let nextNumber = 1;
+      let highestNumber = 0;
 
-      if (latestInvoiceNumber) {
-        // Extract the numeric part from the latest invoice number (INV-1, INV-2, etc.)
-        const match = latestInvoiceNumber.match(/INV-(\d+)/);
-        if (match && match[1]) {
-          nextNumber = parseInt(match[1]) + 1;
-        } else {
-          // If format doesn't match, try to extract any number
-          const numbers = latestInvoiceNumber.match(/\d+/g);
-          if (numbers && numbers.length > 0) {
-            nextNumber = parseInt(numbers[0]) + 1;
+      if (invoices.length > 0) {
+        // Extract numbers from all invoice numbers and find the highest
+        invoices.forEach((invoice: any) => {
+          const match = invoice.invoiceNumber.match(/INV-(\d+)/);
+          if (match && match[1]) {
+            const num = parseInt(match[1]);
+            if (num > highestNumber) {
+              highestNumber = num;
+            }
           }
-        }
+        });
       }
+
+      // Next number is highest + 1, or start from 1 if no invoices
+      const nextNumber = highestNumber + 1;
 
       // Format as INV-1, INV-2, etc.
       const newInvoiceNumber = `INV-${nextNumber}`;
@@ -146,16 +148,14 @@ export default function Billing() {
       return newInvoiceNumber;
     } catch (error) {
       console.error("Failed to generate invoice number:", error);
-      // Fallback: use sequential number based on timestamp
-      const timestamp = new Date().getTime();
-      const fallbackNumber = `INV-${timestamp}`;
+      // Fallback: start from INV-1
+      const fallbackNumber = "INV-1";
       setInvoiceNumber(fallbackNumber);
       return fallbackNumber;
     } finally {
       setGeneratingInvoiceNumber(false);
     }
   };
-
   // Custom dropdown options
   const itemTypeOptions = [
     { value: "gold", label: "Gold" },
@@ -647,7 +647,7 @@ export default function Billing() {
                     value={invoiceNumber}
                     onChange={(e) => setInvoiceNumber(e.target.value)}
                     className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="INV-123456"
+                    placeholder="INV-1"
                     required
                   />
                 </div>
