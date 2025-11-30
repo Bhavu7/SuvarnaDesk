@@ -10,7 +10,6 @@ import {
   MdSecurity,
   MdAccountCircle,
   MdAttachMoney,
-  MdInventory,
 } from "react-icons/md";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
