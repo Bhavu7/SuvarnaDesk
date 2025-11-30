@@ -1,7 +1,28 @@
 import React from "react";
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import {
+  Document,
+  Page,
+  Text,
+  View,
+  StyleSheet,
+  Font,
+} from "@react-pdf/renderer";
 
-// Simplified styles - keeping your exact UI but removing complex nested structures
+// Register fonts with rupee symbol support
+Font.register({
+  family: "Helvetica",
+  fonts: [
+    { src: "/fonts/helvetica-regular.ttf" },
+    { src: "/fonts/helvetica-bold.ttf", fontWeight: "bold" },
+  ],
+});
+
+// Register a font that supports rupee symbol if needed, or use Unicode
+Font.register({
+  family: "DejaVu",
+  src: "/fonts/DejaVuSans.ttf",
+});
+
 const styles = StyleSheet.create({
   page: {
     backgroundColor: "#FFFFFF",
@@ -69,9 +90,16 @@ const styles = StyleSheet.create({
     color: "#333",
     lineHeight: 1.4,
   },
+  huidText: {
+    fontSize: 8,
+    color: "#666",
+    marginTop: 2,
+    fontWeight: "bold",
+  },
   tableSection: {
     marginBottom: 8,
     border: "1 solid #1f9e4d",
+    flex: 1,
   },
   tableHeader: {
     flexDirection: "row",
@@ -94,12 +122,7 @@ const styles = StyleSheet.create({
   tableRow: {
     flexDirection: "row",
     borderBottom: "1 solid #ddd",
-    minHeight: 20,
-  },
-  emptyRow: {
-    flexDirection: "row",
-    borderBottom: "1 solid #f0f0f0",
-    minHeight: 20,
+    minHeight: 24,
   },
   tableCell: {
     flex: 1,
@@ -131,27 +154,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     marginTop: 8,
     justifyContent: "space-between",
-    borderTop: "1 solid #1f9e4d",
-    paddingTop: 8,
   },
-  notesTable: {
+  notesBox: {
     flex: 1,
-    border: "1 solid #1f9e4d",
-    marginRight: 8,
-  },
-  notesHeader: {
-    backgroundColor: "#1f9e4d",
-    paddingVertical: 4,
+    borderTop: "1 solid #1f9e4d",
+    paddingVertical: 8,
     paddingHorizontal: 8,
+    fontSize: 9,
+    color: "#333",
   },
-  notesHeaderText: {
-    color: "#fff",
+  notesTitle: {
     fontWeight: "bold",
+    color: "#333",
+    marginBottom: 4,
     fontSize: 9,
   },
-  notesBody: {
-    padding: 8,
-    minHeight: 80,
+  notesList: {
+    marginLeft: 8,
   },
   noteItem: {
     fontSize: 8,
@@ -159,23 +178,11 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     lineHeight: 1.2,
   },
-  totalsTable: {
+  totalsBox: {
+    borderTop: "1 solid #1f9e4d",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     width: "200px",
-    border: "1 solid #1f9e4d",
-  },
-  totalsHeader: {
-    backgroundColor: "#1f9e4d",
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  totalsHeaderText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 9,
-    textAlign: "center",
-  },
-  totalsBody: {
-    padding: 8,
   },
   totalRow: {
     flexDirection: "row",
@@ -223,6 +230,7 @@ const styles = StyleSheet.create({
     borderTop: "1 solid #999",
     width: "100%",
     marginBottom: 4,
+    minHeight: 40,
   },
   signatureLabel: {
     fontSize: 9,
@@ -241,12 +249,6 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: "#666",
     marginTop: 2,
-  },
-  pageNumber: {
-    textAlign: "center",
-    marginTop: 10,
-    fontSize: 9,
-    color: "#666",
   },
 });
 
@@ -295,37 +297,23 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
   };
 
   const formatCurrency = (amount: number) => {
-    return `₹${amount.toFixed(2)}`;
+    return `₹${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,")}`;
   };
 
-  // Fixed 11 items per page
+  // Simple multi-page logic without empty rows
   const ITEMS_PER_PAGE = 11;
   const totalPages = Math.ceil(data.items.length / ITEMS_PER_PAGE);
 
-  // Get items for specific page
-  const getItemsForPage = (pageIndex: number) => {
+  const renderPage = (pageIndex: number) => {
     const startIndex = pageIndex * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
-    return data.items.slice(startIndex, endIndex);
-  };
-
-  // Calculate empty rows for specific page (always fill to 11 rows)
-  const getEmptyRows = (pageIndex: number) => {
-    const itemsForPage = getItemsForPage(pageIndex);
-    const emptyRowsCount = Math.max(0, ITEMS_PER_PAGE - itemsForPage.length);
-    return Array(emptyRowsCount).fill(null);
-  };
-
-  // Render a single page
-  const renderPage = (pageIndex: number) => {
-    const pageItems = getItemsForPage(pageIndex);
-    const emptyRows = getEmptyRows(pageIndex);
+    const pageItems = data.items.slice(startIndex, endIndex);
     const isLastPage = pageIndex === totalPages - 1;
 
     return (
       <Page key={pageIndex} size="A4" style={styles.page}>
         <View style={styles.container}>
-          {/* Header - Show on every page */}
+          {/* Header Section - Show on every page */}
           <View style={styles.titleSection}>
             <Text style={styles.title}>{data.shopSettings.shopName}</Text>
             {data.shopSettings.gstNumber && (
@@ -442,9 +430,9 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
               </View>
             </View>
 
-            {/* Actual Items */}
+            {/* Actual Items Only - No Empty Rows */}
             {pageItems.map((item, index) => {
-              const globalIndex = pageIndex * ITEMS_PER_PAGE + index;
+              const globalIndex = startIndex + index;
               return (
                 <View key={globalIndex} style={styles.tableRow}>
                   <View style={[styles.tableCell, styles.colProductNo]}>
@@ -511,87 +499,16 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                 </View>
               );
             })}
-
-            {/* Empty Rows to maintain 11 rows per page */}
-            {emptyRows.map((_, index) => (
-              <View key={`empty-${pageIndex}-${index}`} style={styles.emptyRow}>
-                <View style={[styles.tableCell, styles.colProductNo]}>
-                  <Text> </Text>
-                </View>
-                <View style={[styles.tableCell, styles.colDescription]}>
-                  <Text> </Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCell,
-                    styles.colHUID,
-                    styles.tableCellCenter,
-                  ]}
-                >
-                  <Text> </Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCell,
-                    styles.colQty,
-                    styles.tableCellCenter,
-                  ]}
-                >
-                  <Text> </Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCell,
-                    styles.colWeight,
-                    styles.tableCellRight,
-                  ]}
-                >
-                  <Text> </Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCell,
-                    styles.colPrice,
-                    styles.tableCellRight,
-                  ]}
-                >
-                  <Text> </Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCell,
-                    styles.colOtherCharges,
-                    styles.tableCellRight,
-                  ]}
-                >
-                  <Text> </Text>
-                </View>
-                <View
-                  style={[
-                    styles.tableCell,
-                    styles.colAmount,
-                    styles.tableCellRight,
-                    styles.tableCellLast,
-                  ]}
-                >
-                  <Text> </Text>
-                </View>
-              </View>
-            ))}
           </View>
 
-          {/* Footer Section - Only on last page */}
+          {/* Footer Sections - Only on last page */}
           {isLastPage && (
             <>
               <View style={styles.footerSection}>
-                <View style={styles.notesTable}>
-                  <View style={styles.notesHeader}>
-                    <Text style={styles.notesHeaderText}>NOTES</Text>
-                  </View>
-                  <View style={styles.notesBody}>
-                    <Text style={styles.noteItem}>
-                      • All weights are in grams
-                    </Text>
+                <View style={styles.notesBox}>
+                  <Text style={styles.notesTitle}>NOTES:</Text>
+                  <View style={styles.notesList}>
+                    <Text style={styles.noteItem}>• All weights are in grams</Text>
                     <Text style={styles.noteItem}>
                       • GST included as applicable
                     </Text>
@@ -600,46 +517,40 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                     </Text>
                   </View>
                 </View>
-
-                <View style={styles.totalsTable}>
-                  <View style={styles.totalsHeader}>
-                    <Text style={styles.totalsHeaderText}>TOTALS</Text>
+                <View style={styles.totalsBox}>
+                  <View style={styles.totalRow}>
+                    <Text style={styles.totalLabel}>Subtotal:</Text>
+                    <Text style={styles.totalValue}>
+                      {formatCurrency(data.subtotal)}
+                    </Text>
                   </View>
-                  <View style={styles.totalsBody}>
-                    <View style={styles.totalRow}>
-                      <Text style={styles.totalLabel}>Subtotal:</Text>
-                      <Text style={styles.totalValue}>
-                        {formatCurrency(data.subtotal)}
-                      </Text>
-                    </View>
-                    <View style={styles.totalRow}>
-                      <Text style={styles.totalLabel}>
-                        CGST ({data.CGSTPercent}%):
-                      </Text>
-                      <Text style={styles.totalValue}>
-                        {formatCurrency(data.CGSTAmount)}
-                      </Text>
-                    </View>
-                    <View style={styles.totalRow}>
-                      <Text style={styles.totalLabel}>
-                        SGST ({data.SGSTPercent}%):
-                      </Text>
-                      <Text style={styles.totalValue}>
-                        {formatCurrency(data.SGSTAmount)}
-                      </Text>
-                    </View>
-                    <View style={styles.totalRow}>
-                      <Text style={styles.totalLabel}>Total GST:</Text>
-                      <Text style={styles.totalValue}>
-                        {formatCurrency(data.CGSTAmount + data.SGSTAmount)}
-                      </Text>
-                    </View>
-                    <View style={styles.totalRowBold}>
-                      <Text style={styles.totalBoldLabel}>GRAND TOTAL</Text>
-                      <Text style={styles.totalBoldValue}>
-                        {formatCurrency(data.grandTotal)}
-                      </Text>
-                    </View>
+                  <View style={styles.totalRow}>
+                    <Text style={styles.totalLabel}>
+                      CGST ({data.CGSTPercent}%):
+                    </Text>
+                    <Text style={styles.totalValue}>
+                      {formatCurrency(data.CGSTAmount)}
+                    </Text>
+                  </View>
+                  <View style={styles.totalRow}>
+                    <Text style={styles.totalLabel}>
+                      SGST ({data.SGSTPercent}%):
+                    </Text>
+                    <Text style={styles.totalValue}>
+                      {formatCurrency(data.SGSTAmount)}
+                    </Text>
+                  </View>
+                  <View style={styles.totalRow}>
+                    <Text style={styles.totalLabel}>Total GST:</Text>
+                    <Text style={styles.totalValue}>
+                      {formatCurrency(data.CGSTAmount + data.SGSTAmount)}
+                    </Text>
+                  </View>
+                  <View style={styles.totalRowBold}>
+                    <Text style={styles.totalBoldLabel}>GRAND TOTAL</Text>
+                    <Text style={styles.totalBoldValue}>
+                      {formatCurrency(data.grandTotal)}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -647,9 +558,7 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
               <View style={styles.signatureSection}>
                 <View style={styles.signatureBlock}>
                   <View style={styles.signatureLine} />
-                  <Text style={styles.signatureLabel}>
-                    Authorized Signature
-                  </Text>
+                  <Text style={styles.signatureLabel}>Authorized Signature</Text>
                 </View>
                 <View style={styles.signatureBlock}>
                   {/* Empty space for customer signature */}
@@ -665,12 +574,12 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
             </>
           )}
 
-          {/* Page Number */}
-          <View style={styles.pageNumber}>
-            <Text>
-              Page {pageIndex + 1} of {totalPages}
-            </Text>
-          </View>
+          {/* Show page number if multiple pages */}
+          {totalPages > 1 && (
+            <View style={{ textAlign: 'center', marginTop: 10, fontSize: 9, color: '#666' }}>
+              <Text>Page {pageIndex + 1} of {totalPages}</Text>
+            </View>
+          )}
         </View>
       </Page>
     );
@@ -678,7 +587,7 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
 
   return (
     <Document>
-      {Array.from({ length: totalPages }, (_, pageIndex) =>
+      {Array.from({ length: totalPages }, (_, pageIndex) => 
         renderPage(pageIndex)
       )}
     </Document>
