@@ -1157,7 +1157,6 @@ export default function Billing() {
             </motion.div>
 
             {/* QR Code & Download Section */}
-
             {invoiceData && showQRCode && invoiceData.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -1167,19 +1166,20 @@ export default function Billing() {
                 <div className="flex items-center gap-2 mb-4">
                   <MdQrCode className="text-xl text-purple-600" />
                   <h3 className="text-lg font-semibold text-gray-800">
-                    Invoice QR Code
+                    Invoice PDF Downloads
                   </h3>
                 </div>
 
-                <div className="flex justify-center mb-4">
-                  <InvoiceQRCode
-                    data={`${window.location.origin}/api/invoices/download/${invoiceData[0].invoiceNumber}`}
-                    size={200}
-                  />
+                <div className="mb-4 text-sm text-gray-600">
+                  <p>If PDF generation fails, try:</p>
+                  <ul className="ml-4 list-disc">
+                    <li>Reducing the number of items</li>
+                    <li>Using simpler descriptions</li>
+                    <li>Refreshing the page and trying again</li>
+                  </ul>
                 </div>
 
                 <div className="space-y-2">
-                  {/* Dynamic PDF downloads based on item types */}
                   {invoiceData.map((pdfData: PdfData, index: number) => (
                     <PDFDownloadLink
                       key={index}
@@ -1192,10 +1192,12 @@ export default function Billing() {
                       )}.pdf`}
                       className="flex items-center justify-center w-full gap-2 py-2 text-sm font-medium text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
                     >
-                      {({ loading }) => (
+                      {({ loading, error }) => (
                         <>
                           <MdDownload className="text-lg" />
-                          {loading
+                          {error
+                            ? "PDF Error - Try Again"
+                            : loading
                             ? `Preparing ${pdfData.shopSettings.shopName}...`
                             : `Download ${pdfData.invoiceNumber} - ${pdfData.shopSettings.shopName}`}
                         </>
@@ -1207,7 +1209,7 @@ export default function Billing() {
                     onClick={() => setShowQRCode(false)}
                     className="w-full py-2 text-sm text-gray-600 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-0"
                   >
-                    Hide QR Code
+                    Hide Downloads
                   </button>
                 </div>
               </motion.div>

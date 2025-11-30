@@ -1,28 +1,7 @@
 import React from "react";
-import {
-  Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
-  Font,
-} from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 
-// Register fonts with rupee symbol support
-Font.register({
-  family: "Helvetica",
-  fonts: [
-    { src: "/fonts/helvetica-regular.ttf" },
-    { src: "/fonts/helvetica-bold.ttf", fontWeight: "bold" },
-  ],
-});
-
-// Register a font that supports rupee symbol if needed, or use Unicode
-Font.register({
-  family: "DejaVu",
-  src: "/fonts/DejaVuSans.ttf",
-});
-
+// Simplified styles - keeping your exact UI but removing complex nested structures
 const styles = StyleSheet.create({
   page: {
     backgroundColor: "#FFFFFF",
@@ -90,16 +69,9 @@ const styles = StyleSheet.create({
     color: "#333",
     lineHeight: 1.4,
   },
-  huidText: {
-    fontSize: 8,
-    color: "#666",
-    marginTop: 2,
-    fontWeight: "bold",
-  },
   tableSection: {
     marginBottom: 8,
     border: "1 solid #1f9e4d",
-    flex: 1,
   },
   tableHeader: {
     flexDirection: "row",
@@ -122,12 +94,12 @@ const styles = StyleSheet.create({
   tableRow: {
     flexDirection: "row",
     borderBottom: "1 solid #ddd",
-    minHeight: 24,
+    minHeight: 20,
   },
   emptyRow: {
     flexDirection: "row",
     borderBottom: "1 solid #f0f0f0",
-    minHeight: 24,
+    minHeight: 20,
   },
   tableCell: {
     flex: 1,
@@ -155,8 +127,6 @@ const styles = StyleSheet.create({
   colPrice: { flex: 0.8 },
   colOtherCharges: { flex: 0.8 },
   colAmount: { flex: 0.8 },
-
-  // Footer Section Styles - Table Format
   footerSection: {
     flexDirection: "row",
     marginTop: 8,
@@ -182,15 +152,6 @@ const styles = StyleSheet.create({
   notesBody: {
     padding: 8,
     minHeight: 80,
-  },
-  notesTitle: {
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 4,
-    fontSize: 9,
-  },
-  notesList: {
-    marginLeft: 8,
   },
   noteItem: {
     fontSize: 8,
@@ -262,7 +223,6 @@ const styles = StyleSheet.create({
     borderTop: "1 solid #999",
     width: "100%",
     marginBottom: 4,
-    minHeight: 40,
   },
   signatureLabel: {
     fontSize: 9,
@@ -283,11 +243,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   pageNumber: {
-    position: "absolute",
-    bottom: 20,
-    left: 0,
-    right: 0,
     textAlign: "center",
+    marginTop: 10,
     fontSize: 9,
     color: "#666",
   },
@@ -338,10 +295,10 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
   };
 
   const formatCurrency = (amount: number) => {
-    return `₹${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,")}`;
+    return `₹${amount.toFixed(2)}`;
   };
 
-  // Fixed 11 rows per page
+  // Fixed 11 items per page
   const ITEMS_PER_PAGE = 11;
   const totalPages = Math.ceil(data.items.length / ITEMS_PER_PAGE);
 
@@ -352,298 +309,149 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
     return data.items.slice(startIndex, endIndex);
   };
 
-  // Calculate empty rows for specific page
+  // Calculate empty rows for specific page (always fill to 11 rows)
   const getEmptyRows = (pageIndex: number) => {
     const itemsForPage = getItemsForPage(pageIndex);
     const emptyRowsCount = Math.max(0, ITEMS_PER_PAGE - itemsForPage.length);
     return Array(emptyRowsCount).fill(null);
   };
 
-  // Common header component
-  const HeaderSection = () => (
-    <>
-      {/* Title - with dynamic shop name */}
-      <View style={styles.titleSection}>
-        <Text style={styles.title}>{data.shopSettings.shopName}</Text>
-        {data.shopSettings.gstNumber && (
-          <Text style={styles.gstNumber}>
-            GST: {data.shopSettings.gstNumber}
-          </Text>
-        )}
-      </View>
+  // Render a single page
+  const renderPage = (pageIndex: number) => {
+    const pageItems = getItemsForPage(pageIndex);
+    const emptyRows = getEmptyRows(pageIndex);
+    const isLastPage = pageIndex === totalPages - 1;
 
-      {/* Rest of your PDF content */}
-      <View style={styles.metaInfoRow}>
-        <View style={styles.metaInfoItem}>
-          <Text style={styles.metaLabel}>Invoice Number:</Text>
-          <Text style={styles.metaValue}>{data.invoiceNumber}</Text>
-        </View>
-        <View style={styles.metaInfoItem}>
-          <Text style={styles.metaLabel}>Issued To:</Text>
-          <Text style={styles.metaValue}>{data.customer.name}</Text>
-        </View>
-        <View style={styles.metaInfoItem}>
-          <Text style={styles.metaLabel}>Date Issued:</Text>
-          <Text style={styles.metaValue}>{formatDate(data.invoiceDate)}</Text>
-        </View>
-      </View>
+    return (
+      <Page key={pageIndex} size="A4" style={styles.page}>
+        <View style={styles.container}>
+          {/* Header - Show on every page */}
+          <View style={styles.titleSection}>
+            <Text style={styles.title}>{data.shopSettings.shopName}</Text>
+            {data.shopSettings.gstNumber && (
+              <Text style={styles.gstNumber}>
+                GST: {data.shopSettings.gstNumber}
+              </Text>
+            )}
+          </View>
 
-      <View style={styles.boxesRow}>
-        <View style={styles.box}>
-          <View style={styles.boxHeader}>
-            <Text>Customer</Text>
-          </View>
-          <View style={styles.boxBody}>
-            <Text>{data.customer.name}</Text>
-            <Text>{data.customer.address}</Text>
-            <Text>{data.customer.email}</Text>
-            <Text>{data.customer.phone}</Text>
-          </View>
-        </View>
-
-        <View style={styles.box}>
-          <View style={styles.boxHeader}>
-            <Text>Seller</Text>
-          </View>
-          <View style={styles.boxBody}>
-            <Text>{data.shopSettings.shopName}</Text>
-            <Text>Professional Jewelry Services</Text>
-          </View>
-        </View>
-      </View>
-    </>
-  );
-
-  // Table header component
-  const TableHeader = () => (
-    <View style={styles.tableHeader}>
-      <View style={[styles.tableHeaderCell, styles.colProductNo]}>
-        <Text>PRODUCT NO</Text>
-      </View>
-      <View style={[styles.tableHeaderCell, styles.colDescription]}>
-        <Text>DESCRIPTION</Text>
-      </View>
-      {/* Added HUID Column */}
-      <View
-        style={[styles.tableHeaderCell, styles.colHUID, styles.tableCellCenter]}
-      >
-        <Text>HUID</Text>
-      </View>
-      <View
-        style={[styles.tableHeaderCell, styles.colQty, styles.tableCellCenter]}
-      >
-        <Text>QTY</Text>
-      </View>
-      <View
-        style={[
-          styles.tableHeaderCell,
-          styles.colWeight,
-          styles.tableCellRight,
-        ]}
-      >
-        <Text>WEIGHT (g)</Text>
-      </View>
-      <View
-        style={[styles.tableHeaderCell, styles.colPrice, styles.tableCellRight]}
-      >
-        <Text>PRICE/GRAM</Text>
-      </View>
-      <View
-        style={[
-          styles.tableHeaderCell,
-          styles.colOtherCharges,
-          styles.tableCellRight,
-        ]}
-      >
-        <Text>OTHER CHGS</Text>
-      </View>
-      <View
-        style={[
-          styles.tableHeaderCell,
-          styles.colAmount,
-          styles.tableCellRight,
-          styles.tableHeaderCellLast,
-        ]}
-      >
-        <Text>AMOUNT</Text>
-      </View>
-    </View>
-  );
-
-  // Footer section component (only show on last page)
-  const FooterSection = () => (
-    <>
-      {/* Updated Footer Sections with Table Format */}
-      <View style={styles.footerSection}>
-        {/* Notes Table */}
-        <View style={styles.notesTable}>
-          <View style={styles.notesHeader}>
-            <Text style={styles.notesHeaderText}>NOTES</Text>
-          </View>
-          <View style={styles.notesBody}>
-            <View style={styles.notesList}>
-              <Text style={styles.noteItem}>• All weights are in grams</Text>
-              <Text style={styles.noteItem}>• GST included as applicable</Text>
-              <Text style={styles.noteItem}>
-                • Goods once sold cannot be returned
+          <View style={styles.metaInfoRow}>
+            <View style={styles.metaInfoItem}>
+              <Text style={styles.metaLabel}>Invoice Number:</Text>
+              <Text style={styles.metaValue}>{data.invoiceNumber}</Text>
+            </View>
+            <View style={styles.metaInfoItem}>
+              <Text style={styles.metaLabel}>Issued To:</Text>
+              <Text style={styles.metaValue}>{data.customer.name}</Text>
+            </View>
+            <View style={styles.metaInfoItem}>
+              <Text style={styles.metaLabel}>Date Issued:</Text>
+              <Text style={styles.metaValue}>
+                {formatDate(data.invoiceDate)}
               </Text>
             </View>
           </View>
-        </View>
 
-        {/* Totals Table */}
-        <View style={styles.totalsTable}>
-          <View style={styles.totalsHeader}>
-            <Text style={styles.totalsHeaderText}>TOTALS</Text>
-          </View>
-          <View style={styles.totalsBody}>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Subtotal:</Text>
-              <Text style={styles.totalValue}>
-                {formatCurrency(data.subtotal)}
-              </Text>
+          <View style={styles.boxesRow}>
+            <View style={styles.box}>
+              <View style={styles.boxHeader}>
+                <Text>Customer</Text>
+              </View>
+              <View style={styles.boxBody}>
+                <Text>{data.customer.name}</Text>
+                <Text>{data.customer.address}</Text>
+                <Text>{data.customer.email}</Text>
+                <Text>{data.customer.phone}</Text>
+              </View>
             </View>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>CGST ({data.CGSTPercent}%):</Text>
-              <Text style={styles.totalValue}>
-                {formatCurrency(data.CGSTAmount)}
-              </Text>
-            </View>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>SGST ({data.SGSTPercent}%):</Text>
-              <Text style={styles.totalValue}>
-                {formatCurrency(data.SGSTAmount)}
-              </Text>
-            </View>
-            {/* Add Total GST row */}
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total GST (3%):</Text>
-              <Text style={styles.totalValue}>
-                {formatCurrency(data.CGSTAmount + data.SGSTAmount)}
-              </Text>
-            </View>
-            <View style={styles.totalRowBold}>
-              <Text style={styles.totalBoldLabel}>GRAND TOTAL</Text>
-              <Text style={styles.totalBoldValue}>
-                {formatCurrency(data.grandTotal)}
-              </Text>
+
+            <View style={styles.box}>
+              <View style={styles.boxHeader}>
+                <Text>Seller</Text>
+              </View>
+              <View style={styles.boxBody}>
+                <Text>{data.shopSettings.shopName}</Text>
+                <Text>Professional Jewelry Services</Text>
+              </View>
             </View>
           </View>
-        </View>
-      </View>
 
-      <View style={styles.signatureSection}>
-        <View style={styles.signatureBlock}>
-          <View style={styles.signatureLine} />
-          <Text style={styles.signatureLabel}>Authorized Signature</Text>
-        </View>
-        <View style={styles.signatureBlock}>
-          {/* Empty space for customer signature */}
-        </View>
-      </View>
+          {/* Table Section */}
+          <View style={styles.tableSection}>
+            <View style={styles.tableHeader}>
+              <View style={[styles.tableHeaderCell, styles.colProductNo]}>
+                <Text>PRODUCT NO</Text>
+              </View>
+              <View style={[styles.tableHeaderCell, styles.colDescription]}>
+                <Text>DESCRIPTION</Text>
+              </View>
+              <View
+                style={[
+                  styles.tableHeaderCell,
+                  styles.colHUID,
+                  styles.tableCellCenter,
+                ]}
+              >
+                <Text>HUID</Text>
+              </View>
+              <View
+                style={[
+                  styles.tableHeaderCell,
+                  styles.colQty,
+                  styles.tableCellCenter,
+                ]}
+              >
+                <Text>QTY</Text>
+              </View>
+              <View
+                style={[
+                  styles.tableHeaderCell,
+                  styles.colWeight,
+                  styles.tableCellRight,
+                ]}
+              >
+                <Text>WEIGHT (g)</Text>
+              </View>
+              <View
+                style={[
+                  styles.tableHeaderCell,
+                  styles.colPrice,
+                  styles.tableCellRight,
+                ]}
+              >
+                <Text>PRICE/GRAM</Text>
+              </View>
+              <View
+                style={[
+                  styles.tableHeaderCell,
+                  styles.colOtherCharges,
+                  styles.tableCellRight,
+                ]}
+              >
+                <Text>OTHER CHGS</Text>
+              </View>
+              <View
+                style={[
+                  styles.tableHeaderCell,
+                  styles.colAmount,
+                  styles.tableCellRight,
+                  styles.tableHeaderCellLast,
+                ]}
+              >
+                <Text>AMOUNT</Text>
+              </View>
+            </View>
 
-      <View style={styles.footer}>
-        <Text>
-          Thank you for choosing us! We hope you enjoy your exquisite jewellery.
-        </Text>
-      </View>
-    </>
-  );
-
-  return (
-    <Document>
-      {Array.from({ length: totalPages }, (_, pageIndex) => (
-        <Page key={pageIndex} size="A4" style={styles.page}>
-          <View style={styles.container}>
-            {/* Header Section - Show on every page */}
-            <HeaderSection />
-
-            {/* Table Section */}
-            <View style={styles.tableSection}>
-              <TableHeader />
-
-              {/* Table Rows - Items for current page */}
-              {getItemsForPage(pageIndex).map((item, index) => {
-                const globalIndex = pageIndex * ITEMS_PER_PAGE + index;
-                return (
-                  <View key={globalIndex} style={styles.tableRow}>
-                    <View style={[styles.tableCell, styles.colProductNo]}>
-                      <Text>{item.productNo}</Text>
-                    </View>
-                    <View style={[styles.tableCell, styles.colDescription]}>
-                      <Text>{item.description}</Text>
-                    </View>
-                    {/* Add HUID Cell */}
-                    <View
-                      style={[
-                        styles.tableCell,
-                        styles.colHUID,
-                        styles.tableCellCenter,
-                      ]}
-                    >
-                      <Text>{data.customer.huid || "-"}</Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.tableCell,
-                        styles.colQty,
-                        styles.tableCellCenter,
-                      ]}
-                    >
-                      <Text>{item.quantity}</Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.tableCell,
-                        styles.colWeight,
-                        styles.tableCellRight,
-                      ]}
-                    >
-                      <Text>{item.weight.toFixed(1)}</Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.tableCell,
-                        styles.colPrice,
-                        styles.tableCellRight,
-                      ]}
-                    >
-                      <Text>{formatCurrency(item.pricePerGram)}</Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.tableCell,
-                        styles.colOtherCharges,
-                        styles.tableCellRight,
-                      ]}
-                    >
-                      <Text>{formatCurrency(item.otherCharges)}</Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.tableCell,
-                        styles.colAmount,
-                        styles.tableCellRight,
-                        styles.tableCellLast,
-                      ]}
-                    >
-                      <Text>{formatCurrency(item.amount)}</Text>
-                    </View>
-                  </View>
-                );
-              })}
-
-              {/* Empty Rows for current page */}
-              {getEmptyRows(pageIndex).map((_, index) => (
-                <View
-                  key={`empty-${pageIndex}-${index}`}
-                  style={styles.emptyRow}
-                >
+            {/* Actual Items */}
+            {pageItems.map((item, index) => {
+              const globalIndex = pageIndex * ITEMS_PER_PAGE + index;
+              return (
+                <View key={globalIndex} style={styles.tableRow}>
                   <View style={[styles.tableCell, styles.colProductNo]}>
-                    <Text> </Text>
+                    <Text>{item.productNo}</Text>
                   </View>
                   <View style={[styles.tableCell, styles.colDescription]}>
-                    <Text> </Text>
+                    <Text>{item.description}</Text>
                   </View>
                   <View
                     style={[
@@ -652,7 +460,7 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                       styles.tableCellCenter,
                     ]}
                   >
-                    <Text> </Text>
+                    <Text>{data.customer.huid || "-"}</Text>
                   </View>
                   <View
                     style={[
@@ -661,7 +469,7 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                       styles.tableCellCenter,
                     ]}
                   >
-                    <Text> </Text>
+                    <Text>{item.quantity}</Text>
                   </View>
                   <View
                     style={[
@@ -670,7 +478,7 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                       styles.tableCellRight,
                     ]}
                   >
-                    <Text> </Text>
+                    <Text>{item.weight.toFixed(1)}</Text>
                   </View>
                   <View
                     style={[
@@ -679,7 +487,7 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                       styles.tableCellRight,
                     ]}
                   >
-                    <Text> </Text>
+                    <Text>{formatCurrency(item.pricePerGram)}</Text>
                   </View>
                   <View
                     style={[
@@ -688,7 +496,7 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                       styles.tableCellRight,
                     ]}
                   >
-                    <Text> </Text>
+                    <Text>{formatCurrency(item.otherCharges)}</Text>
                   </View>
                   <View
                     style={[
@@ -698,24 +506,181 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                       styles.tableCellLast,
                     ]}
                   >
-                    <Text> </Text>
+                    <Text>{formatCurrency(item.amount)}</Text>
                   </View>
                 </View>
-              ))}
-            </View>
+              );
+            })}
 
-            {/* Footer Section - Show only on last page */}
-            {pageIndex === totalPages - 1 && <FooterSection />}
-
-            {/* Page Number - Show on every page */}
-            <View style={styles.pageNumber}>
-              <Text>
-                Page {pageIndex + 1} of {totalPages}
-              </Text>
-            </View>
+            {/* Empty Rows to maintain 11 rows per page */}
+            {emptyRows.map((_, index) => (
+              <View key={`empty-${pageIndex}-${index}`} style={styles.emptyRow}>
+                <View style={[styles.tableCell, styles.colProductNo]}>
+                  <Text> </Text>
+                </View>
+                <View style={[styles.tableCell, styles.colDescription]}>
+                  <Text> </Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCell,
+                    styles.colHUID,
+                    styles.tableCellCenter,
+                  ]}
+                >
+                  <Text> </Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCell,
+                    styles.colQty,
+                    styles.tableCellCenter,
+                  ]}
+                >
+                  <Text> </Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCell,
+                    styles.colWeight,
+                    styles.tableCellRight,
+                  ]}
+                >
+                  <Text> </Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCell,
+                    styles.colPrice,
+                    styles.tableCellRight,
+                  ]}
+                >
+                  <Text> </Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCell,
+                    styles.colOtherCharges,
+                    styles.tableCellRight,
+                  ]}
+                >
+                  <Text> </Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCell,
+                    styles.colAmount,
+                    styles.tableCellRight,
+                    styles.tableCellLast,
+                  ]}
+                >
+                  <Text> </Text>
+                </View>
+              </View>
+            ))}
           </View>
-        </Page>
-      ))}
+
+          {/* Footer Section - Only on last page */}
+          {isLastPage && (
+            <>
+              <View style={styles.footerSection}>
+                <View style={styles.notesTable}>
+                  <View style={styles.notesHeader}>
+                    <Text style={styles.notesHeaderText}>NOTES</Text>
+                  </View>
+                  <View style={styles.notesBody}>
+                    <Text style={styles.noteItem}>
+                      • All weights are in grams
+                    </Text>
+                    <Text style={styles.noteItem}>
+                      • GST included as applicable
+                    </Text>
+                    <Text style={styles.noteItem}>
+                      • Goods once sold cannot be returned
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.totalsTable}>
+                  <View style={styles.totalsHeader}>
+                    <Text style={styles.totalsHeaderText}>TOTALS</Text>
+                  </View>
+                  <View style={styles.totalsBody}>
+                    <View style={styles.totalRow}>
+                      <Text style={styles.totalLabel}>Subtotal:</Text>
+                      <Text style={styles.totalValue}>
+                        {formatCurrency(data.subtotal)}
+                      </Text>
+                    </View>
+                    <View style={styles.totalRow}>
+                      <Text style={styles.totalLabel}>
+                        CGST ({data.CGSTPercent}%):
+                      </Text>
+                      <Text style={styles.totalValue}>
+                        {formatCurrency(data.CGSTAmount)}
+                      </Text>
+                    </View>
+                    <View style={styles.totalRow}>
+                      <Text style={styles.totalLabel}>
+                        SGST ({data.SGSTPercent}%):
+                      </Text>
+                      <Text style={styles.totalValue}>
+                        {formatCurrency(data.SGSTAmount)}
+                      </Text>
+                    </View>
+                    <View style={styles.totalRow}>
+                      <Text style={styles.totalLabel}>Total GST:</Text>
+                      <Text style={styles.totalValue}>
+                        {formatCurrency(data.CGSTAmount + data.SGSTAmount)}
+                      </Text>
+                    </View>
+                    <View style={styles.totalRowBold}>
+                      <Text style={styles.totalBoldLabel}>GRAND TOTAL</Text>
+                      <Text style={styles.totalBoldValue}>
+                        {formatCurrency(data.grandTotal)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.signatureSection}>
+                <View style={styles.signatureBlock}>
+                  <View style={styles.signatureLine} />
+                  <Text style={styles.signatureLabel}>
+                    Authorized Signature
+                  </Text>
+                </View>
+                <View style={styles.signatureBlock}>
+                  {/* Empty space for customer signature */}
+                </View>
+              </View>
+
+              <View style={styles.footer}>
+                <Text>
+                  Thank you for choosing us! We hope you enjoy your exquisite
+                  jewellery.
+                </Text>
+              </View>
+            </>
+          )}
+
+          {/* Page Number */}
+          <View style={styles.pageNumber}>
+            <Text>
+              Page {pageIndex + 1} of {totalPages}
+            </Text>
+          </View>
+        </View>
+      </Page>
+    );
+  };
+
+  return (
+    <Document>
+      {Array.from({ length: totalPages }, (_, pageIndex) =>
+        renderPage(pageIndex)
+      )}
     </Document>
   );
 };
