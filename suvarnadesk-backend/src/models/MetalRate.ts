@@ -1,3 +1,4 @@
+// models/MetalRate.ts
 import { Schema, model, Document } from "mongoose";
 
 export interface IMetalRate extends Document {
@@ -5,8 +6,10 @@ export interface IMetalRate extends Document {
     purity: string;
     ratePerGram: number;
     effectiveFrom: Date;
-    source: string;
+    source: "manual" | "api" | "live";
     isActive: boolean;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 const metalRateSchema = new Schema<IMetalRate>({
@@ -14,8 +17,21 @@ const metalRateSchema = new Schema<IMetalRate>({
     purity: { type: String, required: true },
     ratePerGram: { type: Number, required: true },
     effectiveFrom: { type: Date, required: true },
-    source: { type: String, required: true },
+    source: {
+        type: String,
+        enum: ["manual", "api", "live"],
+        default: "manual",
+        required: true
+    },
     isActive: { type: Boolean, default: true }
+}, {
+    timestamps: true
+});
+
+// Index for active rates
+metalRateSchema.index({ metalType: 1, purity: 1, isActive: 1 }, {
+    unique: true,
+    partialFilterExpression: { isActive: true }
 });
 
 export default model<IMetalRate>("MetalRate", metalRateSchema);
