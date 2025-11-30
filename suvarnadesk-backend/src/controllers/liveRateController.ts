@@ -16,6 +16,24 @@ export class LiveRateController {
         }
     }
 
+    // Get rates by metal type
+    async getRatesByMetalType(req: Request, res: Response): Promise<void> {
+        try {
+            const { metalType } = req.params;
+            if (metalType !== 'gold' && metalType !== 'silver') {
+                res.status(400).json({ error: 'Invalid metal type. Must be "gold" or "silver"' });
+                return;
+            }
+
+            const rates = await liveRateService.getRatesByMetalType(metalType);
+            res.json(rates);
+        } catch (error) {
+            res.status(500).json({
+                error: error instanceof Error ? error.message : 'Failed to fetch rates by metal type'
+            });
+        }
+    }
+
     // Get specific live rate by metal type and purity
     async getRateByMetalAndPurity(req: Request, res: Response): Promise<void> {
         try {
@@ -112,11 +130,70 @@ export class LiveRateController {
             const updatedRates = await liveRateService.updateRatesFromExternalSource();
             res.json({
                 message: 'Rates updated successfully from external source',
-                rates: updatedRates
+                rates: updatedRates,
+                count: updatedRates.length
             });
         } catch (error) {
             res.status(500).json({
                 error: error instanceof Error ? error.message : 'Failed to update rates from external source'
+            });
+        }
+    }
+
+    // Sync live rates to metal rates
+    async syncToMetalRates(req: Request, res: Response): Promise<void> {
+        try {
+            const metalRates = await liveRateService.syncToMetalRates();
+            res.json({
+                message: 'Rates synced to metal rates successfully',
+                metalRates,
+                count: metalRates.length
+            });
+        } catch (error) {
+            res.status(500).json({
+                error: error instanceof Error ? error.message : 'Failed to sync rates to metal rates'
+            });
+        }
+    }
+
+    // Compare live rates with metal rates
+    async compareWithMetalRates(req: Request, res: Response): Promise<void> {
+        try {
+            const comparison = await liveRateService.compareWithMetalRates();
+            res.json(comparison);
+        } catch (error) {
+            res.status(500).json({
+                error: error instanceof Error ? error.message : 'Failed to compare rates'
+            });
+        }
+    }
+
+    // Check if rates need update
+    async checkRatesNeedUpdate(req: Request, res: Response): Promise<void> {
+        try {
+            const needsUpdate = await liveRateService.needsUpdate();
+            const lastUpdate = await liveRateService.getLastUpdateTime();
+
+            res.json({
+                needsUpdate,
+                lastUpdate,
+                message: needsUpdate ? 'Rates should be updated' : 'Rates are up to date'
+            });
+        } catch (error) {
+            res.status(500).json({
+                error: error instanceof Error ? error.message : 'Failed to check rates update status'
+            });
+        }
+    }
+
+    // Get last update time
+    async getLastUpdateTime(req: Request, res: Response): Promise<void> {
+        try {
+            const lastUpdate = await liveRateService.getLastUpdateTime();
+            res.json({ lastUpdate });
+        } catch (error) {
+            res.status(500).json({
+                error: error instanceof Error ? error.message : 'Failed to get last update time'
             });
         }
     }
