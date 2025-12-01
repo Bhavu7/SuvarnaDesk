@@ -1,17 +1,31 @@
-import { Router } from "express";
+// routes/customerRoutes.ts
+import express from 'express';
 import {
+    getAllCustomers,
+    getCustomerById,
+    getCustomerByPhone,
     createCustomer,
-    getCustomers,
+    createOrUpdateCustomer,
     updateCustomer,
     deleteCustomer,
-} from "../controllers/customerController";
+    searchCustomers,
+    getCustomerStats,
+    bulkImportCustomers,
+} from '../controllers/customerController';
 import { authMiddleware } from "../middleware/auth";
 
-const router = Router();
+const router = express.Router();
 
-router.post("/", authMiddleware, createCustomer);
-router.get("/", authMiddleware, getCustomers);
-router.put("/:id", authMiddleware, updateCustomer);
-router.delete("/:id", authMiddleware, deleteCustomer);
+// Customer CRUD operations
+router.get('/', authMiddleware, getAllCustomers);
+router.get('/search', authMiddleware, searchCustomers);
+router.get('/stats', authMiddleware, getCustomerStats);
+router.get('/phone/:phone', authMiddleware, getCustomerByPhone);
+router.get('/:id', authMiddleware, getCustomerById);
+router.post('/', authMiddleware, createCustomer);
+router.post('/upsert', authMiddleware, createOrUpdateCustomer); // Create or update based on phone
+router.post('/bulk-import', authMiddleware, bulkImportCustomers);
+router.put('/:id', authMiddleware, updateCustomer);
+router.delete('/:id', authMiddleware, deleteCustomer);
 
 export default router;

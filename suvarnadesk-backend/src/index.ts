@@ -2,10 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
-import pdfRoutes from "./routes/pdfRoutes";
-import liveRatesRouter from './routes/liveRates';
 import { rateUpdateJob } from './jobs/rateUpdateJob';
-import ratesRoutes from './routes/ratesRoutes';
 
 dotenv.config();
 
@@ -24,6 +21,9 @@ import invoiceRoutes from "./routes/invoiceRoutes";
 import labourChargeRoutes from "./routes/labourChargeRoutes";
 import metalRateRoutes from "./routes/metalRateRoutes";
 import shopSettingsRoutes from "./routes/settingsRoutes";
+import pdfRoutes from "./routes/pdfRoutes";
+import liveRatesRouter from './routes/liveRates';
+import ratesRoutes from './routes/ratesRoutes';
 
 // Connect to MongoDB
 mongoose
@@ -47,6 +47,7 @@ app.use("/api/labour-charges", labourChargeRoutes);
 app.use("/api/metal-rates", metalRateRoutes);
 app.use("/api/shop-settings", shopSettingsRoutes);
 app.use("/api/pdf", pdfRoutes);
+app.use('/api/customers', customerRoutes);
 // Routes
 app.use('/api/live-rates', liveRatesRouter);
 app.use('/api/rates', ratesRoutes);
