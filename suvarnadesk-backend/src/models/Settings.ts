@@ -5,8 +5,11 @@ export interface IShopSettings extends Document {
     ownerName: string;
     address: string;
     phone: string;
-    gstNumber?: string;
+    goldGstNumber?: string;
+    silverGstNumber?: string;
     logoUrl?: string;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 const settingsSchema = new Schema<IShopSettings>({
@@ -14,8 +17,11 @@ const settingsSchema = new Schema<IShopSettings>({
     ownerName: { type: String, required: true },
     address: { type: String, required: true },
     phone: { type: String, required: true },
-    gstNumber: { type: String },
+    goldGstNumber: { type: String },
+    silverGstNumber: { type: String },
     logoUrl: { type: String }
+}, {
+    timestamps: true
 });
 
 export default model<IShopSettings>("Settings", settingsSchema);
