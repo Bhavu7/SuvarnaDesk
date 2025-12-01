@@ -867,7 +867,7 @@ const Dashboard = () => {
                   </div>
                   <div className="w-full h-2 overflow-hidden bg-gray-200 rounded-full">
                     <div
-                      className={`h-2 ${
+                      className={`h-2 transition-all duration-300 ${
                         stat.title === "Cash Payments"
                           ? "bg-green-500"
                           : stat.title === "Card Payments"
@@ -877,6 +877,7 @@ const Dashboard = () => {
                           : "bg-orange-500"
                       }`}
                       style={{
+                        // Use inline style for dynamic width
                         width: stat.change.split("%")[0] + "%",
                       }}
                     ></div>
@@ -908,7 +909,7 @@ const Dashboard = () => {
             </h3>
             <div className="w-full h-80">
               {chartData.length > 0 ? (
-                <div className="w-full h-full" style={{ minWidth: 0 }}>
+                <div className="w-full h-full min-w-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -977,7 +978,7 @@ const Dashboard = () => {
             </h3>
             <div className="w-full h-80">
               {chartData.length > 0 ? (
-                <div className="w-full h-full" style={{ minWidth: 0 }}>
+                <div className="w-full h-full min-w-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -1030,7 +1031,7 @@ const Dashboard = () => {
           <div className="w-full h-64">
             {metalDistribution.length > 0 &&
             metalDistribution[0].name !== "No Data" ? (
-              <div className="w-full h-full" style={{ minWidth: 0 }}>
+              <div className="w-full h-full min-w-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
