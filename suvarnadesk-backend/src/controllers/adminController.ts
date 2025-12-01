@@ -11,6 +11,8 @@ interface AuthRequest extends Request {
     };
 }
 
+const MAX_ADMINS = 4;
+
 // Helper function to format toast notifications
 const formatToastResponse = (type: 'success' | 'error', message: string, data?: any) => {
     return {
@@ -23,10 +25,289 @@ const formatToastResponse = (type: 'success' | 'error', message: string, data?: 
     };
 };
 
+// Helper function to count active admins
+const getActiveAdminCount = async () => {
+    return await Admin.countDocuments({ isActive: true });
+};
+
+// Get all admins (only for super_admin)
+export const getAllAdmins = async (req: AuthRequest, res: Response) => {
+    try {
+        // Check if requester is super admin
+        if (req.admin?.role !== 'super_admin') {
+            return res.status(403).json(
+                formatToastResponse('error', 'Only super admin can view all admins')
+            );
+        }
+
+        const admins = await Admin.find({ isActive: true })
+            .select('-password')
+            .sort({ createdAt: -1 });
+
+        const adminCount = await getActiveAdminCount();
+
+        res.json(
+            formatToastResponse('success', 'Admins loaded successfully', {
+                admins,
+                adminCount,
+                maxLimit: MAX_ADMINS,
+                canAddMore: adminCount < MAX_ADMINS
+            })
+        );
+    } catch (error: any) {
+        console.error("Get all admins error:", error);
+        res.status(500).json(
+            formatToastResponse('error', 'Failed to load admins')
+        );
+    }
+};
+
+// Create new admin (only for super_admin with limit check)
+export const createAdmin = async (req: AuthRequest, res: Response) => {
+    try {
+        const { name, email, phone, password, role = "admin" } = req.body;
+
+        // Check if requester is super admin
+        if (req.admin?.role !== 'super_admin') {
+            return res.status(403).json(
+                formatToastResponse('error', 'Only super admin can create new admins')
+            );
+        }
+
+        // Validation
+        if (!name || !email || !password) {
+            return res.status(400).json(
+                formatToastResponse('error', 'Name, email, and password are required')
+            );
+        }
+
+        // Check current admin count
+        const adminCount = await getActiveAdminCount();
+        if (adminCount >= MAX_ADMINS) {
+            return res.status(400).json(
+                formatToastResponse('error', `Maximum limit of ${MAX_ADMINS} admins reached`)
+            );
+        }
+
+        // Check if admin already exists
+        const existingAdmin = await Admin.findOne({ email });
+        if (existingAdmin) {
+            return res.status(400).json(
+                formatToastResponse('error', 'An admin with this email already exists')
+            );
+        }
+
+        // Create new admin
+        const admin = new Admin({
+            name,
+            email,
+            phone,
+            password,
+            role: role === 'super_admin' ? 'admin' : role, // Prevent creating another super_admin
+            memberSince: new Date(),
+            createdBy: req.admin?.adminId
+        });
+
+        await admin.save();
+
+        // Count again after creation
+        const newAdminCount = await getActiveAdminCount();
+
+        res.status(201).json(
+            formatToastResponse('success', 'Admin created successfully', {
+                admin: admin.toJSON(),
+                adminCount: newAdminCount,
+                maxLimit: MAX_ADMINS,
+                canAddMore: newAdminCount < MAX_ADMINS
+            })
+        );
+    } catch (error: any) {
+        console.error("Admin creation error:", error);
+
+        // Handle duplicate key errors
+        if (error.code === 11000) {
+            return res.status(400).json(
+                formatToastResponse('error', 'This email is already registered')
+            );
+        }
+
+        // Handle validation errors
+        if (error.name === 'ValidationError') {
+            const errors = Object.values(error.errors).map((err: any) => err.message);
+            return res.status(400).json(
+                formatToastResponse('error', `Validation failed: ${errors.join(', ')}`)
+            );
+        }
+
+        res.status(500).json(
+            formatToastResponse('error', 'Failed to create admin. Please try again.')
+        );
+    }
+};
+
+// Update admin (only super_admin or self)
+export const updateAdmin = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+
+        // Check permissions
+        const isSelf = req.admin?.adminId === id;
+        const isSuperAdmin = req.admin?.role === 'super_admin';
+
+        if (!isSelf && !isSuperAdmin) {
+            return res.status(403).json(
+                formatToastResponse('error', 'Not authorized to update this admin')
+            );
+        }
+
+        // Remove password from updates if present
+        if (updates.password) {
+            delete updates.password;
+        }
+
+        // Prevent role change unless super_admin
+        if (updates.role && !isSuperAdmin) {
+            return res.status(403).json(
+                formatToastResponse('error', 'Only super admin can change roles')
+            );
+        }
+
+        // Find and update admin
+        const admin = await Admin.findOne({ _id: id, isActive: true });
+        if (!admin) {
+            return res.status(404).json(
+                formatToastResponse('error', 'Admin not found')
+            );
+        }
+
+        if (admin && updates && typeof updates === 'object') {
+            Object.keys(updates).forEach((key: string) => {
+                if (key in admin) {
+                    (admin as any)[key] = updates[key as keyof typeof updates];
+                }
+            });
+        }
+
+        await admin.save();
+
+        res.json(
+            formatToastResponse('success', 'Admin updated successfully', {
+                admin: admin.toJSON()
+            })
+        );
+
+    } catch (error: any) {
+        console.error("Update admin error:", error);
+
+        // Handle validation errors
+        if (error.name === 'ValidationError') {
+            const errors = Object.values(error.errors).map((err: any) => err.message);
+            return res.status(400).json(
+                formatToastResponse('error', `Update failed: ${errors.join(', ')}`)
+            );
+        }
+
+        res.status(500).json(
+            formatToastResponse('error', 'Failed to update admin')
+        );
+    }
+};
+
+// Delete admin (only for super_admin, cannot delete self)
+export const deleteAdmin = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        // Check if requester is super admin
+        if (req.admin?.role !== 'super_admin') {
+            return res.status(403).json(
+                formatToastResponse('error', 'Only super admin can delete admins')
+            );
+        }
+
+        // Cannot delete self
+        if (req.admin.adminId === id) {
+            return res.status(400).json(
+                formatToastResponse('error', 'Cannot delete your own account')
+            );
+        }
+
+        // Check current admin count
+        const adminCount = await getActiveAdminCount();
+        if (adminCount <= 1) {
+            return res.status(400).json(
+                formatToastResponse('error', 'Cannot delete the last admin account')
+            );
+        }
+
+        // Soft delete by setting isActive to false
+        const admin = await Admin.findById(id);
+        if (!admin) {
+            return res.status(404).json(
+                formatToastResponse('error', 'Admin not found')
+            );
+        }
+
+        admin.isActive = false;
+        await admin.save();
+
+        // Get updated count
+        const newAdminCount = await getActiveAdminCount();
+
+        res.json(
+            formatToastResponse('success', 'Admin deleted successfully', {
+                adminCount: newAdminCount,
+                canAddMore: newAdminCount < MAX_ADMINS
+            })
+        );
+
+    } catch (error: any) {
+        console.error("Delete admin error:", error);
+        res.status(500).json(
+            formatToastResponse('error', 'Failed to delete admin')
+        );
+    }
+};
+
+// Get admin stats
+export const getAdminStats = async (req: Request, res: Response) => {
+    try {
+        const adminCount = await Admin.countDocuments({ isActive: true });
+        const superAdminCount = await Admin.countDocuments({
+            role: 'super_admin',
+            isActive: true
+        });
+
+        res.json(
+            formatToastResponse('success', 'Admin stats loaded successfully', {
+                adminCount,
+                superAdminCount,
+                maxLimit: MAX_ADMINS,
+                canAddMore: adminCount < MAX_ADMINS,
+                availableSlots: MAX_ADMINS - adminCount
+            })
+        );
+    } catch (error: any) {
+        console.error("Get admin stats error:", error);
+        res.status(500).json(
+            formatToastResponse('error', 'Failed to load admin statistics')
+        );
+    }
+};
+
 // Register Admin (for initial setup only)
 export const registerAdmin = async (req: Request, res: Response) => {
     try {
-        const { name, email, phone, password, role = "admin" } = req.body;
+        const { name, email, phone, password, role = "super_admin" } = req.body;
+
+        // Check current admin count (even for initial setup)
+        const adminCount = await getActiveAdminCount();
+        if (adminCount >= MAX_ADMINS) {
+            return res.status(400).json(
+                formatToastResponse('error', `Maximum limit of ${MAX_ADMINS} admins reached`)
+            );
+        }
 
         // Validation
         if (!name || !email || !password) {
@@ -49,11 +330,14 @@ export const registerAdmin = async (req: Request, res: Response) => {
             email,
             phone,
             password,
-            role,
+            role, // Allow super_admin for initial setup
             memberSince: new Date(),
         });
 
         await admin.save();
+
+        // Count again after creation
+        const newAdminCount = await getActiveAdminCount();
 
         // Generate JWT token
         const token = jwt.sign(
@@ -69,14 +353,9 @@ export const registerAdmin = async (req: Request, res: Response) => {
         res.status(201).json(
             formatToastResponse('success', 'Admin registered successfully', {
                 token,
-                admin: {
-                    id: admin._id,
-                    name: admin.name,
-                    email: admin.email,
-                    role: admin.role,
-                    phone: admin.phone,
-                    memberSince: admin.memberSince
-                }
+                admin: admin.toJSON(),
+                adminCount: newAdminCount,
+                maxLimit: MAX_ADMINS
             })
         );
     } catch (error: any) {

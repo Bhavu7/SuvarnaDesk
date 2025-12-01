@@ -1,230 +1,29 @@
+// components/Navbar.tsx - Add the missing imports and fix errors
 import React, { useState, useRef, useEffect } from "react";
 import {
   MdLogout,
   MdPerson,
-  MdNotifications,
   MdSettings,
-  MdReceipt,
-  MdTrendingUp,
-  MdBuild,
-  MdSecurity,
   MdAccountCircle,
-  MdAttachMoney,
+  MdSupervisorAccount, // Add this import
 } from "react-icons/md";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
 import { showToast } from "../components/CustomToast";
 import { useNavigate } from "react-router-dom";
-import apiClient from "../api/apiClient";
 
 interface NavbarProps {
   sidebarExpanded?: boolean;
 }
 
-interface Notification {
-  id: string;
-  type:
-    | "invoice"
-    | "rate"
-    | "settings"
-    | "profile"
-    | "system"
-    | "payment"
-    | "job";
-  message: string;
-  time: string;
-  read: boolean;
-  priority: "low" | "medium" | "high";
-  icon: React.ReactNode;
-  action?: () => void;
-}
-
 const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
-  const { logout, user } = useAuth();
+  const { logout, user, isSuperAdmin, adminStats } = useAuth(); // Add isSuperAdmin and adminStats
   const navigate = useNavigate();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [lastInvoiceCount, setLastInvoiceCount] = useState(0);
-  const [lastSettingsUpdate, setLastSettingsUpdate] = useState<Date | null>(
-    null
-  );
 
   const profileRef = useRef<HTMLDivElement>(null);
-  const notificationsRef = useRef<HTMLDivElement>(null);
   const logoutConfirmRef = useRef<HTMLDivElement>(null);
-
-  // Notification icons mapping
-  const notificationIcons = {
-    invoice: <MdReceipt className="text-blue-600" />,
-    rate: <MdTrendingUp className="text-green-600" />,
-    settings: <MdSettings className="text-purple-600" />,
-    profile: <MdAccountCircle className="text-orange-600" />,
-    system: <MdSecurity className="text-red-600" />,
-    payment: <MdAttachMoney className="text-green-600" />,
-    job: <MdBuild className="text-blue-600" />,
-  };
-
-  // Generate dynamic notifications
-  const generateDynamicNotifications = async () => {
-    try {
-      const newNotifications: Notification[] = [];
-      const now = new Date();
-
-      // Fetch current data for notifications
-      const [invoicesResponse, settingsResponse, ratesResponse] =
-        await Promise.all([
-          apiClient.get("/invoices?limit=1").catch(() => ({ data: [] })),
-          apiClient.get("/shop-settings").catch(() => ({ data: null })),
-          apiClient.get("/rates/live").catch(() => ({ data: null })),
-        ]);
-
-      const currentInvoiceCount = invoicesResponse.data.length || 0;
-      const shopSettings = settingsResponse.data;
-      const liveRates = ratesResponse.data;
-
-      // 1. New Invoice Notification
-      if (currentInvoiceCount > lastInvoiceCount) {
-        newNotifications.push({
-          id: `invoice-${Date.now()}`,
-          type: "invoice",
-          message: `New invoice #INV-${currentInvoiceCount} generated successfully`,
-          time: "Just now",
-          read: false,
-          priority: "medium",
-          icon: notificationIcons.invoice,
-          action: () => navigate("/invoices"),
-        });
-        setLastInvoiceCount(currentInvoiceCount);
-      }
-
-      // 2. Live Rate Updates
-      if (liveRates && liveRates.timestamp) {
-        const rateUpdateTime = new Date(liveRates.timestamp);
-        if (now.getTime() - rateUpdateTime.getTime() < 300000) {
-          // 5 minutes
-          newNotifications.push({
-            id: `rates-${Date.now()}`,
-            type: "rate",
-            message: `Live metal rates updated - Gold: ₹${
-              liveRates.gold?.toFixed(2) || "N/A"
-            }/g`,
-            time: "Recently",
-            read: false,
-            priority: "high",
-            icon: notificationIcons.rate,
-            action: () => navigate("/rates"),
-          });
-        }
-      }
-
-      // 3. Settings Changes
-      if (shopSettings && shopSettings.updatedAt) {
-        const settingsUpdateTime = new Date(shopSettings.updatedAt);
-        if (!lastSettingsUpdate || settingsUpdateTime > lastSettingsUpdate) {
-          newNotifications.push({
-            id: `settings-${Date.now()}`,
-            type: "settings",
-            message: "Shop settings have been updated",
-            time: "Recently",
-            read: false,
-            priority: "medium",
-            icon: notificationIcons.settings,
-            action: () => navigate("/settings"),
-          });
-          setLastSettingsUpdate(settingsUpdateTime);
-        }
-      }
-
-      // 4. System Health Notifications (simulated)
-      if (Math.random() > 0.7) {
-        // 30% chance for demo
-        newNotifications.push({
-          id: `system-${Date.now()}`,
-          type: "system",
-          message: "System running optimally. All services active.",
-          time: "Today",
-          read: false,
-          priority: "low",
-          icon: notificationIcons.system,
-        });
-      }
-
-      // 5. Daily Summary (at specific times)
-      const currentHour = now.getHours();
-      if (currentHour === 9 || currentHour === 18) {
-        // 9 AM and 6 PM
-        newNotifications.push({
-          id: `summary-${Date.now()}`,
-          type: "invoice",
-          message: `Daily summary: ${currentInvoiceCount} invoices processed today`,
-          time: "Today",
-          read: false,
-          priority: "low",
-          icon: notificationIcons.invoice,
-          action: () => navigate("/reports"),
-        });
-      }
-
-      // Add new notifications to the list
-      if (newNotifications.length > 0) {
-        setNotifications((prev) => [...newNotifications, ...prev]);
-
-        // Show toast for high priority notifications
-        const highPriority = newNotifications.filter(
-          (n) => n.priority === "high"
-        );
-        highPriority.forEach((notification) => {
-          showToast.info(notification.message);
-        });
-      }
-    } catch (error) {
-      console.error("Error generating notifications:", error);
-    }
-  };
-
-  // Initialize and update notifications
-  useEffect(() => {
-    // Initial notifications setup
-    const initialNotifications: Notification[] = [
-      {
-        id: "welcome-1",
-        type: "system",
-        message: "Welcome to SuvarnaDesk! System is ready for use.",
-        time: "Today",
-        read: false,
-        priority: "low",
-        icon: notificationIcons.system,
-      },
-      {
-        id: "setup-1",
-        type: "settings",
-        message: "Complete your shop setup to get started",
-        time: "Today",
-        read: false,
-        priority: "medium",
-        icon: notificationIcons.settings,
-        action: () => navigate("/settings"),
-      },
-    ];
-    setNotifications(initialNotifications);
-
-    // Set up interval for dynamic notifications
-    const notificationInterval = setInterval(
-      generateDynamicNotifications,
-      60000
-    ); // Check every minute
-
-    // Cleanup interval
-    return () => clearInterval(notificationInterval);
-  }, []);
-
-  // Calculate notification counts
-  const unreadCount = notifications.filter((n) => !n.read).length;
-  const highPriorityCount = notifications.filter(
-    (n) => n.priority === "high" && !n.read
-  ).length;
 
   const handleLogoutConfirm = () => {
     setShowLogoutConfirm(true);
@@ -244,34 +43,8 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
     showToast.default("Logout cancelled");
   };
 
-  const toggleNotifications = () => {
-    setShowNotifications(!showNotifications);
-    setShowProfileDropdown(false);
-  };
-
   const toggleProfile = () => {
     setShowProfileDropdown(!showProfileDropdown);
-    setShowNotifications(false);
-  };
-
-  const markAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((notification) =>
-        notification.id === id ? { ...notification, read: true } : notification
-      )
-    );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications((prev) =>
-      prev.map((notification) => ({ ...notification, read: true }))
-    );
-    showToast.success("All notifications marked as read");
-  };
-
-  const clearAllNotifications = () => {
-    setNotifications([]);
-    showToast.success("All notifications cleared");
   };
 
   // Navigation handlers
@@ -285,10 +58,9 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
     navigate("/settings");
   };
 
-  const handleViewAllNotifications = () => {
-    setShowNotifications(false);
-    // Navigate to notifications page if you have one
-    showToast.info("Notifications page coming soon!");
+  const handleAdminManagement = () => {
+    setShowProfileDropdown(false);
+    navigate("/admin-management");
   };
 
   // Close dropdowns when clicking outside
@@ -299,12 +71,6 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
         !profileRef.current.contains(event.target as Node)
       ) {
         setShowProfileDropdown(false);
-      }
-      if (
-        notificationsRef.current &&
-        !notificationsRef.current.contains(event.target as Node)
-      ) {
-        setShowNotifications(false);
       }
       if (
         logoutConfirmRef.current &&
@@ -323,7 +89,6 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setShowProfileDropdown(false);
-        setShowNotifications(false);
         setShowLogoutConfirm(false);
       }
     };
@@ -331,26 +96,6 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
   }, []);
-
-  // Format relative time
-  const formatRelativeTime = (timeString: string) => {
-    // Simple implementation - in real app, you'd parse actual timestamps
-    return timeString;
-  };
-
-  // Get priority color
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return "bg-red-100 text-red-800 border-l-red-500";
-      case "medium":
-        return "bg-orange-100 text-orange-800 border-l-orange-500";
-      case "low":
-        return "bg-blue-100 text-blue-800 border-l-blue-500";
-      default:
-        return "bg-gray-100 text-gray-800 border-l-gray-500";
-    }
-  };
 
   return (
     <>
@@ -382,141 +127,6 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
 
         {/* Right Section */}
         <div className="flex items-center gap-4">
-          {/* Notifications */}
-          <div className="relative" ref={notificationsRef}>
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={toggleNotifications}
-              className={`relative p-2 rounded-full transition-all duration-300 focus:outline-none focus:ring-0 ${
-                showNotifications
-                  ? "bg-blue-100 text-blue-600"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-              aria-label="Notifications"
-            >
-              <MdNotifications className="text-xl" />
-              {unreadCount > 0 && (
-                <motion.span
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className={`absolute flex items-center justify-center text-xs font-medium text-white rounded-full -top-1 -right-1 ${
-                    highPriorityCount > 0
-                      ? "w-5 h-5 bg-red-500"
-                      : "w-4 h-4 bg-orange-500"
-                  }`}
-                >
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </motion.span>
-              )}
-            </motion.button>
-
-            <AnimatePresence>
-              {showNotifications && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute right-0 z-50 py-2 mt-2 border border-gray-200 shadow-xl w-80 sm:w-96 bg-white/95 backdrop-blur-md rounded-xl"
-                >
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                    <h3 className="font-semibold text-gray-800">
-                      Notifications
-                      {unreadCount > 0 && (
-                        <span className="ml-2 text-sm text-blue-600">
-                          ({unreadCount} new)
-                        </span>
-                      )}
-                    </h3>
-                    <div className="flex gap-2">
-                      {unreadCount > 0 && (
-                        <button
-                          onClick={markAllAsRead}
-                          className="text-sm text-blue-600 transition-colors outline-none hover:text-blue-700 focus:outline-none focus:ring-0"
-                        >
-                          Mark all read
-                        </button>
-                      )}
-                      {notifications.length > 0 && (
-                        <button
-                          onClick={clearAllNotifications}
-                          className="text-sm text-gray-600 transition-colors outline-none hover:text-gray-700 focus:outline-none focus:ring-0"
-                        >
-                          Clear all
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="overflow-y-auto max-h-96">
-                    {notifications.length > 0 ? (
-                      notifications.map((notification) => (
-                        <div
-                          key={notification.id}
-                          className={`px-4 py-3 border-b border-gray-50 last:border-b-0 hover:bg-gray-50/80 cursor-pointer transition-colors group border-l-4 ${
-                            !notification.read ? "bg-blue-50/50" : ""
-                          } ${getPriorityColor(notification.priority)}`}
-                          onClick={() => {
-                            markAsRead(notification.id);
-                            notification.action?.();
-                          }}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 mt-1">
-                              {notification.icon}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-800">
-                                {notification.message}
-                              </p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span
-                                  className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                    notification.priority === "high"
-                                      ? "bg-red-100 text-red-800"
-                                      : notification.priority === "medium"
-                                      ? "bg-orange-100 text-orange-800"
-                                      : "bg-blue-100 text-blue-800"
-                                  }`}
-                                >
-                                  {notification.priority
-                                    .charAt(0)
-                                    .toUpperCase() +
-                                    notification.priority.slice(1)}{" "}
-                                  Priority
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  {formatRelativeTime(notification.time)}
-                                </span>
-                              </div>
-                            </div>
-                            {!notification.read && (
-                              <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full"></div>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="px-4 py-8 text-center text-gray-500">
-                        <MdNotifications className="mx-auto mb-2 text-3xl text-gray-300" />
-                        <p>No notifications</p>
-                        <p className="mt-1 text-sm">You're all caught up!</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="px-4 py-2 border-t border-gray-100">
-                    <button
-                      onClick={handleViewAllNotifications}
-                      className="w-full py-2 text-sm text-center text-blue-600 transition-colors focus:outline-none focus:ring-0 hover:text-blue-700"
-                    >
-                      View all notifications
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
           {/* Profile Dropdown */}
           <div className="relative" ref={profileRef}>
             <motion.button
@@ -579,6 +189,22 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarExpanded = false }) => {
                       <MdSettings className="text-lg" />
                       Settings
                     </button>
+
+                    {/* Admin Management Button (only for Super Admin) */}
+                    {isSuperAdmin && (
+                      <button
+                        onClick={handleAdminManagement}
+                        className="flex items-center w-full gap-2 px-3 py-3 text-sm text-left text-gray-700 transition-colors duration-200 rounded-lg focus:outline-none focus:ring-0 hover:bg-gray-100/80"
+                      >
+                        <MdSupervisorAccount className="text-lg" />
+                        Admin Management
+                        {adminStats && (
+                          <span className="px-2 py-1 ml-auto text-xs text-blue-800 bg-blue-100 rounded-full">
+                            {adminStats.adminCount}/{adminStats.maxLimit}
+                          </span>
+                        )}
+                      </button>
+                    )}
                   </div>
 
                   {/* Logout */}

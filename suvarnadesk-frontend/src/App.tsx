@@ -1,3 +1,4 @@
+// App.tsx - Complete fixed version
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -15,6 +16,7 @@ import Repairings from "./pages/Repairings";
 import ManageCustomers from "./pages/ManageCustomers";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ComponentType } from "react";
+import AdminManagement from "./pages/AdminManagement";
 
 // Define props interface for components
 interface ComponentProps {
@@ -49,6 +51,7 @@ const ProfileWithErrorBoundary = withErrorBoundary(Profile);
 const RepairingsWithErrorBoundary = withErrorBoundary(Repairings);
 const ManageCustomersWithErrorBoundary = withErrorBoundary(ManageCustomers);
 const LayoutWithErrorBoundary = withErrorBoundary(Layout);
+const AdminManagementWithErrorBoundary = withErrorBoundary(AdminManagement);
 
 function App() {
   return (
@@ -123,6 +126,10 @@ function App() {
                   <Route
                     path="profile"
                     element={<ProfileWithErrorBoundary />}
+                  />
+                  <Route
+                    path="admin-management"
+                    element={<AdminManagementWithErrorBoundary />}
                   />
                 </Route>
               </Route>
