@@ -5,7 +5,6 @@ import {
   MdReceipt,
   MdCurrencyRupee,
   MdSettings,
-  MdReport,
   MdPeople,
   MdClose,
   MdMenu,
@@ -25,11 +24,8 @@ const links = [
   { to: "/", label: "Dashboard", icon: <MdDashboard /> },
   { to: "/billing", label: "Billing", icon: <MdReceipt /> },
   { to: "/manage-customers", label: "Manage Customers", icon: <MdPeople /> },
-  // { to: "/worker-jobs", label: "Worker Jobs", icon: <MdWork /> },
-  { to: "/rates", label: "Rates", icon: <MdCurrencyRupee /> },
-  // { to: "/labour-charges", label: "Labour Charges", icon: <MdPeople /> },
-  { to: "/repairings", label: "Repairings", icon: <MdBuildCircle /> },
-  // { to: "/reports", label: "Reports", icon: <MdReport /> },
+  { to: "/rates", label: "Live Rates", icon: <MdCurrencyRupee /> },
+  { to: "/repairings", label: "AC Receipt", icon: <MdBuildCircle /> },
   { to: "/settings", label: "Settings", icon: <MdSettings /> },
 ];
 
