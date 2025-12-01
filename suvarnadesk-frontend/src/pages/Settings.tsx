@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   MdSettings,
@@ -38,11 +38,7 @@ export default function Settings() {
   const [isSaving, setIsSaving] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
-  useEffect(() => {
-    fetchShopSettings();
-  }, []);
-
-  const fetchShopSettings = async () => {
+  const fetchShopSettings = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await apiClient.get("/shop-settings");
@@ -72,7 +68,11 @@ export default function Settings() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    fetchShopSettings();
+  }, [fetchShopSettings]);
 
   const handleSave = async () => {
     try {
