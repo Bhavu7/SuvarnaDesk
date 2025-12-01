@@ -8,6 +8,7 @@ import {
   MdAttachMoney,
   MdMoneyOff,
 } from "react-icons/md";
+import { useNavigate } from "react-router-dom";
 import apiClient from "../api/apiClient";
 import { showToast } from "../components/CustomToast";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -23,6 +24,7 @@ interface ShopSettings {
 }
 
 export default function Settings() {
+  const navigate = useNavigate();
   const [settings, setSettings] = useState<ShopSettings>({
     shopName: "",
     address: "",
@@ -34,6 +36,7 @@ export default function Settings() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     fetchShopSettings();
@@ -43,25 +46,26 @@ export default function Settings() {
     try {
       setIsLoading(true);
       const response = await apiClient.get("/shop-settings");
+
       if (response.data) {
-        // Handle backward compatibility - if old gstNumber exists, set it to both
         const data = response.data;
         setSettings({
           shopName: data.shopName || "",
           address: data.address || "",
           phone: data.phone || "",
-          goldGstNumber: data.goldGstNumber || data.gstNumber || "",
-          silverGstNumber: data.silverGstNumber || data.gstNumber || "",
+          goldGstNumber: data.goldGstNumber || "",
+          silverGstNumber: data.silverGstNumber || "",
           logoUrl: data.logoUrl || "",
           ownerName: data.ownerName || "",
         });
       }
     } catch (error: any) {
       console.error("Failed to fetch shop settings:", error);
+
       if (error.response?.status === 404) {
-        showToast.info(
-          "No existing settings found. Please set up your shop details."
-        );
+        // Redirect to NotFound page for 404 errors
+        setNotFound(true);
+        navigate("/404");
       } else {
         showToast.error("Failed to load shop settings");
       }
@@ -87,12 +91,29 @@ export default function Settings() {
         return;
       }
 
-      const response = await apiClient.put("/shop-settings", settings);
+      const response = await apiClient.put("/shop-settings", {
+        shopName: settings.shopName,
+        ownerName: settings.ownerName,
+        address: settings.address,
+        phone: settings.phone,
+        goldGstNumber: settings.goldGstNumber,
+        silverGstNumber: settings.silverGstNumber,
+        logoUrl: settings.logoUrl,
+      });
+
       showToast.success("Shop settings saved successfully!");
       console.log("Settings saved:", response.data);
     } catch (error: any) {
       console.error("Failed to save settings:", error);
-      showToast.error(error.response?.data?.error || "Failed to save settings");
+
+      if (error.response?.status === 404) {
+        setNotFound(true);
+        navigate("/404");
+      } else {
+        showToast.error(
+          error.response?.data?.error || "Failed to save settings"
+        );
+      }
     } finally {
       setIsSaving(false);
     }
@@ -107,14 +128,14 @@ export default function Settings() {
 
   // GST number validation (basic format check)
   const isValidGST = (gstNumber: string): boolean => {
-    if (!gstNumber) return true; // Allow empty GST
+    if (!gstNumber || gstNumber.trim() === "") return true; // Allow empty GST
     const gstRegex =
       /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$/;
     return gstRegex.test(gstNumber);
   };
 
   const formatGSTForDisplay = (gstNumber: string): string => {
-    if (!gstNumber) return "Not set";
+    if (!gstNumber || gstNumber.trim() === "") return "Not set";
     // Format as XX-XXXXX-XXXX-X-X-X
     if (gstNumber.length >= 15) {
       return `${gstNumber.slice(0, 2)}-${gstNumber.slice(
@@ -127,6 +148,35 @@ export default function Settings() {
     }
     return gstNumber;
   };
+
+  const isSaveDisabled = (): boolean => {
+    if (isSaving) return true;
+    if (!settings.shopName || !settings.address || !settings.phone) return true;
+
+    // Check if GST numbers are valid if they exist
+    if (
+      settings.goldGstNumber &&
+      settings.goldGstNumber.trim() &&
+      !isValidGST(settings.goldGstNumber)
+    ) {
+      return true;
+    }
+
+    if (
+      settings.silverGstNumber &&
+      settings.silverGstNumber.trim() &&
+      !isValidGST(settings.silverGstNumber)
+    ) {
+      return true;
+    }
+
+    return false;
+  };
+
+  // If not found, show nothing (will be redirected)
+  if (notFound) {
+    return null;
+  }
 
   if (isLoading) {
     return (
@@ -243,12 +293,14 @@ export default function Settings() {
                   maxLength={15}
                 />
                 {settings.goldGstNumber &&
+                  settings.goldGstNumber.trim() &&
                   !isValidGST(settings.goldGstNumber) && (
                     <p className="mt-1 text-xs text-red-600">
                       Please enter a valid GST number format (15 characters)
                     </p>
                   )}
                 {settings.goldGstNumber &&
+                  settings.goldGstNumber.trim() &&
                   isValidGST(settings.goldGstNumber) && (
                     <p className="mt-1 text-xs text-green-600">
                       ✓ Valid GST format:{" "}
@@ -279,12 +331,14 @@ export default function Settings() {
                   maxLength={15}
                 />
                 {settings.silverGstNumber &&
+                  settings.silverGstNumber.trim() &&
                   !isValidGST(settings.silverGstNumber) && (
                     <p className="mt-1 text-xs text-red-600">
                       Please enter a valid GST number format (15 characters)
                     </p>
                   )}
                 {settings.silverGstNumber &&
+                  settings.silverGstNumber.trim() &&
                   isValidGST(settings.silverGstNumber) && (
                     <p className="mt-1 text-xs text-green-600">
                       ✓ Valid GST format:{" "}
@@ -360,16 +414,7 @@ export default function Settings() {
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={handleSave}
-              disabled={
-                isSaving === true ||
-                settings.shopName === "" ||
-                settings.address === "" ||
-                settings.phone === "" ||
-                (settings.goldGstNumber !== "" &&
-                  !isValidGST(settings.goldGstNumber || "")) ||
-                (settings.silverGstNumber !== "" &&
-                  !isValidGST(settings.silverGstNumber || ""))
-              }
+              disabled={isSaveDisabled()}
               className="flex items-center gap-2 px-8 py-3 font-medium text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
             >
               <MdSave className="text-lg" />
@@ -416,12 +461,14 @@ export default function Settings() {
                     ? formatGSTForDisplay(settings.goldGstNumber)
                     : "Not set"}
                   {settings.goldGstNumber &&
+                    settings.goldGstNumber.trim() &&
                     isValidGST(settings.goldGstNumber) && (
                       <span className="ml-2 text-xs text-green-600">
                         ✓ Valid
                       </span>
                     )}
                   {settings.goldGstNumber &&
+                    settings.goldGstNumber.trim() &&
                     !isValidGST(settings.goldGstNumber) && (
                       <span className="ml-2 text-xs text-red-600">
                         ✗ Invalid
@@ -438,12 +485,14 @@ export default function Settings() {
                     ? formatGSTForDisplay(settings.silverGstNumber)
                     : "Not set"}
                   {settings.silverGstNumber &&
+                    settings.silverGstNumber.trim() &&
                     isValidGST(settings.silverGstNumber) && (
                       <span className="ml-2 text-xs text-green-600">
                         ✓ Valid
                       </span>
                     )}
                   {settings.silverGstNumber &&
+                    settings.silverGstNumber.trim() &&
                     !isValidGST(settings.silverGstNumber) && (
                       <span className="ml-2 text-xs text-red-600">
                         ✗ Invalid
