@@ -1,4 +1,4 @@
-// models/Customer.ts
+// src/models/Customer.ts - Remove duplicate indexes
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface ICustomer extends Document {
@@ -6,7 +6,7 @@ export interface ICustomer extends Document {
     email?: string;
     phone: string;
     address?: string;
-    huid?: string; // Hallmark Unique ID
+    huid?: string;
     gstNumber?: string;
     totalPurchases: number;
     totalAmountSpent: number;
@@ -27,7 +27,6 @@ const CustomerSchema = new Schema<ICustomer>(
             type: String,
             trim: true,
             lowercase: true,
-            sparse: true,
         },
         phone: {
             type: String,
@@ -42,7 +41,6 @@ const CustomerSchema = new Schema<ICustomer>(
         huid: {
             type: String,
             trim: true,
-            sparse: true,
         },
         gstNumber: {
             type: String,
@@ -69,7 +67,7 @@ const CustomerSchema = new Schema<ICustomer>(
     }
 );
 
-// Indexes
+// Define indexes at schema level ONLY
 CustomerSchema.index({ phone: 1 }, { unique: true });
 CustomerSchema.index({ email: 1 }, { sparse: true });
 CustomerSchema.index({ name: 1 });

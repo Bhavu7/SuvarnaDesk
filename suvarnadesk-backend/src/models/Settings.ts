@@ -1,3 +1,4 @@
+// src/models/Settings.ts
 import { Schema, model, Document } from "mongoose";
 
 export interface IShopSettings extends Document {

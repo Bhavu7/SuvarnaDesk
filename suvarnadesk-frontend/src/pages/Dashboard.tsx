@@ -1,15 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   MdDashboard,
   MdPeople,
-  MdReceipt,
   MdTrendingUp,
   MdAccountBalanceWallet,
-  MdShoppingCart,
   MdCalendarToday,
   MdAttachMoney,
-  MdPayments,
   MdPersonAdd,
   MdCreditCard,
   MdCurrencyExchange,
@@ -48,7 +45,6 @@ interface Invoice {
     grandTotal: number;
     subtotal: number;
   };
-  // Updated payment details to include payment types
   paymentDetails: {
     paymentMethod:
       | "cash"
@@ -99,19 +95,16 @@ interface Stats {
   totalCustomers: number;
   totalInvoices: number;
   totalRevenue: number;
-  // Payment type counts
   cashPayments: number;
   cardPayments: number;
   upiPayments: number;
   exchangePayments: number;
   creditPayments: number;
-  // Other stats
   goldRate: number;
   silverRate: number;
   newCustomersThisMonth: number;
   revenueThisMonth: number;
   averageInvoiceValue: number;
-  // Customer stats from invoices
   uniqueCustomersFromInvoices: number;
 }
 
@@ -165,27 +158,268 @@ const Dashboard = () => {
     CustomerFromInvoice[]
   >([]);
 
+  // Helper function to get time ago string - moved outside useEffect
+  const getTimeAgo = useCallback((date: Date): string => {
+    const now = new Date();
+    const diffInMinutes = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60)
+    );
+
+    if (diffInMinutes < 1) return "Just now";
+    if (diffInMinutes < 60) return `${diffInMinutes} min ago`;
+    if (diffInMinutes < 1440)
+      return `${Math.floor(diffInMinutes / 60)} hours ago`;
+    return `${Math.floor(diffInMinutes / 1440)} days ago`;
+  }, []);
+
+  // Helper function to get period key - moved outside useEffect
+  const getPeriodKey = useCallback((date: Date, range: string): string => {
+    if (range === "monthly") {
+      return date.toLocaleString("default", { month: "short" });
+    } else if (range === "weekly") {
+      const weekNumber = Math.ceil(date.getDate() / 7);
+      return `Week ${weekNumber}`;
+    } else {
+      return date.toLocaleDateString();
+    }
+  }, []);
+
+  // Helper function to get last N periods based on actual data
+  const getLastPeriods = useCallback(
+    (count: number, range: string, invoices: Invoice[]): { name: string }[] => {
+      const periods: { name: string }[] = [];
+
+      if (invoices.length === 0) {
+        const now = new Date();
+        if (range === "monthly") {
+          for (let i = count - 1; i >= 0; i--) {
+            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            periods.push({
+              name: date.toLocaleString("default", { month: "short" }),
+            });
+          }
+        }
+        return periods;
+      }
+
+      const invoiceDates = invoices.map((inv) => new Date(inv.createdAt));
+      const minDate = new Date(
+        Math.min(...invoiceDates.map((d) => d.getTime()))
+      );
+      const maxDate = new Date(
+        Math.max(...invoiceDates.map((d) => d.getTime()))
+      );
+
+      if (range === "monthly") {
+        const startMonth = minDate.getMonth();
+        const startYear = minDate.getFullYear();
+        const endMonth = maxDate.getMonth();
+        const endYear = maxDate.getFullYear();
+
+        let currentMonth = startMonth;
+        let currentYear = startYear;
+
+        while (
+          currentYear < endYear ||
+          (currentYear === endYear && currentMonth <= endMonth)
+        ) {
+          const date = new Date(currentYear, currentMonth, 1);
+          periods.push({
+            name: date.toLocaleString("default", { month: "short" }),
+          });
+
+          currentMonth++;
+          if (currentMonth > 11) {
+            currentMonth = 0;
+            currentYear++;
+          }
+        }
+
+        return periods.slice(-count);
+      }
+
+      const now = new Date();
+      for (let i = count - 1; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        periods.push({
+          name: date.toLocaleString("default", { month: "short" }),
+        });
+      }
+
+      return periods;
+    },
+    []
+  );
+
+  // Generate chart data from actual invoices and customers
+  const generateChartDataFromInvoices = useCallback(
+    (
+      invoices: Invoice[],
+      customers: Customer[],
+      range: string
+    ): ChartDataItem[] => {
+      if (invoices.length === 0) return [];
+
+      const groupedData: { [key: string]: ChartDataItem } = {};
+
+      const periods = getLastPeriods(6, range, invoices);
+      periods.forEach((period) => {
+        groupedData[period.name] = {
+          name: period.name,
+          revenue: 0,
+          invoices: 0,
+          customers: 0,
+        };
+      });
+
+      // Process invoices
+      invoices.forEach((invoice) => {
+        const date = new Date(invoice.createdAt);
+        const periodKey = getPeriodKey(date, range);
+
+        if (groupedData[periodKey]) {
+          groupedData[periodKey].revenue += invoice.totals?.grandTotal || 0;
+          groupedData[periodKey].invoices += 1;
+        }
+      });
+
+      // Process customers for each period
+      periods.forEach((period) => {
+        const periodCustomers = customers.filter((customer) => {
+          const customerDate = new Date(customer.createdAt);
+          return getPeriodKey(customerDate, range) === period.name;
+        });
+        groupedData[period.name].customers = periodCustomers.length;
+      });
+
+      return periods
+        .map((period) => groupedData[period.name])
+        .filter(
+          (item) => item.revenue > 0 || item.invoices > 0 || item.customers > 0
+        );
+    },
+    [getLastPeriods, getPeriodKey]
+  );
+
+  // Calculate metal distribution from invoices
+  const calculateMetalDistribution = useCallback(
+    (invoices: Invoice[]): { name: string; value: number }[] => {
+      if (invoices.length === 0) return [{ name: "No Data", value: 100 }];
+
+      const metalCount: { [key: string]: number } = {};
+      let total = 0;
+
+      invoices.forEach((invoice) => {
+        invoice.lineItems.forEach((item) => {
+          const metalType = item.metalType || item.itemType || "Other";
+          metalCount[metalType] = (metalCount[metalType] || 0) + 1;
+          total++;
+        });
+      });
+
+      if (total === 0) {
+        return [{ name: "No Data", value: 100 }];
+      }
+
+      return Object.entries(metalCount)
+        .map(([name, count]) => ({
+          name,
+          value: Math.round((count / total) * 100),
+        }))
+        .sort((a, b) => b.value - a.value);
+    },
+    []
+  );
+
+  // Generate recent activities from invoices and customers
+  const generateRecentActivities = useCallback(
+    (invoices: Invoice[], customers: Customer[]): RecentActivity[] => {
+      const activities: RecentActivity[] = [];
+
+      // Add recent invoices (last 5)
+      const recentInvoices = invoices
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )
+        .slice(0, 3);
+
+      recentInvoices.forEach((invoice) => {
+        activities.push({
+          id: invoice._id,
+          action: `New Invoice (${
+            invoice.paymentDetails?.paymentMethod?.toUpperCase() || "CASH"
+          })`,
+          customer: invoice.customerSnapshot?.name || "Unknown Customer",
+          amount: `₹${(invoice.totals?.grandTotal || 0).toLocaleString()}`,
+          time: getTimeAgo(new Date(invoice.createdAt)),
+          type: "invoice",
+        });
+      });
+
+      // Add recent customers (last 2)
+      const recentCustomers = customers
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )
+        .slice(0, 2);
+
+      recentCustomers.forEach((customer) => {
+        activities.push({
+          id: customer._id,
+          action: "New Customer",
+          customer: customer.name,
+          amount: "-",
+          time: getTimeAgo(new Date(customer.createdAt)),
+          type: "new_customer",
+        });
+      });
+
+      // Sort all activities by time and take top 5
+      return activities
+        .sort((a, b) => {
+          const timeA = a.time.includes("min")
+            ? parseInt(a.time)
+            : a.time.includes("hour")
+            ? parseInt(a.time) * 60
+            : parseInt(a.time) * 1440;
+          const timeB = b.time.includes("min")
+            ? parseInt(b.time)
+            : b.time.includes("hour")
+            ? parseInt(b.time) * 60
+            : parseInt(b.time) * 1440;
+          return timeB - timeA;
+        })
+        .slice(0, 5);
+    },
+    [getTimeAgo]
+  );
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
 
-        // Fetch all data using correct endpoints
+        // Fetch all data
         const [invoicesRes, customersRes, metalRatesRes] = await Promise.all([
           apiClient.get("/invoices"),
           apiClient.get("/customers"),
           apiClient.get("/metal-rates/active"),
         ]);
 
-        const invoices: Invoice[] = invoicesRes.data || [];
-        const customers: Customer[] = customersRes.data || [];
-        const rates: Rate[] = metalRatesRes.data || [];
+        // Handle different response formats
+        const invoices: Invoice[] = Array.isArray(invoicesRes.data)
+          ? invoicesRes.data
+          : invoicesRes.data?.data || [];
 
-        console.log("Fetched data:", {
-          invoices: invoices.length,
-          customers: customers.length,
-          rates: rates.length,
-        });
+        const customers: Customer[] = Array.isArray(customersRes.data)
+          ? customersRes.data
+          : customersRes.data?.data || [];
+
+        const rates: Rate[] = Array.isArray(metalRatesRes.data)
+          ? metalRatesRes.data
+          : metalRatesRes.data?.data || [];
 
         // Calculate stats from real data
         const totalRevenue = invoices.reduce(
@@ -351,338 +585,115 @@ const Dashboard = () => {
     };
 
     fetchDashboardData();
-  }, [timeRange]);
-
-  // Generate chart data from actual invoices and customers
-  const generateChartDataFromInvoices = (
-    invoices: Invoice[],
-    customers: Customer[],
-    range: string
-  ): ChartDataItem[] => {
-    if (invoices.length === 0) return [];
-
-    const groupedData: { [key: string]: ChartDataItem } = {};
-
-    const periods = getLastPeriods(6, range, invoices);
-    periods.forEach((period) => {
-      groupedData[period.name] = {
-        name: period.name,
-        revenue: 0,
-        invoices: 0,
-        customers: 0,
-      };
-    });
-
-    // Process invoices
-    invoices.forEach((invoice) => {
-      const date = new Date(invoice.createdAt);
-      const periodKey = getPeriodKey(date, range);
-
-      if (groupedData[periodKey]) {
-        groupedData[periodKey].revenue += invoice.totals?.grandTotal || 0;
-        groupedData[periodKey].invoices += 1;
-      }
-    });
-
-    // Process customers for each period
-    periods.forEach((period) => {
-      const periodCustomers = customers.filter((customer) => {
-        const customerDate = new Date(customer.createdAt);
-        return getPeriodKey(customerDate, range) === period.name;
-      });
-      groupedData[period.name].customers = periodCustomers.length;
-    });
-
-    return periods
-      .map((period) => groupedData[period.name])
-      .filter(
-        (item) => item.revenue > 0 || item.invoices > 0 || item.customers > 0
-      );
-  };
-
-  // Calculate metal distribution from invoices
-  const calculateMetalDistribution = (
-    invoices: Invoice[]
-  ): { name: string; value: number }[] => {
-    if (invoices.length === 0) return [{ name: "No Data", value: 100 }];
-
-    const metalCount: { [key: string]: number } = {};
-    let total = 0;
-
-    invoices.forEach((invoice) => {
-      invoice.lineItems.forEach((item) => {
-        const metalType = item.metalType || item.itemType || "Other";
-        metalCount[metalType] = (metalCount[metalType] || 0) + 1;
-        total++;
-      });
-    });
-
-    if (total === 0) {
-      return [{ name: "No Data", value: 100 }];
-    }
-
-    return Object.entries(metalCount)
-      .map(([name, count]) => ({
-        name,
-        value: Math.round((count / total) * 100),
-      }))
-      .sort((a, b) => b.value - a.value);
-  };
-
-  // Generate recent activities from invoices and customers
-  const generateRecentActivities = (
-    invoices: Invoice[],
-    customers: Customer[]
-  ): RecentActivity[] => {
-    const activities: RecentActivity[] = [];
-
-    // Add recent invoices (last 5)
-    const recentInvoices = invoices
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )
-      .slice(0, 3);
-
-    recentInvoices.forEach((invoice) => {
-      activities.push({
-        id: invoice._id,
-        action: `New Invoice (${
-          invoice.paymentDetails?.paymentMethod?.toUpperCase() || "CASH"
-        })`,
-        customer: invoice.customerSnapshot?.name || "Unknown Customer",
-        amount: `₹${(invoice.totals?.grandTotal || 0).toLocaleString()}`,
-        time: getTimeAgo(new Date(invoice.createdAt)),
-        type: "invoice",
-      });
-    });
-
-    // Add recent customers (last 2)
-    const recentCustomers = customers
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )
-      .slice(0, 2);
-
-    recentCustomers.forEach((customer) => {
-      activities.push({
-        id: customer._id,
-        action: "New Customer",
-        customer: customer.name,
-        amount: "-",
-        time: getTimeAgo(new Date(customer.createdAt)),
-        type: "new_customer",
-      });
-    });
-
-    // Sort all activities by time and take top 5
-    return activities
-      .sort((a, b) => {
-        const timeA = a.time.includes("min")
-          ? parseInt(a.time)
-          : a.time.includes("hour")
-          ? parseInt(a.time) * 60
-          : parseInt(a.time) * 1440;
-        const timeB = b.time.includes("min")
-          ? parseInt(b.time)
-          : b.time.includes("hour")
-          ? parseInt(b.time) * 60
-          : parseInt(b.time) * 1440;
-        return timeB - timeA;
-      })
-      .slice(0, 5);
-  };
-
-  // Helper function to get time ago string
-  const getTimeAgo = (date: Date): string => {
-    const now = new Date();
-    const diffInMinutes = Math.floor(
-      (now.getTime() - date.getTime()) / (1000 * 60)
-    );
-
-    if (diffInMinutes < 1) return "Just now";
-    if (diffInMinutes < 60) return `${diffInMinutes} min ago`;
-    if (diffInMinutes < 1440)
-      return `${Math.floor(diffInMinutes / 60)} hours ago`;
-    return `${Math.floor(diffInMinutes / 1440)} days ago`;
-  };
-
-  // Helper function to get period key
-  const getPeriodKey = (date: Date, range: string): string => {
-    if (range === "monthly") {
-      return date.toLocaleString("default", { month: "short" });
-    } else if (range === "weekly") {
-      const weekNumber = Math.ceil(date.getDate() / 7);
-      return `Week ${weekNumber}`;
-    } else {
-      return date.toLocaleDateString();
-    }
-  };
-
-  // Helper function to get last N periods based on actual data
-  const getLastPeriods = (
-    count: number,
-    range: string,
-    invoices: Invoice[]
-  ): { name: string }[] => {
-    const periods: { name: string }[] = [];
-
-    if (invoices.length === 0) {
-      const now = new Date();
-      if (range === "monthly") {
-        for (let i = count - 1; i >= 0; i--) {
-          const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          periods.push({
-            name: date.toLocaleString("default", { month: "short" }),
-          });
-        }
-      }
-      return periods;
-    }
-
-    const invoiceDates = invoices.map((inv) => new Date(inv.createdAt));
-    const minDate = new Date(Math.min(...invoiceDates.map((d) => d.getTime())));
-    const maxDate = new Date(Math.max(...invoiceDates.map((d) => d.getTime())));
-
-    if (range === "monthly") {
-      const startMonth = minDate.getMonth();
-      const startYear = minDate.getFullYear();
-      const endMonth = maxDate.getMonth();
-      const endYear = maxDate.getFullYear();
-
-      let currentMonth = startMonth;
-      let currentYear = startYear;
-
-      while (
-        currentYear < endYear ||
-        (currentYear === endYear && currentMonth <= endMonth)
-      ) {
-        const date = new Date(currentYear, currentMonth, 1);
-        periods.push({
-          name: date.toLocaleString("default", { month: "short" }),
-        });
-
-        currentMonth++;
-        if (currentMonth > 11) {
-          currentMonth = 0;
-          currentYear++;
-        }
-      }
-
-      return periods.slice(-count);
-    }
-
-    const now = new Date();
-    for (let i = count - 1; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      periods.push({
-        name: date.toLocaleString("default", { month: "short" }),
-      });
-    }
-
-    return periods;
-  };
+  }, [
+    timeRange,
+    generateChartDataFromInvoices,
+    calculateMetalDistribution,
+    generateRecentActivities,
+  ]);
 
   // Enhanced Stats Cards with better design
-  const statCards = [
-    {
-      title: "Total Revenue",
-      value: `₹${stats.totalRevenue.toLocaleString()}`,
-      subtitle: "Lifetime Earnings",
-      icon: <MdAccountBalanceWallet className="text-3xl" />,
-      color: "from-emerald-500 to-teal-600",
-      bgColor: "bg-gradient-to-br from-emerald-50 to-teal-100",
-      change: `₹${stats.revenueThisMonth.toLocaleString()} this month`,
-      trend: "up",
-      description: "Total revenue from all invoices",
-    },
-    {
-      title: "Total Customers",
-      value: stats.totalCustomers.toLocaleString(),
-      subtitle: "Registered Clients",
-      icon: <MdPeople className="text-3xl" />,
-      color: "from-blue-500 to-indigo-600",
-      bgColor: "bg-gradient-to-br from-blue-50 to-indigo-100",
-      change: `${stats.newCustomersThisMonth} new this month`,
-      trend: "up",
-      description: "Active customer base",
-    },
-    {
-      title: "Cash Payments",
-      value: stats.cashPayments.toLocaleString(),
-      subtitle: "Cash Transactions",
-      icon: <MdAttachMoney className="text-3xl" />,
-      color: "from-green-500 to-emerald-600",
-      bgColor: "bg-gradient-to-br from-green-50 to-emerald-100",
-      change: `${
-        Math.round((stats.cashPayments / stats.totalInvoices) * 100) || 0
-      }% of total`,
-      trend: "up",
-      description: "Number of cash payments",
-    },
-    {
-      title: "Card Payments",
-      value: stats.cardPayments.toLocaleString(),
-      subtitle: "Credit/Debit Cards",
-      icon: <MdCreditCard className="text-3xl" />,
-      color: "from-purple-500 to-violet-600",
-      bgColor: "bg-gradient-to-br from-purple-50 to-violet-100",
-      change: `${
-        Math.round((stats.cardPayments / stats.totalInvoices) * 100) || 0
-      }% of total`,
-      trend: "up",
-      description: "Number of card payments",
-    },
-    {
-      title: "UPI Payments",
-      value: stats.upiPayments.toLocaleString(),
-      subtitle: "Digital Payments",
-      icon: <MdSmartphone className="text-3xl" />,
-      color: "from-indigo-500 to-blue-600",
-      bgColor: "bg-gradient-to-br from-indigo-50 to-blue-100",
-      change: `${
-        Math.round((stats.upiPayments / stats.totalInvoices) * 100) || 0
-      }% of total`,
-      trend: "up",
-      description: "Number of UPI payments",
-    },
-    {
-      title: "Exchange",
-      value: stats.exchangePayments.toLocaleString(),
-      subtitle: "Exchange Transactions",
-      icon: <MdCurrencyExchange className="text-3xl" />,
-      color: "from-orange-500 to-red-600",
-      bgColor: "bg-gradient-to-br from-orange-50 to-red-100",
-      change: `${
-        Math.round((stats.exchangePayments / stats.totalInvoices) * 100) || 0
-      }% of total`,
-      trend: "neutral",
-      description: "Number of exchange transactions",
-    },
-    {
-      title: "Gold Rate",
-      value: stats.goldRate > 0 ? `₹${stats.goldRate}/g` : "N/A",
-      subtitle: "Current Market",
-      icon: <MdTrendingUp className="text-3xl" />,
-      color: "from-yellow-500 to-amber-600",
-      bgColor: "bg-gradient-to-br from-yellow-50 to-amber-100",
-      change: "Live gold price",
-      trend: "neutral",
-      description: "Current gold rate per gram",
-    },
-    {
-      title: "Silver Rate",
-      value: stats.silverRate > 0 ? `₹${stats.silverRate}/g` : "N/A",
-      subtitle: "Current Market",
-      icon: <MdCalendarToday className="text-3xl" />,
-      color: "from-gray-500 to-slate-600",
-      bgColor: "bg-gradient-to-br from-gray-50 to-slate-100",
-      change: "Live silver price",
-      trend: "neutral",
-      description: "Current silver rate per gram",
-    },
-  ];
+  const statCards = useMemo(
+    () => [
+      {
+        title: "Total Revenue",
+        value: `₹${stats.totalRevenue.toLocaleString()}`,
+        subtitle: "Lifetime Earnings",
+        icon: <MdAccountBalanceWallet className="text-3xl" />,
+        color: "from-emerald-500 to-teal-600",
+        bgColor: "bg-gradient-to-br from-emerald-50 to-teal-100",
+        change: `₹${stats.revenueThisMonth.toLocaleString()} this month`,
+        trend: "up",
+        description: "Total revenue from all invoices",
+      },
+      {
+        title: "Total Customers",
+        value: stats.totalCustomers.toLocaleString(),
+        subtitle: "Registered Clients",
+        icon: <MdPeople className="text-3xl" />,
+        color: "from-blue-500 to-indigo-600",
+        bgColor: "bg-gradient-to-br from-blue-50 to-indigo-100",
+        change: `${stats.newCustomersThisMonth} new this month`,
+        trend: "up",
+        description: "Active customer base",
+      },
+      {
+        title: "Cash Payments",
+        value: stats.cashPayments.toLocaleString(),
+        subtitle: "Cash Transactions",
+        icon: <MdAttachMoney className="text-3xl" />,
+        color: "from-green-500 to-emerald-600",
+        bgColor: "bg-gradient-to-br from-green-50 to-emerald-100",
+        change: `${
+          Math.round((stats.cashPayments / stats.totalInvoices) * 100) || 0
+        }% of total`,
+        trend: "up",
+        description: "Number of cash payments",
+      },
+      {
+        title: "Card Payments",
+        value: stats.cardPayments.toLocaleString(),
+        subtitle: "Credit/Debit Cards",
+        icon: <MdCreditCard className="text-3xl" />,
+        color: "from-purple-500 to-violet-600",
+        bgColor: "bg-gradient-to-br from-purple-50 to-violet-100",
+        change: `${
+          Math.round((stats.cardPayments / stats.totalInvoices) * 100) || 0
+        }% of total`,
+        trend: "up",
+        description: "Number of card payments",
+      },
+      {
+        title: "UPI Payments",
+        value: stats.upiPayments.toLocaleString(),
+        subtitle: "Digital Payments",
+        icon: <MdSmartphone className="text-3xl" />,
+        color: "from-indigo-500 to-blue-600",
+        bgColor: "bg-gradient-to-br from-indigo-50 to-blue-100",
+        change: `${
+          Math.round((stats.upiPayments / stats.totalInvoices) * 100) || 0
+        }% of total`,
+        trend: "up",
+        description: "Number of UPI payments",
+      },
+      {
+        title: "Exchange",
+        value: stats.exchangePayments.toLocaleString(),
+        subtitle: "Exchange Transactions",
+        icon: <MdCurrencyExchange className="text-3xl" />,
+        color: "from-orange-500 to-red-600",
+        bgColor: "bg-gradient-to-br from-orange-50 to-red-100",
+        change: `${
+          Math.round((stats.exchangePayments / stats.totalInvoices) * 100) || 0
+        }% of total`,
+        trend: "neutral",
+        description: "Number of exchange transactions",
+      },
+      {
+        title: "Gold Rate",
+        value: stats.goldRate > 0 ? `₹${stats.goldRate}/g` : "N/A",
+        subtitle: "Current Market",
+        icon: <MdTrendingUp className="text-3xl" />,
+        color: "from-yellow-500 to-amber-600",
+        bgColor: "bg-gradient-to-br from-yellow-50 to-amber-100",
+        change: "Live gold price",
+        trend: "neutral",
+        description: "Current gold rate per gram",
+      },
+      {
+        title: "Silver Rate",
+        value: stats.silverRate > 0 ? `₹${stats.silverRate}/g` : "N/A",
+        subtitle: "Current Market",
+        icon: <MdCalendarToday className="text-3xl" />,
+        color: "from-gray-500 to-slate-600",
+        bgColor: "bg-gradient-to-br from-gray-50 to-slate-100",
+        change: "Live silver price",
+        trend: "neutral",
+        description: "Current silver rate per gram",
+      },
+    ],
+    [stats]
+  );
 
   const COLORS = [
     "#FFD700",
@@ -854,9 +865,9 @@ const Dashboard = () => {
                     <span>Percentage</span>
                     <span>{stat.change}</span>
                   </div>
-                  <div className="w-full h-2 bg-gray-200 rounded-full">
+                  <div className="w-full h-2 overflow-hidden bg-gray-200 rounded-full">
                     <div
-                      className={`h-2 rounded-full ${
+                      className={`h-2 ${
                         stat.title === "Cash Payments"
                           ? "bg-green-500"
                           : stat.title === "Card Payments"
@@ -882,7 +893,7 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* Charts Grid */}
+      {/* Charts Grid - FIXED CONTAINERS WITH EXPLICIT DIMENSIONS */}
       {(chartData.length > 0 || stats.totalInvoices > 0) && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Revenue Trend */}
@@ -895,49 +906,57 @@ const Dashboard = () => {
             <h3 className="mb-4 text-lg font-semibold text-gray-800">
               Revenue Trend ({timeRange})
             </h3>
-            <div className="h-80">
+            <div className="w-full h-80">
               {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="name" stroke="#666" />
-                    <YAxis stroke="#666" />
-                    <Tooltip
-                      formatter={(value: number) => [
-                        `₹${value.toLocaleString()}`,
-                        "Revenue",
-                      ]}
-                    />
-                    <Legend />
-                    <Area
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="#0088FE"
-                      fill="url(#colorRevenue)"
-                      strokeWidth={2}
-                    />
-                    <defs>
-                      <linearGradient
-                        id="colorRevenue"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="5%"
-                          stopColor="#0088FE"
-                          stopOpacity={0.8}
-                        />
-                        <stop
-                          offset="95%"
-                          stopColor="#0088FE"
-                          stopOpacity={0.1}
-                        />
-                      </linearGradient>
-                    </defs>
-                  </AreaChart>
-                </ResponsiveContainer>
+                <div className="w-full h-full" style={{ minWidth: 0 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="name" stroke="#666" />
+                      <YAxis stroke="#666" />
+                      <Tooltip
+                        formatter={(value: number) => [
+                          `₹${value.toLocaleString()}`,
+                          "Revenue",
+                        ]}
+                        contentStyle={{
+                          backgroundColor: "white",
+                          border: "1px solid #e5e7eb",
+                          borderRadius: "8px",
+                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                        }}
+                      />
+                      <Legend />
+                      <Area
+                        type="monotone"
+                        dataKey="revenue"
+                        stroke="#0088FE"
+                        fill="url(#colorRevenue)"
+                        strokeWidth={2}
+                      />
+                      <defs>
+                        <linearGradient
+                          id="colorRevenue"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="5%"
+                            stopColor="#0088FE"
+                            stopOpacity={0.8}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor="#0088FE"
+                            stopOpacity={0.1}
+                          />
+                        </linearGradient>
+                      </defs>
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               ) : (
                 <div className="flex items-center justify-center h-full text-gray-500">
                   No revenue data available
@@ -956,27 +975,36 @@ const Dashboard = () => {
             <h3 className="mb-4 text-lg font-semibold text-gray-800">
               Business Metrics ({timeRange})
             </h3>
-            <div className="h-80">
+            <div className="w-full h-80">
               {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="name" stroke="#666" />
-                    <YAxis stroke="#666" />
-                    <Tooltip />
-                    <Legend />
-                    <Bar
-                      dataKey="invoices"
-                      fill="#00C49F"
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="customers"
-                      fill="#8884D8"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="w-full h-full" style={{ minWidth: 0 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="name" stroke="#666" />
+                      <YAxis stroke="#666" />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "white",
+                          border: "1px solid #e5e7eb",
+                          borderRadius: "8px",
+                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                        }}
+                      />
+                      <Legend />
+                      <Bar
+                        dataKey="invoices"
+                        fill="#00C49F"
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="customers"
+                        fill="#8884D8"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               ) : (
                 <div className="flex items-center justify-center h-full text-gray-500">
                   No business data available
@@ -999,35 +1027,43 @@ const Dashboard = () => {
           <h3 className="mb-4 text-lg font-semibold text-gray-800">
             Metal Distribution
           </h3>
-          <div className="h-64">
+          <div className="w-full h-64">
             {metalDistribution.length > 0 &&
             metalDistribution[0].name !== "No Data" ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={metalDistribution}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                    label={renderCustomizedLabel}
-                    labelLine={false}
-                  >
-                    {metalDistribution.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value: number) => [`${value}%`, "Percentage"]}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+              <div className="w-full h-full" style={{ minWidth: 0 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={metalDistribution}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                      label={renderCustomizedLabel}
+                      labelLine={false}
+                    >
+                      {metalDistribution.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: number) => [`${value}%`, "Percentage"]}
+                      contentStyle={{
+                        backgroundColor: "white",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: "8px",
+                        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                      }}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             ) : (
               <div className="flex items-center justify-center h-full text-gray-500">
                 No metal distribution data

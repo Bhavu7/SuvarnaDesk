@@ -370,7 +370,10 @@ export default function Rates() {
             <div className="mb-4 text-center">
               <motion.div
                 key={`${rate.metal}-${rate.price}`}
-                animate={{ scale: 1, backgroundColor: "transparent" }}
+                animate={{
+                  scale: 1,
+                  backgroundColor: "rgba(255, 255, 255, 0)",
+                }}
                 transition={{ duration: 0.5 }}
                 className="p-2 mb-1 text-3xl font-bold text-gray-900 rounded"
               >

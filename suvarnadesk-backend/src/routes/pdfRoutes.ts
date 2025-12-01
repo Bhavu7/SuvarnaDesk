@@ -55,6 +55,23 @@ router.get("/invoices/:id/pdf", authMiddleware, async (req, res) => {
         // Convert totals to new structure
         const convertedTotals = convertTotalsToNewStructure(invoiceObj.totals);
 
+        // Determine which GST number to use based on items in the invoice
+        const hasGoldItems = invoiceObj.lineItems.some((item: any) => item.itemType === 'gold');
+        const hasSilverItems = invoiceObj.lineItems.some((item: any) => item.itemType === 'silver');
+
+        let gstNumber = '';
+
+        // Convert shopSettings to plain object to safely access properties
+        if (shopSettings) {
+            const shopSettingsObj = shopSettings.toObject();
+
+            if (hasGoldItems && shopSettingsObj.goldGstNumber) {
+                gstNumber = shopSettingsObj.goldGstNumber;
+            } else if (hasSilverItems && shopSettingsObj.silverGstNumber) {
+                gstNumber = shopSettingsObj.silverGstNumber;
+            }
+        }
+
         const pdfData: InvoicePDFData = {
             invoiceNumber: invoiceObj.invoiceNumber,
             date: invoiceObj.date,
@@ -78,13 +95,13 @@ router.get("/invoices/:id/pdf", authMiddleware, async (req, res) => {
                 makingChargesTotal: item.makingChargesTotal,
                 otherCharges: item.otherCharges || 0
             })),
-            totals: convertedTotals, // Use converted totals
+            totals: convertedTotals,
             paymentDetails: invoiceObj.paymentDetails,
             shopSettings: shopSettings ? {
                 shopName: shopSettings.shopName,
                 address: shopSettings.address || "",
                 phone: shopSettings.phone || "",
-                gstNumber: shopSettings.gstNumber
+                gstNumber: gstNumber // Use the determined GST number
             } : undefined
         };
 

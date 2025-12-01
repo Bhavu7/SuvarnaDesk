@@ -89,25 +89,6 @@ const DateTimeDropdown: React.FC<DateTimeDropdownProps> = ({
       : null
   );
 
-  useEffect(() => {
-    if (
-      selectedYear !== null &&
-      selectedMonth !== null &&
-      selectedDay !== null &&
-      selectedTime !== null
-    ) {
-      const [hours, minutes] = selectedTime.split(":").map(Number);
-      const newDate = new Date(
-        selectedYear,
-        selectedMonth,
-        selectedDay,
-        hours,
-        minutes
-      );
-      onChange(newDate.toISOString());
-    }
-  }, [selectedYear, selectedMonth, selectedDay, selectedTime, onChange]);
-
   const getDaysInMonth = (year: number, month: number) => {
     return new Date(year, month + 1, 0).getDate();
   };
@@ -116,20 +97,43 @@ const DateTimeDropdown: React.FC<DateTimeDropdownProps> = ({
     type: "year" | "month" | "day" | "time",
     selectedValue: number | string
   ) => {
+    let newYear = selectedYear;
+    let newMonth = selectedMonth;
+    let newDay = selectedDay;
+    let newTime = selectedTime;
+
     switch (type) {
       case "year":
-        setSelectedYear(selectedValue as number);
+        newYear = selectedValue as number;
         break;
       case "month":
-        setSelectedMonth(selectedValue as number);
-        setSelectedDay(null);
+        newMonth = selectedValue as number;
+        newDay = null;
         break;
       case "day":
-        setSelectedDay(selectedValue as number);
+        newDay = selectedValue as number;
         break;
       case "time":
-        setSelectedTime(selectedValue as string);
+        newTime = selectedValue as string;
         break;
+    }
+
+    // Update local state
+    setSelectedYear(newYear);
+    setSelectedMonth(newMonth);
+    setSelectedDay(newDay);
+    setSelectedTime(newTime);
+
+    // Only call onChange when we have a complete date
+    if (
+      newYear !== null &&
+      newMonth !== null &&
+      newDay !== null &&
+      newTime !== null
+    ) {
+      const [hours, minutes] = newTime.split(":").map(Number);
+      const newDate = new Date(newYear, newMonth, newDay, hours, minutes);
+      onChange(newDate.toISOString());
     }
   };
 

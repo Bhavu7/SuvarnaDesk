@@ -11,15 +11,14 @@ interface CustomerQuery {
     sortOrder?: 'asc' | 'desc';
 }
 
-// Get all customers
 export const getAllCustomers = async (
-    req: Request<{}, {}, {}, CustomerQuery>,
+    req: Request,
     res: Response
 ) => {
     try {
         const {
-            page = 1,
-            limit = 100,
+            page = '1',
+            limit = '100',
             search = '',
             sortBy = 'createdAt',
             sortOrder = 'desc',
@@ -38,31 +37,18 @@ export const getAllCustomers = async (
 
         // Execute query
         const customers = await Customer.find(searchQuery)
-            .sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 })
-            .limit(limit * 1)
-            .skip((page - 1) * limit)
+            .sort({ [sortBy.toString()]: sortOrder === 'desc' ? -1 : 1 })
+            .limit(parseInt(limit.toString()))
+            .skip((parseInt(page.toString()) - 1) * parseInt(limit.toString()))
             .select('-__v');
 
-        // Get total count for pagination
-        const total = await Customer.countDocuments(searchQuery);
+        // Return array directly for frontend compatibility
+        res.json(customers);
 
-        res.json({
-            success: true,
-            data: customers,
-            pagination: {
-                total,
-                page: parseInt(page.toString()),
-                limit: parseInt(limit.toString()),
-                pages: Math.ceil(total / parseInt(limit.toString())),
-            },
-        });
     } catch (error: any) {
         console.error('Error fetching customers:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error while fetching customers',
-            error: error.message,
-        });
+        // Return empty array on error
+        res.json([]);
     }
 };
 
@@ -73,24 +59,63 @@ export const getCustomerById = async (req: Request, res: Response) => {
 
         if (!customer) {
             return res.status(404).json({
-                success: false,
-                message: 'Customer not found',
+                error: 'Customer not found',
             });
         }
 
-        res.json({
-            success: true,
-            data: customer,
-        });
+        res.json(customer);
     } catch (error: any) {
         console.error('Error fetching customer:', error);
         res.status(500).json({
-            success: false,
-            message: 'Server error while fetching customer',
             error: error.message,
         });
     }
 };
+
+// Create new customer
+export const createCustomer = async (req: Request, res: Response) => {
+    try {
+        const { name, phone, email, address, huid, gstNumber, notes } = req.body;
+
+        // Validate required fields
+        if (!name || !phone) {
+            return res.status(400).json({
+                error: 'Name and phone number are required',
+            });
+        }
+
+        // Check if customer with same phone already exists
+        const existingCustomer = await Customer.findOne({ phone });
+        if (existingCustomer) {
+            return res.status(400).json({
+                error: 'Customer with this phone number already exists',
+                data: existingCustomer,
+            });
+        }
+
+        const customer = new Customer({
+            name,
+            phone,
+            email,
+            address,
+            huid,
+            gstNumber,
+            notes,
+            totalPurchases: 0,
+            totalAmountSpent: 0,
+        });
+
+        await customer.save();
+
+        res.status(201).json(customer);
+    } catch (error: any) {
+        console.error('Error creating customer:', error);
+        res.status(500).json({
+            error: error.message,
+        });
+    }
+};
+
 
 // Get customer by phone (useful for invoice creation)
 export const getCustomerByPhone = async (req: Request, res: Response) => {
@@ -122,59 +147,6 @@ export const getCustomerByPhone = async (req: Request, res: Response) => {
         res.status(500).json({
             success: false,
             message: 'Server error while fetching customer',
-            error: error.message,
-        });
-    }
-};
-
-// Create new customer
-export const createCustomer = async (req: Request, res: Response) => {
-    try {
-        const { name, phone, email, address, huid, gstNumber, notes } = req.body;
-
-        // Validate required fields
-        if (!name || !phone) {
-            return res.status(400).json({
-                success: false,
-                message: 'Name and phone number are required',
-            });
-        }
-
-        // Check if customer with same phone already exists
-        const existingCustomer = await Customer.findOne({ phone });
-        if (existingCustomer) {
-            return res.status(400).json({
-                success: false,
-                message: 'Customer with this phone number already exists',
-                data: existingCustomer, // Return existing customer so frontend can use it
-            });
-        }
-
-        const customerData: Partial<ICustomer> = {
-            name,
-            phone,
-            email,
-            address,
-            huid,
-            gstNumber,
-            notes,
-            totalPurchases: 0,
-            totalAmountSpent: 0,
-        };
-
-        const customer = new Customer(customerData);
-        await customer.save();
-
-        res.status(201).json({
-            success: true,
-            message: 'Customer created successfully',
-            data: customer,
-        });
-    } catch (error: any) {
-        console.error('Error creating customer:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error while creating customer',
             error: error.message,
         });
     }
@@ -454,12 +426,12 @@ export const bulkImportCustomers = async (req: Request, res: Response) => {
         if (!Array.isArray(customers) || customers.length === 0) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid customer data',
+                message: 'Invalid customer data', // Only one message property
             });
         }
 
-        const results = [];
-        const errors = [];
+        const results: any[] = [];
+        const errors: any[] = [];
 
         for (const customerData of customers) {
             try {
@@ -469,7 +441,7 @@ export const bulkImportCustomers = async (req: Request, res: Response) => {
                 if (!name || !phone) {
                     errors.push({
                         customer: customerData,
-                        error: 'Name and phone are required',
+                        message: 'Name and phone are required', // Changed from 'error' to 'message'
                     });
                     continue;
                 }
@@ -478,35 +450,46 @@ export const bulkImportCustomers = async (req: Request, res: Response) => {
                 const existingCustomer = await Customer.findOne({ phone });
 
                 if (existingCustomer) {
-                    // Update existing
+                    // Update existing customer
                     existingCustomer.name = name;
-                    existingCustomer.email = email || existingCustomer.email;
-                    existingCustomer.address = address || existingCustomer.address;
-                    existingCustomer.huid = huid || existingCustomer.huid;
-                    existingCustomer.gstNumber = gstNumber || existingCustomer.gstNumber;
-                    existingCustomer.notes = notes || existingCustomer.notes;
+                    if (email) existingCustomer.email = email;
+                    if (address) existingCustomer.address = address;
+                    if (huid) existingCustomer.huid = huid;
+                    if (gstNumber) existingCustomer.gstNumber = gstNumber;
+                    if (notes) existingCustomer.notes = notes;
+
                     await existingCustomer.save();
-                    results.push({ ...existingCustomer.toObject(), action: 'updated' });
+                    results.push({
+                        id: existingCustomer._id,
+                        name: existingCustomer.name,
+                        phone: existingCustomer.phone,
+                        action: 'updated'
+                    });
                 } else {
-                    // Create new
+                    // Create new customer
                     const newCustomer = new Customer({
                         name,
                         phone,
-                        email,
-                        address,
-                        huid,
-                        gstNumber,
-                        notes,
+                        email: email || undefined,
+                        address: address || undefined,
+                        huid: huid || undefined,
+                        gstNumber: gstNumber || undefined,
+                        notes: notes || undefined,
                         totalPurchases: 0,
                         totalAmountSpent: 0,
                     });
                     await newCustomer.save();
-                    results.push({ ...newCustomer.toObject(), action: 'created' });
+                    results.push({
+                        id: newCustomer._id,
+                        name: newCustomer.name,
+                        phone: newCustomer.phone,
+                        action: 'created'
+                    });
                 }
             } catch (error: any) {
                 errors.push({
                     customer: customerData,
-                    error: error.message,
+                    message: error.message, // Only one message property
                 });
             }
         }
@@ -518,14 +501,14 @@ export const bulkImportCustomers = async (req: Request, res: Response) => {
                 processed: results.length,
                 errors: errors.length,
                 results,
-                errors: errors.length > 0 ? errors : undefined,
+                errorDetails: errors.length > 0 ? errors : undefined, // Changed from 'errors' to 'errorDetails'
             },
         });
     } catch (error: any) {
         console.error('Error in bulk import:', error);
         res.status(500).json({
             success: false,
-            message: 'Server error during bulk import',
+            message: 'Server error during bulk import', // Only one message property
             error: error.message,
         });
     }

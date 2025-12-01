@@ -89,13 +89,13 @@ export default function ManageCustomers() {
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-      console.log("Fetching invoices from API...");
+      // console.log("Fetching invoices from API...");
 
       const response = await apiClient.get("/invoices");
-      console.log("API Response:", response.data);
+      // console.log("API Response:", response.data);
 
       const invoices: Invoice[] = response.data || [];
-      console.log("Invoices found:", invoices.length);
+      // console.log("Invoices found:", invoices.length);
 
       // Group invoices by customer
       const customerMap = new Map<string, Customer>();
@@ -136,7 +136,7 @@ export default function ManageCustomers() {
       });
 
       const customersArray = Array.from(customerMap.values());
-      console.log("Customers grouped:", customersArray.length);
+      // console.log("Customers grouped:", customersArray.length);
       setCustomers(customersArray);
       setFilteredCustomers(customersArray);
     } catch (error: any) {
