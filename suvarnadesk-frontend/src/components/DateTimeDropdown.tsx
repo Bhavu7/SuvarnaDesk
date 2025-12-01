@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MdKeyboardArrowDown, MdCheck, MdAccessTime } from "react-icons/md";
+import { MdKeyboardArrowDown, MdAccessTime } from "react-icons/md";
 
 interface DateTimeDropdownProps {
   value: string; // ISO string or empty
