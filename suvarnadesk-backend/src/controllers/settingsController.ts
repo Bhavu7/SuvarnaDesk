@@ -1,22 +1,36 @@
 import ShopSettings from "../models/Settings";
 import { Request, Response } from "express";
 
+// GST validation regex (basic format check)
+const GST_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$/;
+
+const validateGstNumber = (gstNumber: string | undefined): { isValid: boolean; error?: string } => {
+    if (!gstNumber || gstNumber.trim() === "") {
+        return { isValid: true }; // Empty GST is allowed
+    }
+
+    if (!GST_REGEX.test(gstNumber)) {
+        return {
+            isValid: false,
+            error: "GST number should be 15 characters in format: 22AAAAA0000A1Z5"
+        };
+    }
+
+    return { isValid: true };
+};
+
 export const getShopSettings = async (req: Request, res: Response) => {
     try {
-        let settings = await ShopSettings.findOne();
+        const settings = await ShopSettings.findOne();
 
         if (!settings) {
-            // Create default settings if none exist
-            settings = new ShopSettings({
-                shopName: "SuvarnaDesk",
-                ownerName: "Admin",
-                address: "Anand, Gujarat, India",
-                phone: "+91 12345 67890",
+            return res.status(404).json({
+                error: "Shop settings not found",
+                message: "No shop settings configured yet. Please set up your shop details."
             });
-            await settings.save();
         }
 
-        // Return settings
+        // Return settings with only current fields
         res.json({
             shopName: settings.shopName,
             ownerName: settings.ownerName,
@@ -30,7 +44,10 @@ export const getShopSettings = async (req: Request, res: Response) => {
         });
     } catch (error) {
         console.error('Error in getShopSettings:', error);
-        res.status(500).json({ error: "Failed to get shop settings" });
+        res.status(500).json({
+            error: "Failed to get shop settings",
+            message: "An internal server error occurred"
+        });
     }
 };
 
@@ -47,102 +64,176 @@ export const updateShopSettings = async (req: Request, res: Response) => {
         } = req.body;
 
         // Validate required fields
-        if (!shopName || !ownerName || !address || !phone) {
+        if (!shopName?.trim()) {
             return res.status(400).json({
-                error: "Missing required fields: shopName, ownerName, address, phone"
+                error: "Missing required field: shopName"
             });
         }
 
-        // Optional: Validate GST format if provided
-        if (goldGstNumber && goldGstNumber.trim()) {
-            const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$/;
-            if (!gstRegex.test(goldGstNumber)) {
-                return res.status(400).json({
-                    error: "Invalid Gold GST number format",
-                    message: "GST number should be 15 characters (e.g., 22AAAAA0000A1Z5)"
-                });
-            }
+        if (!ownerName?.trim()) {
+            return res.status(400).json({
+                error: "Missing required field: ownerName"
+            });
         }
 
-        if (silverGstNumber && silverGstNumber.trim()) {
-            const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$/;
-            if (!gstRegex.test(silverGstNumber)) {
-                return res.status(400).json({
-                    error: "Invalid Silver GST number format",
-                    message: "GST number should be 15 characters (e.g., 22AAAAA0000A1Z5)"
-                });
-            }
+        if (!address?.trim()) {
+            return res.status(400).json({
+                error: "Missing required field: address"
+            });
         }
 
+        if (!phone?.trim()) {
+            return res.status(400).json({
+                error: "Missing required field: phone"
+            });
+        }
+
+        // Validate GST numbers if provided
+        const goldGstValidation = validateGstNumber(goldGstNumber);
+        if (!goldGstValidation.isValid) {
+            return res.status(400).json({
+                error: "Invalid Gold GST number",
+                message: goldGstValidation.error
+            });
+        }
+
+        const silverGstValidation = validateGstNumber(silverGstNumber);
+        if (!silverGstValidation.isValid) {
+            return res.status(400).json({
+                error: "Invalid Silver GST number",
+                message: silverGstValidation.error
+            });
+        }
+
+        // Check if settings exist
         let settings = await ShopSettings.findOne();
 
         if (!settings) {
             // Create new settings
             settings = new ShopSettings({
-                shopName,
-                ownerName,
-                address,
-                phone,
-                goldGstNumber,
-                silverGstNumber,
-                logoUrl
+                shopName: shopName.trim(),
+                ownerName: ownerName.trim(),
+                address: address.trim(),
+                phone: phone.trim(),
+                goldGstNumber: goldGstNumber?.trim() || "",
+                silverGstNumber: silverGstNumber?.trim() || "",
+                logoUrl: logoUrl?.trim() || ""
             });
         } else {
             // Update existing settings
-            settings.shopName = shopName;
-            settings.ownerName = ownerName;
-            settings.address = address;
-            settings.phone = phone;
-            settings.goldGstNumber = goldGstNumber;
-            settings.silverGstNumber = silverGstNumber;
-            settings.logoUrl = logoUrl;
+            settings.shopName = shopName.trim();
+            settings.ownerName = ownerName.trim();
+            settings.address = address.trim();
+            settings.phone = phone.trim();
+            settings.goldGstNumber = goldGstNumber?.trim() || "";
+            settings.silverGstNumber = silverGstNumber?.trim() || "";
+            settings.logoUrl = logoUrl?.trim() || "";
         }
 
         await settings.save();
 
         // Return updated settings
-        res.json({
-            shopName: settings.shopName,
-            ownerName: settings.ownerName,
-            address: settings.address,
-            phone: settings.phone,
-            goldGstNumber: settings.goldGstNumber || "",
-            silverGstNumber: settings.silverGstNumber || "",
-            logoUrl: settings.logoUrl || "",
-            updatedAt: settings.updatedAt
+        res.status(200).json({
+            success: true,
+            message: "Shop settings saved successfully",
+            data: {
+                shopName: settings.shopName,
+                ownerName: settings.ownerName,
+                address: settings.address,
+                phone: settings.phone,
+                goldGstNumber: settings.goldGstNumber || "",
+                silverGstNumber: settings.silverGstNumber || "",
+                logoUrl: settings.logoUrl || "",
+                updatedAt: settings.updatedAt
+            }
         });
     } catch (error) {
         console.error('Error in updateShopSettings:', error);
-        res.status(500).json({ error: "Failed to update shop settings" });
+        res.status(500).json({
+            error: "Failed to update shop settings",
+            message: "An internal server error occurred"
+        });
     }
 };
 
-// Migration function to remove old gstNumber field (run once if needed)
-export const cleanupOldGstField = async () => {
+// Create initial settings (if you want an endpoint for this)
+export const createInitialSettings = async (req: Request, res: Response) => {
     try {
-        // If you have existing documents with gstNumber field, update them
-        const result = await ShopSettings.updateMany(
-            { gstNumber: { $exists: true } },
-            [
-                {
-                    $set: {
-                        goldGstNumber: "$gstNumber",
-                        silverGstNumber: "$gstNumber"
-                    }
-                },
-                {
-                    $unset: "gstNumber"
-                }
-            ]
-        );
+        const existingSettings = await ShopSettings.findOne();
 
-        console.log(`Migrated ${result.modifiedCount} documents`);
-        return result;
+        if (existingSettings) {
+            return res.status(400).json({
+                error: "Settings already exist",
+                message: "Shop settings are already configured. Use the update endpoint instead."
+            });
+        }
+
+        const {
+            shopName,
+            ownerName,
+            address,
+            phone,
+            goldGstNumber,
+            silverGstNumber,
+            logoUrl
+        } = req.body;
+
+        // Validate required fields
+        if (!shopName?.trim() || !ownerName?.trim() || !address?.trim() || !phone?.trim()) {
+            return res.status(400).json({
+                error: "Missing required fields: shopName, ownerName, address, phone"
+            });
+        }
+
+        // Validate GST numbers if provided
+        const goldGstValidation = validateGstNumber(goldGstNumber);
+        if (!goldGstValidation.isValid) {
+            return res.status(400).json({
+                error: "Invalid Gold GST number",
+                message: goldGstValidation.error
+            });
+        }
+
+        const silverGstValidation = validateGstNumber(silverGstNumber);
+        if (!silverGstValidation.isValid) {
+            return res.status(400).json({
+                error: "Invalid Silver GST number",
+                message: silverGstValidation.error
+            });
+        }
+
+        // Create new settings
+        const settings = new ShopSettings({
+            shopName: shopName.trim(),
+            ownerName: ownerName.trim(),
+            address: address.trim(),
+            phone: phone.trim(),
+            goldGstNumber: goldGstNumber?.trim() || "",
+            silverGstNumber: silverGstNumber?.trim() || "",
+            logoUrl: logoUrl?.trim() || ""
+        });
+
+        await settings.save();
+
+        res.status(201).json({
+            success: true,
+            message: "Shop settings created successfully",
+            data: {
+                shopName: settings.shopName,
+                ownerName: settings.ownerName,
+                address: settings.address,
+                phone: settings.phone,
+                goldGstNumber: settings.goldGstNumber || "",
+                silverGstNumber: settings.silverGstNumber || "",
+                logoUrl: settings.logoUrl || "",
+                createdAt: settings.createdAt
+            }
+        });
     } catch (error) {
-        console.error('Error cleaning up old GST field:', error);
-        throw error;
+        console.error('Error in createInitialSettings:', error);
+        res.status(500).json({
+            error: "Failed to create shop settings",
+            message: "An internal server error occurred"
+        });
     }
 };
-
-// Optional: Run this once to clean up old field
-// cleanupOldGstField();
