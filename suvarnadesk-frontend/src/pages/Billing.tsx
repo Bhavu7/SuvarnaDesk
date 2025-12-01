@@ -52,6 +52,7 @@ interface PdfData {
   shopSettings: {
     shopName: string;
     gstNumber?: string;
+    gstType?: string;
   };
 }
 
@@ -98,14 +99,14 @@ export default function Billing() {
   const [paymentMode, setPaymentMode] = useState<string>("cash");
   const [showQRCode, setShowQRCode] = useState<boolean>(false);
   const [invoiceData, setInvoiceData] = useState<PdfData[] | null>(null);
-  const [shopSettings, setShopSettings] = useState({
-    shopName: "JEWELRY COMMERCIAL INVOICE",
-    gstNumber: "",
-  });
+  // const [shopSettings, setShopSettings] = useState({
+  //   shopName: "JEWELRY COMMERCIAL INVOICE",
+  //   gstNumber: "",
+  // });
 
   // Fetch shop settings and generate invoice number on component mount
   React.useEffect(() => {
-    fetchShopSettings();
+    // fetchShopSettings();
     generateInvoiceNumber();
   }, []);
 
@@ -116,19 +117,19 @@ export default function Billing() {
     }
   }, [useLiveRatesEnabled, refetchLiveRates]);
 
-  const fetchShopSettings = async () => {
-    try {
-      const response = await apiClient.get("/shop-settings");
-      if (response.data) {
-        setShopSettings({
-          shopName: response.data.shopName || "JEWELRY COMMERCIAL INVOICE",
-          gstNumber: response.data.gstNumber || "",
-        });
-      }
-    } catch (error) {
-      console.error("Failed to fetch shop settings:", error);
-    }
-  };
+  // const fetchShopSettings = async () => {
+  //   try {
+  //     const response = await apiClient.get("/shop-settings");
+  //     if (response.data) {
+  //       setShopSettings({
+  //         shopName: response.data.shopName || "JEWELRY COMMERCIAL INVOICE",
+  //         gstNumber: response.data.gstNumber || "",
+  //       });
+  //     }
+  //   } catch (error) {
+  //     console.error("Failed to fetch shop settings:", error);
+  //   }
+  // };
 
   const generateInvoiceNumber = async (): Promise<string> => {
     try {
@@ -545,220 +546,307 @@ export default function Billing() {
       return;
     }
 
-    // Separate items by type
-    const goldItems = lineItems.filter((item) => item.itemType === "gold");
-    const silverItems = lineItems.filter((item) => item.itemType === "silver");
-    const otherItems = lineItems.filter((item) => item.itemType === "other");
+    try {
+      // Fetch shop settings to get GST numbers
+      const shopSettingsResponse = await apiClient.get("/shop-settings");
+      const shopData = shopSettingsResponse.data || {};
 
-    // Calculate totals for each type
-    const calculateTotals = (items: LineItem[]) => {
-      const subtotal = items.reduce((acc, item) => acc + item.itemTotal, 0);
-      const CGSTAmount = (subtotal * CGSTPercent) / 100;
-      const SGSTAmount = (subtotal * SGSTPercent) / 100;
-      const grandTotal = subtotal + CGSTAmount + SGSTAmount;
+      const goldGstNumber = shopData.goldGstNumber || "";
+      const silverGstNumber = shopData.silverGstNumber || "";
 
-      return { subtotal, CGSTAmount, SGSTAmount, grandTotal };
-    };
+      // Separate items by type
+      const goldItems = lineItems.filter((item) => item.itemType === "gold");
+      const silverItems = lineItems.filter(
+        (item) => item.itemType === "silver"
+      );
+      const otherItems = lineItems.filter((item) => item.itemType === "other");
 
-    const goldTotals = calculateTotals(goldItems);
-    const silverTotals = calculateTotals(silverItems);
-    const otherTotals = calculateTotals(otherItems);
+      // Calculate totals for each type
+      const calculateTotals = (items: LineItem[], applyGST: boolean = true) => {
+        const subtotal = items.reduce((acc, item) => acc + item.itemTotal, 0);
+        let CGSTAmount = 0;
+        let SGSTAmount = 0;
+        let grandTotal = subtotal;
 
-    // Prepare PDF data arrays
-    const pdfDataArray: PdfData[] = [];
-
-    // Gold PDF - Jay Krishna Haribhai Soni
-    if (goldItems.length > 0) {
-      const goldPdfData = {
-        invoiceNumber: finalInvoiceNumber,
-        invoiceDate,
-        customer: {
-          name: customerName,
-          address: customerAddress,
-          email: customerEmail,
-          phone: customerPhone,
-          huid: customerHUID,
-        },
-        items: goldItems.map((item, index) => ({
-          productNo: `GOLD-${index + 1}`,
-          description: `${item.itemType} ${item.purity} ${item.description}`,
-          quantity: 1,
-          weight: convertToGrams(item.weight.value, item.weight.unit),
-          pricePerGram: item.ratePerGram,
-          otherCharges: item.otherCharges || 0,
-          amount: item.itemTotal,
-        })),
-        subtotal: goldTotals.subtotal,
-        CGSTPercent,
-        CGSTAmount: goldTotals.CGSTAmount,
-        SGSTPercent,
-        SGSTAmount: goldTotals.SGSTAmount,
-        grandTotal: goldTotals.grandTotal,
-        shopSettings: {
-          shopName: "Jay Krishna Haribhai Soni",
-          gstNumber: shopSettings.gstNumber,
-        },
-      };
-      pdfDataArray.push(goldPdfData);
-    }
-
-    // Silver PDF - Measers Yogeshkumar and Brothers
-    if (silverItems.length > 0) {
-      const silverPdfData = {
-        invoiceNumber: finalInvoiceNumber,
-        invoiceDate,
-        customer: {
-          name: customerName,
-          address: customerAddress,
-          email: customerEmail,
-          phone: customerPhone,
-          huid: customerHUID,
-        },
-        items: silverItems.map((item, index) => ({
-          productNo: `SILVER-${index + 1}`,
-          description: `${item.itemType} ${item.purity} ${item.description}`,
-          quantity: 1,
-          weight: convertToGrams(item.weight.value, item.weight.unit),
-          pricePerGram: item.ratePerGram,
-          otherCharges: item.otherCharges || 0,
-          amount: item.itemTotal,
-        })),
-        subtotal: silverTotals.subtotal,
-        CGSTPercent,
-        CGSTAmount: silverTotals.CGSTAmount,
-        SGSTPercent,
-        SGSTAmount: silverTotals.SGSTAmount,
-        grandTotal: silverTotals.grandTotal,
-        shopSettings: {
-          shopName: "Measers Yogeshkumar and Brothers",
-          gstNumber: shopSettings.gstNumber,
-        },
-      };
-      pdfDataArray.push(silverPdfData);
-    }
-
-    // Other items PDF - Default to Jay Krishna
-    if (otherItems.length > 0) {
-      const otherPdfData = {
-        invoiceNumber: finalInvoiceNumber,
-        invoiceDate,
-        customer: {
-          name: customerName,
-          address: customerAddress,
-          email: customerEmail,
-          phone: customerPhone,
-          huid: customerHUID,
-        },
-        items: otherItems.map((item, index) => ({
-          productNo: `OTHER-${index + 1}`,
-          description: `${item.itemType} ${item.purity} ${item.description}`,
-          quantity: 1,
-          weight: convertToGrams(item.weight.value, item.weight.unit),
-          pricePerGram: item.ratePerGram,
-          otherCharges: item.otherCharges || 0,
-          amount: item.itemTotal,
-        })),
-        subtotal: otherTotals.subtotal,
-        CGSTPercent,
-        CGSTAmount: otherTotals.CGSTAmount,
-        SGSTPercent,
-        SGSTAmount: otherTotals.SGSTAmount,
-        grandTotal: otherTotals.grandTotal,
-        shopSettings: {
-          shopName: "Jay Krishna Haribhai Soni",
-          gstNumber: shopSettings.gstNumber,
-        },
-      };
-      pdfDataArray.push(otherPdfData);
-    }
-
-    // QR Code data with all PDF URLs
-    const qrCodeData = JSON.stringify({
-      invoiceNumber: finalInvoiceNumber,
-      date: invoiceDate,
-      customer: {
-        name: customerName,
-        email: customerEmail,
-        phone: customerPhone,
-        address: customerAddress,
-      },
-      total: grandTotal,
-      downloadUrls: pdfDataArray.map((pdfData, index) => ({
-        type: pdfData.shopSettings.shopName,
-        url: `${
-          window.location.origin
-        }/api/invoices/download/${finalInvoiceNumber}/${index + 1}`,
-      })),
-      items: lineItems.map((item) => ({
-        type: item.itemType,
-        purity: item.purity,
-        weight: item.weight,
-        total: item.itemTotal,
-      })),
-      ratesSource: useLiveRatesEnabled ? "live" : "manual",
-    });
-
-    // Fix: Explicitly type the ratesSource to match the expected type
-    const ratesSource: "live" | "manual" = useLiveRatesEnabled
-      ? "live"
-      : "manual";
-
-    const invoicePayload = {
-      invoiceNumber: finalInvoiceNumber,
-      date: invoiceDate,
-      customerId: selectedCustomer || "new-customer",
-      customerSnapshot: {
-        name: customerName,
-        email: customerEmail,
-        phone: customerPhone,
-        address: customerAddress,
-        huid: customerHUID,
-      },
-      lineItems,
-      totals: {
-        subtotal,
-        CGSTPercent,
-        CGSTAmount,
-        SGSTPercent,
-        SGSTAmount,
-        totalGST,
-        grandTotal,
-      },
-      paymentDetails: { paymentMode, amountPaid: 0, balanceDue: grandTotal },
-      QRCodeData: qrCodeData,
-      pdfData: pdfDataArray,
-      ratesSource, // Use the typed variable here
-    };
-
-    createInvoice.mutate(invoicePayload, {
-      onSuccess: (data) => {
-        showToast.success("Invoice created successfully!");
-        setInvoiceData(pdfDataArray);
-        setShowQRCode(true);
-
-        const pdfTypes = [];
-        if (goldItems.length > 0) pdfTypes.push("Gold (Jay Krishna)");
-        if (silverItems.length > 0) pdfTypes.push("Silver (Yogeshkumar)");
-        if (otherItems.length > 0) pdfTypes.push("Other Items");
-
-        showToast.success(`Generated ${pdfTypes.join(", ")} PDFs`);
-        generateInvoiceNumber();
-      },
-      onError: (error: any) => {
-        if (error.response?.data?.error?.includes("duplicate key")) {
-          showToast.error(
-            "Invoice number already exists. Generating new number..."
-          );
-          setTimeout(() => {
-            generateInvoiceNumber();
-          }, 1000);
-        } else {
-          showToast.error(
-            error.response?.data?.error || "Failed to create invoice"
-          );
+        if (applyGST) {
+          CGSTAmount = (subtotal * CGSTPercent) / 100;
+          SGSTAmount = (subtotal * SGSTPercent) / 100;
+          grandTotal = subtotal + CGSTAmount + SGSTAmount;
         }
-      },
-    });
+
+        return {
+          subtotal,
+          CGSTAmount,
+          SGSTAmount,
+          grandTotal,
+          totalGST: CGSTAmount + SGSTAmount,
+        };
+      };
+
+      const goldTotals = calculateTotals(goldItems);
+      const silverTotals = calculateTotals(silverItems);
+      const otherTotals = calculateTotals(otherItems, false); // No GST for other items
+
+      // Prepare PDF data arrays
+      const pdfDataArray: PdfData[] = [];
+
+      // Gold PDF - Jay Krishna Haribhai Soni
+      if (goldItems.length > 0) {
+        const goldPdfData = {
+          invoiceNumber: finalInvoiceNumber,
+          invoiceDate,
+          customer: {
+            name: customerName,
+            address: customerAddress,
+            email: customerEmail,
+            phone: customerPhone,
+            huid: customerHUID,
+          },
+          items: goldItems.map((item, index) => ({
+            productNo: `GOLD-${index + 1}`,
+            description: `${item.itemType.toUpperCase()} ${item.purity} ${
+              item.description
+            }`.trim(),
+            quantity: 1,
+            weight: convertToGrams(item.weight.value, item.weight.unit),
+            pricePerGram: item.ratePerGram,
+            otherCharges: item.otherCharges || 0,
+            amount: item.itemTotal,
+          })),
+          subtotal: goldTotals.subtotal,
+          CGSTPercent: goldItems.length > 0 ? CGSTPercent : 0,
+          CGSTAmount: goldTotals.CGSTAmount,
+          SGSTPercent: goldItems.length > 0 ? SGSTPercent : 0,
+          SGSTAmount: goldTotals.SGSTAmount,
+          grandTotal: goldTotals.grandTotal,
+          shopSettings: {
+            shopName: "Jay Krishna Haribhai Soni",
+            gstNumber: goldGstNumber,
+            gstType: "Gold",
+          },
+        };
+        pdfDataArray.push(goldPdfData);
+      }
+
+      // Silver PDF - Measers Yogeshkumar and Brothers
+      if (silverItems.length > 0) {
+        const silverPdfData = {
+          invoiceNumber: finalInvoiceNumber,
+          invoiceDate,
+          customer: {
+            name: customerName,
+            address: customerAddress,
+            email: customerEmail,
+            phone: customerPhone,
+            huid: customerHUID,
+          },
+          items: silverItems.map((item, index) => ({
+            productNo: `SILVER-${index + 1}`,
+            description: `${item.itemType.toUpperCase()} ${item.purity} ${
+              item.description
+            }`.trim(),
+            quantity: 1,
+            weight: convertToGrams(item.weight.value, item.weight.unit),
+            pricePerGram: item.ratePerGram,
+            otherCharges: item.otherCharges || 0,
+            amount: item.itemTotal,
+          })),
+          subtotal: silverTotals.subtotal,
+          CGSTPercent: silverItems.length > 0 ? CGSTPercent : 0,
+          CGSTAmount: silverTotals.CGSTAmount,
+          SGSTPercent: silverItems.length > 0 ? SGSTPercent : 0,
+          SGSTAmount: silverTotals.SGSTAmount,
+          grandTotal: silverTotals.grandTotal,
+          shopSettings: {
+            shopName: "Measers Yogeshkumar and Brothers",
+            gstNumber: silverGstNumber,
+            gstType: "Silver",
+          },
+        };
+        pdfDataArray.push(silverPdfData);
+      }
+
+      // Other items PDF - Default to Jay Krishna
+      if (otherItems.length > 0) {
+        const otherPdfData = {
+          invoiceNumber: finalInvoiceNumber,
+          invoiceDate,
+          customer: {
+            name: customerName,
+            address: customerAddress,
+            email: customerEmail,
+            phone: customerPhone,
+            huid: customerHUID,
+          },
+          items: otherItems.map((item, index) => ({
+            productNo: `OTHER-${index + 1}`,
+            description: `${item.itemType.toUpperCase()} ${item.purity} ${
+              item.description
+            }`.trim(),
+            quantity: 1,
+            weight: convertToGrams(item.weight.value, item.weight.unit),
+            pricePerGram: item.ratePerGram,
+            otherCharges: item.otherCharges || 0,
+            amount: item.itemTotal,
+          })),
+          subtotal: otherTotals.subtotal,
+          CGSTPercent: 0, // No GST for other items
+          CGSTAmount: 0,
+          SGSTPercent: 0,
+          SGSTAmount: 0,
+          grandTotal: otherTotals.subtotal, // No GST added
+          shopSettings: {
+            shopName: "Jay Krishna Haribhai Soni",
+            gstNumber: "", // No GST for other items
+            gstType: "None",
+          },
+        };
+        pdfDataArray.push(otherPdfData);
+      }
+
+      // QR Code data with all PDF URLs
+      const qrCodeData = JSON.stringify({
+        invoiceNumber: finalInvoiceNumber,
+        date: invoiceDate,
+        customer: {
+          name: customerName,
+          email: customerEmail,
+          phone: customerPhone,
+          address: customerAddress,
+        },
+        totals: {
+          gold: goldItems.length > 0 ? goldTotals.grandTotal : 0,
+          silver: silverItems.length > 0 ? silverTotals.grandTotal : 0,
+          other: otherItems.length > 0 ? otherTotals.grandTotal : 0,
+          total:
+            (goldItems.length > 0 ? goldTotals.grandTotal : 0) +
+            (silverItems.length > 0 ? silverTotals.grandTotal : 0) +
+            (otherItems.length > 0 ? otherTotals.grandTotal : 0),
+        },
+        downloadUrls: pdfDataArray.map((pdfData, index) => ({
+          type: pdfData.shopSettings.shopName,
+          gstType: pdfData.shopSettings.gstType,
+          url: `${
+            window.location.origin
+          }/api/invoices/download/${finalInvoiceNumber}/${index + 1}`,
+        })),
+        items: lineItems.map((item) => ({
+          type: item.itemType,
+          purity: item.purity,
+          weight: item.weight,
+          total: item.itemTotal,
+        })),
+        ratesSource: useLiveRatesEnabled ? "live" : "manual",
+        gstNumbers: {
+          gold: goldGstNumber,
+          silver: silverGstNumber,
+        },
+      });
+
+      // Calculate overall totals for the invoice
+      const overallSubtotal = subtotal;
+      const overallCGSTAmount = goldTotals.CGSTAmount + silverTotals.CGSTAmount;
+      const overallSGSTAmount = goldTotals.SGSTAmount + silverTotals.SGSTAmount;
+      const overallTotalGST = overallCGSTAmount + overallSGSTAmount;
+      const overallGrandTotal =
+        goldTotals.grandTotal +
+        silverTotals.grandTotal +
+        otherTotals.grandTotal;
+
+      // Fix: Explicitly type the ratesSource to match the expected type
+      const ratesSource: "live" | "manual" = useLiveRatesEnabled
+        ? "live"
+        : "manual";
+
+      const invoicePayload = {
+        invoiceNumber: finalInvoiceNumber,
+        date: invoiceDate,
+        customerId: selectedCustomer || "new-customer",
+        customerSnapshot: {
+          name: customerName,
+          email: customerEmail,
+          phone: customerPhone,
+          address: customerAddress,
+          huid: customerHUID,
+        },
+        lineItems,
+        totals: {
+          subtotal: overallSubtotal,
+          CGSTPercent:
+            goldItems.length > 0 || silverItems.length > 0 ? CGSTPercent : 0,
+          CGSTAmount: overallCGSTAmount,
+          SGSTPercent:
+            goldItems.length > 0 || silverItems.length > 0 ? SGSTPercent : 0,
+          SGSTAmount: overallSGSTAmount,
+          totalGST: overallTotalGST,
+          grandTotal: overallGrandTotal,
+        },
+        paymentDetails: {
+          paymentMode,
+          amountPaid: 0,
+          balanceDue: overallGrandTotal,
+        },
+        QRCodeData: qrCodeData,
+        pdfData: pdfDataArray,
+        ratesSource,
+        gstInfo: {
+          goldUsed: goldItems.length > 0,
+          silverUsed: silverItems.length > 0,
+          goldGstNumber: goldGstNumber,
+          silverGstNumber: silverGstNumber,
+        },
+      };
+
+      createInvoice.mutate(invoicePayload, {
+        onSuccess: (data) => {
+          showToast.success("Invoice created successfully!");
+          setInvoiceData(pdfDataArray);
+          setShowQRCode(true);
+
+          // Show success message with PDF types
+          const pdfTypes = [];
+          if (goldItems.length > 0) pdfTypes.push("Gold (Jay Krishna)");
+          if (silverItems.length > 0) pdfTypes.push("Silver (Yogeshkumar)");
+          if (otherItems.length > 0) pdfTypes.push("Other Items");
+
+          if (pdfTypes.length > 0) {
+            showToast.success(
+              `Generated ${pdfTypes.join(", ")} PDF${
+                pdfTypes.length > 1 ? "s" : ""
+              }`
+            );
+          }
+
+          // Generate new invoice number for next invoice
+          generateInvoiceNumber();
+
+          // Reset form for next invoice (optional)
+          setCustomerName("");
+          setCustomerPhone("");
+          setCustomerEmail("");
+          setCustomerAddress("");
+          setCustomerHUID("");
+          setLineItems([...lineItems]);
+        },
+        onError: (error: any) => {
+          if (error.response?.data?.error?.includes("duplicate key")) {
+            showToast.error(
+              "Invoice number already exists. Generating new number..."
+            );
+            setTimeout(() => {
+              generateInvoiceNumber();
+            }, 1000);
+          } else {
+            showToast.error(
+              error.response?.data?.error || "Failed to create invoice"
+            );
+          }
+        },
+      });
+    } catch (error: any) {
+      console.error("Error fetching shop settings:", error);
+      showToast.error("Failed to load GST information");
+    }
   };
 
   return (

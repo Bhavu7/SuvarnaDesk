@@ -316,11 +316,13 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
           {/* Header Section - Show on every page */}
           <View style={styles.titleSection}>
             <Text style={styles.title}>{data.shopSettings.shopName}</Text>
-            {data.shopSettings.gstNumber && (
-              <Text style={styles.gstNumber}>
-                GST: {data.shopSettings.gstNumber}
-              </Text>
-            )}
+            {/* Only show GST if it exists */}
+            {data.shopSettings.gstNumber &&
+              data.shopSettings.gstNumber.trim() && (
+                <Text style={styles.gstNumber}>
+                  GST: {data.shopSettings.gstNumber}
+                </Text>
+              )}
           </View>
 
           <View style={styles.metaInfoRow}>
@@ -508,7 +510,9 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                 <View style={styles.notesBox}>
                   <Text style={styles.notesTitle}>NOTES:</Text>
                   <View style={styles.notesList}>
-                    <Text style={styles.noteItem}>• All weights are in grams</Text>
+                    <Text style={styles.noteItem}>
+                      • All weights are in grams
+                    </Text>
                     <Text style={styles.noteItem}>
                       • GST included as applicable
                     </Text>
@@ -558,7 +562,9 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
               <View style={styles.signatureSection}>
                 <View style={styles.signatureBlock}>
                   <View style={styles.signatureLine} />
-                  <Text style={styles.signatureLabel}>Authorized Signature</Text>
+                  <Text style={styles.signatureLabel}>
+                    Authorized Signature
+                  </Text>
                 </View>
                 <View style={styles.signatureBlock}>
                   {/* Empty space for customer signature */}
@@ -576,8 +582,17 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
 
           {/* Show page number if multiple pages */}
           {totalPages > 1 && (
-            <View style={{ textAlign: 'center', marginTop: 10, fontSize: 9, color: '#666' }}>
-              <Text>Page {pageIndex + 1} of {totalPages}</Text>
+            <View
+              style={{
+                textAlign: "center",
+                marginTop: 10,
+                fontSize: 9,
+                color: "#666",
+              }}
+            >
+              <Text>
+                Page {pageIndex + 1} of {totalPages}
+              </Text>
             </View>
           )}
         </View>
@@ -587,7 +602,7 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
 
   return (
     <Document>
-      {Array.from({ length: totalPages }, (_, pageIndex) => 
+      {Array.from({ length: totalPages }, (_, pageIndex) =>
         renderPage(pageIndex)
       )}
     </Document>
