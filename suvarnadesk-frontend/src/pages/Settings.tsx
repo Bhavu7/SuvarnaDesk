@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { MdSettings, MdSave, MdStore, MdLocationOn } from "react-icons/md";
+import {
+  MdSettings,
+  MdSave,
+  MdStore,
+  MdLocationOn,
+  MdAttachMoney,
+  MdMoneyOff,
+} from "react-icons/md";
 import apiClient from "../api/apiClient";
 import { showToast } from "../components/CustomToast";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -9,7 +16,8 @@ interface ShopSettings {
   shopName: string;
   address: string;
   phone: string;
-  gstNumber?: string;
+  goldGstNumber?: string;
+  silverGstNumber?: string;
   logoUrl?: string;
   ownerName?: string;
 }
@@ -19,7 +27,8 @@ export default function Settings() {
     shopName: "",
     address: "",
     phone: "",
-    gstNumber: "",
+    goldGstNumber: "",
+    silverGstNumber: "",
     logoUrl: "",
     ownerName: "",
   });
@@ -35,12 +44,24 @@ export default function Settings() {
       setIsLoading(true);
       const response = await apiClient.get("/shop-settings");
       if (response.data) {
-        setSettings(response.data);
+        // Handle backward compatibility - if old gstNumber exists, set it to both
+        const data = response.data;
+        setSettings({
+          shopName: data.shopName || "",
+          address: data.address || "",
+          phone: data.phone || "",
+          goldGstNumber: data.goldGstNumber || data.gstNumber || "",
+          silverGstNumber: data.silverGstNumber || data.gstNumber || "",
+          logoUrl: data.logoUrl || "",
+          ownerName: data.ownerName || "",
+        });
       }
     } catch (error: any) {
       console.error("Failed to fetch shop settings:", error);
       if (error.response?.status === 404) {
-        showToast.error("No existing settings found. Creating new ones...");
+        showToast.info(
+          "No existing settings found. Please set up your shop details."
+        );
       } else {
         showToast.error("Failed to load shop settings");
       }
@@ -52,6 +73,20 @@ export default function Settings() {
   const handleSave = async () => {
     try {
       setIsSaving(true);
+
+      // Validate GST numbers format
+      if (settings.goldGstNumber && !isValidGST(settings.goldGstNumber)) {
+        showToast.error("Please enter a valid GST number for Gold");
+        setIsSaving(false);
+        return;
+      }
+
+      if (settings.silverGstNumber && !isValidGST(settings.silverGstNumber)) {
+        showToast.error("Please enter a valid GST number for Silver");
+        setIsSaving(false);
+        return;
+      }
+
       const response = await apiClient.put("/shop-settings", settings);
       showToast.success("Shop settings saved successfully!");
       console.log("Settings saved:", response.data);
@@ -68,6 +103,29 @@ export default function Settings() {
       ...prev,
       [field]: value,
     }));
+  };
+
+  // GST number validation (basic format check)
+  const isValidGST = (gstNumber: string): boolean => {
+    if (!gstNumber) return true; // Allow empty GST
+    const gstRegex =
+      /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$/;
+    return gstRegex.test(gstNumber);
+  };
+
+  const formatGSTForDisplay = (gstNumber: string): string => {
+    if (!gstNumber) return "Not set";
+    // Format as XX-XXXXX-XXXX-X-X-X
+    if (gstNumber.length >= 15) {
+      return `${gstNumber.slice(0, 2)}-${gstNumber.slice(
+        2,
+        7
+      )}-${gstNumber.slice(7, 11)}-${gstNumber.slice(11, 12)}-${gstNumber.slice(
+        12,
+        13
+      )}-${gstNumber.slice(13, 15)}`;
+    }
+    return gstNumber;
   };
 
   if (isLoading) {
@@ -127,6 +185,7 @@ export default function Settings() {
                   }
                   className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter your shop name"
+                  required
                 />
               </div>
 
@@ -144,20 +203,104 @@ export default function Settings() {
                   placeholder="Enter owner's name"
                 />
               </div>
+            </div>
+          </motion.div>
 
+          {/* GST Information */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.15 }}
+            className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm"
+          >
+            <div className="flex items-center gap-2 mb-6">
+              <MdAttachMoney className="text-xl text-yellow-600" />
+              <h3 className="text-lg font-semibold text-gray-800">
+                GST Information
+              </h3>
+            </div>
+
+            <div className="space-y-6">
+              {/* Gold GST */}
               <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  GST Number
-                </label>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                  <label className="text-sm font-medium text-gray-700">
+                    Gold GST Number
+                  </label>
+                </div>
                 <input
                   type="text"
-                  value={settings.gstNumber || ""}
+                  value={settings.goldGstNumber || ""}
                   onChange={(e) =>
-                    handleInputChange("gstNumber", e.target.value)
+                    handleInputChange(
+                      "goldGstNumber",
+                      e.target.value.toUpperCase()
+                    )
                   }
-                  className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="GSTINXXXXXXXXXX"
+                  className="w-full px-4 py-3 transition-all duration-200 border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                  placeholder="GSTINXXXXXXXXXX (e.g., 22AAAAA0000A1Z5)"
+                  maxLength={15}
                 />
+                {settings.goldGstNumber &&
+                  !isValidGST(settings.goldGstNumber) && (
+                    <p className="mt-1 text-xs text-red-600">
+                      Please enter a valid GST number format (15 characters)
+                    </p>
+                  )}
+                {settings.goldGstNumber &&
+                  isValidGST(settings.goldGstNumber) && (
+                    <p className="mt-1 text-xs text-green-600">
+                      ✓ Valid GST format:{" "}
+                      {formatGSTForDisplay(settings.goldGstNumber)}
+                    </p>
+                  )}
+              </div>
+
+              {/* Silver GST */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
+                  <label className="text-sm font-medium text-gray-700">
+                    Silver GST Number
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  value={settings.silverGstNumber || ""}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "silverGstNumber",
+                      e.target.value.toUpperCase()
+                    )
+                  }
+                  className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                  placeholder="GSTINXXXXXXXXXX (e.g., 22AAAAA0000A1Z5)"
+                  maxLength={15}
+                />
+                {settings.silverGstNumber &&
+                  !isValidGST(settings.silverGstNumber) && (
+                    <p className="mt-1 text-xs text-red-600">
+                      Please enter a valid GST number format (15 characters)
+                    </p>
+                  )}
+                {settings.silverGstNumber &&
+                  isValidGST(settings.silverGstNumber) && (
+                    <p className="mt-1 text-xs text-green-600">
+                      ✓ Valid GST format:{" "}
+                      {formatGSTForDisplay(settings.silverGstNumber)}
+                    </p>
+                  )}
+              </div>
+
+              {/* Note about GST */}
+              <div className="p-3 rounded-lg bg-gray-50">
+                <p className="text-xs text-gray-600">
+                  <strong>Note:</strong> Enter your GST numbers for Gold and
+                  Silver items separately. Format should be 15 characters (e.g.,
+                  22AAAAA0000A1Z5). GST numbers will be used on invoices based
+                  on the item type.
+                </p>
               </div>
             </div>
           </motion.div>
@@ -187,6 +330,7 @@ export default function Settings() {
                   rows={3}
                   className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter your shop address"
+                  required
                 />
               </div>
 
@@ -195,11 +339,12 @@ export default function Settings() {
                   Phone Number *
                 </label>
                 <input
-                  type="text"
+                  type="tel"
                   value={settings.phone}
                   onChange={(e) => handleInputChange("phone", e.target.value)}
                   className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="+91 1234567890"
+                  required
                 />
               </div>
             </div>
@@ -216,10 +361,14 @@ export default function Settings() {
               whileTap={{ scale: 0.98 }}
               onClick={handleSave}
               disabled={
-                isSaving ||
-                !settings.shopName ||
-                !settings.address ||
-                !settings.phone
+                isSaving === true ||
+                settings.shopName === "" ||
+                settings.address === "" ||
+                settings.phone === "" ||
+                (settings.goldGstNumber !== "" &&
+                  !isValidGST(settings.goldGstNumber || "")) ||
+                (settings.silverGstNumber !== "" &&
+                  !isValidGST(settings.silverGstNumber || ""))
               }
               className="flex items-center gap-2 px-8 py-3 font-medium text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
             >
@@ -241,26 +390,82 @@ export default function Settings() {
             <h4 className="mb-4 font-semibold text-gray-800">
               Settings Preview
             </h4>
-            <div className="space-y-3 text-sm">
-              <div>
-                <span className="text-gray-600">Shop Name:</span>
-                <p className="font-medium">{settings.shopName || "Not set"}</p>
+            <div className="space-y-4 text-sm">
+              <div className="p-3 rounded-lg bg-gray-50">
+                <span className="block mb-1 text-xs font-medium text-gray-500">
+                  Shop Name:
+                </span>
+                <p className="font-semibold text-gray-800">
+                  {settings.shopName || "Not set"}
+                </p>
               </div>
-              <div>
-                <span className="text-gray-600">Owner:</span>
-                <p className="font-medium">{settings.ownerName || "Not set"}</p>
+              <div className="p-3 rounded-lg bg-gray-50">
+                <span className="block mb-1 text-xs font-medium text-gray-500">
+                  Owner:
+                </span>
+                <p className="font-medium text-gray-700">
+                  {settings.ownerName || "Not set"}
+                </p>
               </div>
-              <div>
-                <span className="text-gray-600">GST Number:</span>
-                <p className="font-medium">{settings.gstNumber || "Not set"}</p>
+              <div className="p-3 border border-yellow-200 rounded-lg bg-yellow-50">
+                <span className="block mb-1 text-xs font-medium text-yellow-700">
+                  Gold GST:
+                </span>
+                <p className="font-medium text-gray-800">
+                  {settings.goldGstNumber
+                    ? formatGSTForDisplay(settings.goldGstNumber)
+                    : "Not set"}
+                  {settings.goldGstNumber &&
+                    isValidGST(settings.goldGstNumber) && (
+                      <span className="ml-2 text-xs text-green-600">
+                        ✓ Valid
+                      </span>
+                    )}
+                  {settings.goldGstNumber &&
+                    !isValidGST(settings.goldGstNumber) && (
+                      <span className="ml-2 text-xs text-red-600">
+                        ✗ Invalid
+                      </span>
+                    )}
+                </p>
               </div>
-              <div>
-                <span className="text-gray-600">Phone:</span>
-                <p className="font-medium">{settings.phone || "Not set"}</p>
+              <div className="p-3 border border-gray-200 rounded-lg bg-gray-50">
+                <span className="block mb-1 text-xs font-medium text-gray-700">
+                  Silver GST:
+                </span>
+                <p className="font-medium text-gray-800">
+                  {settings.silverGstNumber
+                    ? formatGSTForDisplay(settings.silverGstNumber)
+                    : "Not set"}
+                  {settings.silverGstNumber &&
+                    isValidGST(settings.silverGstNumber) && (
+                      <span className="ml-2 text-xs text-green-600">
+                        ✓ Valid
+                      </span>
+                    )}
+                  {settings.silverGstNumber &&
+                    !isValidGST(settings.silverGstNumber) && (
+                      <span className="ml-2 text-xs text-red-600">
+                        ✗ Invalid
+                      </span>
+                    )}
+                </p>
               </div>
-              <div>
-                <span className="text-gray-600">Address:</span>
-                <p className="font-medium">{settings.address || "Not set"}</p>
+              <div className="p-3 rounded-lg bg-gray-50">
+                <span className="block mb-1 text-xs font-medium text-gray-500">
+                  Phone:
+                </span>
+                <p className="font-medium text-gray-700">
+                  {settings.phone || "Not set"}
+                </p>
+              </div>
+              <div className="p-3 rounded-lg bg-gray-50">
+                <span className="block mb-1 text-xs font-medium text-gray-500">
+                  Address:
+                </span>
+                <p className="font-medium text-gray-700">
+                  {settings.address || "Not set"}
+                </p>
               </div>
             </div>
           </div>
@@ -269,12 +474,44 @@ export default function Settings() {
           <div className="p-6 border border-blue-200 rounded-lg bg-blue-50">
             <h4 className="mb-3 font-semibold text-blue-800">💡 Quick Tips</h4>
             <ul className="space-y-2 text-sm text-blue-700">
-              <li>• Fill all required fields marked with *</li>
-              <li>• GST number should be in proper format</li>
-              <li>• Phone number should include country code</li>
-              <li>• Address will be printed on invoices</li>
-              <li>• Shop name appears on all documents</li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1">•</span>
+                <span>Fill all required fields marked with *</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1">•</span>
+                <span>Enter separate GST numbers for Gold and Silver</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1">•</span>
+                <span>GST format: 15 characters (22AAAAA0000A1Z5)</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1">•</span>
+                <span>Phone number should include country code</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1">•</span>
+                <span>Address will be printed on invoices</span>
+              </li>
             </ul>
+          </div>
+
+          {/* GST Info Card */}
+          <div className="p-6 border border-yellow-200 rounded-lg bg-yellow-50">
+            <div className="flex items-center gap-2 mb-3">
+              <MdMoneyOff className="text-lg text-yellow-700" />
+              <h4 className="font-semibold text-yellow-800">GST Information</h4>
+            </div>
+            <div className="text-sm text-yellow-700">
+              <p className="mb-2">Why separate GST numbers?</p>
+              <ul className="space-y-1">
+                <li>• Different tax rates for Gold and Silver</li>
+                <li>• Separate HSN codes for each metal type</li>
+                <li>• Different invoice requirements</li>
+                <li>• Compliance with GST regulations</li>
+              </ul>
+            </div>
           </div>
         </motion.div>
       </div>
