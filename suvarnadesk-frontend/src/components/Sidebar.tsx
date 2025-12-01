@@ -29,7 +29,7 @@ const links = [
   { to: "/rates", label: "Rates", icon: <MdCurrencyRupee /> },
   // { to: "/labour-charges", label: "Labour Charges", icon: <MdPeople /> },
   { to: "/repairings", label: "Repairings", icon: <MdBuildCircle /> },
-  { to: "/reports", label: "Reports", icon: <MdReport /> },
+  // { to: "/reports", label: "Reports", icon: <MdReport /> },
   { to: "/settings", label: "Settings", icon: <MdSettings /> },
 ];
 
