@@ -11,6 +11,9 @@ import {
   MdAttachMoney,
   MdPayments,
   MdPersonAdd,
+  MdCreditCard,
+  MdCurrencyExchange,
+  MdSmartphone,
 } from "react-icons/md";
 import {
   BarChart,
@@ -45,9 +48,22 @@ interface Invoice {
     grandTotal: number;
     subtotal: number;
   };
+  // Updated payment details to include payment types
   paymentDetails: {
-    balanceDue: number;
-    amountPaid: number;
+    paymentMethod:
+      | "cash"
+      | "card"
+      | "upi"
+      | "bank_transfer"
+      | "exchange"
+      | "credit";
+    transactionId?: string;
+    paymentDate?: string;
+    exchangeDetails?: {
+      oldGoldWeight?: number;
+      oldGoldRate?: number;
+      exchangeValue?: number;
+    };
   };
   createdAt: string;
   lineItems: Array<{
@@ -83,13 +99,20 @@ interface Stats {
   totalCustomers: number;
   totalInvoices: number;
   totalRevenue: number;
-  pendingInvoices: number;
-  paidInvoices: number;
+  // Payment type counts
+  cashPayments: number;
+  cardPayments: number;
+  upiPayments: number;
+  exchangePayments: number;
+  creditPayments: number;
+  // Other stats
   goldRate: number;
   silverRate: number;
   newCustomersThisMonth: number;
   revenueThisMonth: number;
   averageInvoiceValue: number;
+  // Customer stats from invoices
+  uniqueCustomersFromInvoices: number;
 }
 
 interface RecentActivity {
@@ -101,18 +124,32 @@ interface RecentActivity {
   type: "invoice" | "payment" | "new_customer";
 }
 
+interface CustomerFromInvoice {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  totalInvoices: number;
+  totalSpent: number;
+  lastPurchase: string;
+}
+
 const Dashboard = () => {
   const [stats, setStats] = useState<Stats>({
     totalCustomers: 0,
     totalInvoices: 0,
     totalRevenue: 0,
-    pendingInvoices: 0,
-    paidInvoices: 0,
+    cashPayments: 0,
+    cardPayments: 0,
+    upiPayments: 0,
+    exchangePayments: 0,
+    creditPayments: 0,
     goldRate: 0,
     silverRate: 0,
     newCustomersThisMonth: 0,
     revenueThisMonth: 0,
     averageInvoiceValue: 0,
+    uniqueCustomersFromInvoices: 0,
   });
 
   const [loading, setLoading] = useState(true);
@@ -123,6 +160,9 @@ const Dashboard = () => {
   );
   const [metalDistribution, setMetalDistribution] = useState<
     { name: string; value: number }[]
+  >([]);
+  const [customersFromInvoices, setCustomersFromInvoices] = useState<
+    CustomerFromInvoice[]
   >([]);
 
   useEffect(() => {
@@ -154,13 +194,35 @@ const Dashboard = () => {
           0
         );
 
-        const pendingInvoices = invoices.filter(
-          (invoice: Invoice) => invoice.paymentDetails?.balanceDue > 0
-        ).length;
+        // Calculate payment type distributions
+        let cashPayments = 0;
+        let cardPayments = 0;
+        let upiPayments = 0;
+        let exchangePayments = 0;
+        let creditPayments = 0;
 
-        const paidInvoices = invoices.filter(
-          (invoice: Invoice) => invoice.paymentDetails?.balanceDue === 0
-        ).length;
+        invoices.forEach((invoice: Invoice) => {
+          const paymentMethod = invoice.paymentDetails?.paymentMethod || "cash";
+          switch (paymentMethod) {
+            case "cash":
+              cashPayments++;
+              break;
+            case "card":
+              cardPayments++;
+              break;
+            case "upi":
+              upiPayments++;
+              break;
+            case "exchange":
+              exchangePayments++;
+              break;
+            case "credit":
+              creditPayments++;
+              break;
+            default:
+              cashPayments++;
+          }
+        });
 
         // Get current month for calculations
         const currentMonth = new Date().getMonth();
@@ -204,18 +266,63 @@ const Dashboard = () => {
             ? Math.max(...silverRates.map((r) => r.ratePerGram))
             : 0;
 
+        // Extract unique customers from invoices
+        const customerMap = new Map<string, CustomerFromInvoice>();
+        invoices.forEach((invoice) => {
+          const customerKey =
+            invoice.customerSnapshot?.phone ||
+            invoice.customerSnapshot?.huid ||
+            invoice._id;
+          const customerName =
+            invoice.customerSnapshot?.name || "Unknown Customer";
+          const customerPhone = invoice.customerSnapshot?.phone || "N/A";
+          const customerEmail = invoice.customerSnapshot?.email;
+          const invoiceAmount = invoice.totals?.grandTotal || 0;
+          const invoiceDate = new Date(invoice.createdAt);
+
+          if (customerMap.has(customerKey)) {
+            const existing = customerMap.get(customerKey)!;
+            existing.totalInvoices++;
+            existing.totalSpent += invoiceAmount;
+            if (invoiceDate > new Date(existing.lastPurchase)) {
+              existing.lastPurchase = invoice.createdAt;
+            }
+          } else {
+            customerMap.set(customerKey, {
+              id: customerKey,
+              name: customerName,
+              phone: customerPhone,
+              email: customerEmail,
+              totalInvoices: 1,
+              totalSpent: invoiceAmount,
+              lastPurchase: invoice.createdAt,
+            });
+          }
+        });
+
+        const customersFromInvoicesArray = Array.from(customerMap.values())
+          .sort((a, b) => b.totalSpent - a.totalSpent)
+          .slice(0, 10); // Get top 10 customers by spending
+
         setStats({
           totalCustomers: customers.length,
           totalInvoices: invoices.length,
           totalRevenue,
-          pendingInvoices,
-          paidInvoices,
+          cashPayments,
+          cardPayments,
+          upiPayments,
+          exchangePayments,
+          creditPayments,
           goldRate,
           silverRate,
           newCustomersThisMonth,
           revenueThisMonth,
           averageInvoiceValue,
+          uniqueCustomersFromInvoices: customerMap.size,
         });
+
+        // Set customers from invoices
+        setCustomersFromInvoices(customersFromInvoicesArray);
 
         // Generate chart data from real invoices
         const dynamicChartData = generateChartDataFromInvoices(
@@ -237,6 +344,7 @@ const Dashboard = () => {
         setChartData([]);
         setRecentActivities([]);
         setMetalDistribution([]);
+        setCustomersFromInvoices([]);
       } finally {
         setLoading(false);
       }
@@ -337,14 +445,15 @@ const Dashboard = () => {
       .slice(0, 3);
 
     recentInvoices.forEach((invoice) => {
-      const isPaid = invoice.paymentDetails?.balanceDue === 0;
       activities.push({
         id: invoice._id,
-        action: isPaid ? "Payment Received" : "New Invoice",
+        action: `New Invoice (${
+          invoice.paymentDetails?.paymentMethod?.toUpperCase() || "CASH"
+        })`,
         customer: invoice.customerSnapshot?.name || "Unknown Customer",
         amount: `₹${(invoice.totals?.grandTotal || 0).toLocaleString()}`,
         time: getTimeAgo(new Date(invoice.createdAt)),
-        type: isPaid ? "payment" : "invoice",
+        type: "invoice",
       });
     });
 
@@ -500,52 +609,56 @@ const Dashboard = () => {
       description: "Active customer base",
     },
     {
-      title: "Total Invoices",
-      value: stats.totalInvoices.toLocaleString(),
-      subtitle: "All Transactions",
-      icon: <MdReceipt className="text-3xl" />,
-      color: "from-purple-500 to-violet-600",
-      bgColor: "bg-gradient-to-br from-purple-50 to-violet-100",
-      change: `${stats.paidInvoices} paid • ${stats.pendingInvoices} pending`,
-      trend: "mixed",
-      description: "Complete invoice history",
-    },
-    {
-      title: "Pending Payments",
-      value: stats.pendingInvoices.toLocaleString(),
-      subtitle: "Awaiting Collection",
-      icon: <MdShoppingCart className="text-3xl" />,
-      color: "from-orange-500 to-red-600",
-      bgColor: "bg-gradient-to-br from-orange-50 to-red-100",
-      change: `${
-        Math.round((stats.pendingInvoices / stats.totalInvoices) * 100) || 0
-      }% of total`,
-      trend: "down",
-      description: "Invoices awaiting payment",
-    },
-    {
-      title: "Avg. Invoice Value",
-      value: `₹${Math.round(stats.averageInvoiceValue).toLocaleString()}`,
-      subtitle: "Per Transaction",
+      title: "Cash Payments",
+      value: stats.cashPayments.toLocaleString(),
+      subtitle: "Cash Transactions",
       icon: <MdAttachMoney className="text-3xl" />,
       color: "from-green-500 to-emerald-600",
       bgColor: "bg-gradient-to-br from-green-50 to-emerald-100",
-      change: "Average revenue per invoice",
-      trend: "neutral",
-      description: "Mean transaction value",
+      change: `${
+        Math.round((stats.cashPayments / stats.totalInvoices) * 100) || 0
+      }% of total`,
+      trend: "up",
+      description: "Number of cash payments",
     },
     {
-      title: "Payment Rate",
-      value: `${
-        Math.round((stats.paidInvoices / stats.totalInvoices) * 100) || 0
-      }%`,
-      subtitle: "Collection Efficiency",
-      icon: <MdPayments className="text-3xl" />,
-      color: "from-cyan-500 to-blue-600",
-      bgColor: "bg-gradient-to-br from-cyan-50 to-blue-100",
-      change: `${stats.paidInvoices} of ${stats.totalInvoices} invoices paid`,
+      title: "Card Payments",
+      value: stats.cardPayments.toLocaleString(),
+      subtitle: "Credit/Debit Cards",
+      icon: <MdCreditCard className="text-3xl" />,
+      color: "from-purple-500 to-violet-600",
+      bgColor: "bg-gradient-to-br from-purple-50 to-violet-100",
+      change: `${
+        Math.round((stats.cardPayments / stats.totalInvoices) * 100) || 0
+      }% of total`,
       trend: "up",
-      description: "Successful payment percentage",
+      description: "Number of card payments",
+    },
+    {
+      title: "UPI Payments",
+      value: stats.upiPayments.toLocaleString(),
+      subtitle: "Digital Payments",
+      icon: <MdSmartphone className="text-3xl" />,
+      color: "from-indigo-500 to-blue-600",
+      bgColor: "bg-gradient-to-br from-indigo-50 to-blue-100",
+      change: `${
+        Math.round((stats.upiPayments / stats.totalInvoices) * 100) || 0
+      }% of total`,
+      trend: "up",
+      description: "Number of UPI payments",
+    },
+    {
+      title: "Exchange",
+      value: stats.exchangePayments.toLocaleString(),
+      subtitle: "Exchange Transactions",
+      icon: <MdCurrencyExchange className="text-3xl" />,
+      color: "from-orange-500 to-red-600",
+      bgColor: "bg-gradient-to-br from-orange-50 to-red-100",
+      change: `${
+        Math.round((stats.exchangePayments / stats.totalInvoices) * 100) || 0
+      }% of total`,
+      trend: "neutral",
+      description: "Number of exchange transactions",
     },
     {
       title: "Gold Rate",
@@ -731,50 +844,29 @@ const Dashboard = () => {
                 <p className="text-sm text-gray-500">{stat.subtitle}</p>
               </div>
 
-              {/* Progress Bar for certain cards */}
-              {(stat.title === "Payment Rate" ||
-                stat.title === "Pending Payments") && (
+              {/* Progress Bar for payment cards */}
+              {(stat.title === "Cash Payments" ||
+                stat.title === "Card Payments" ||
+                stat.title === "UPI Payments" ||
+                stat.title === "Exchange") && (
                 <div className="mt-4">
                   <div className="flex justify-between mb-1 text-xs text-gray-500">
-                    <span>Progress</span>
-                    <span>
-                      {stat.title === "Payment Rate"
-                        ? `${
-                            Math.round(
-                              (stats.paidInvoices / stats.totalInvoices) * 100
-                            ) || 0
-                          }%`
-                        : `${
-                            Math.round(
-                              (stats.pendingInvoices / stats.totalInvoices) *
-                                100
-                            ) || 0
-                          }%`}
-                    </span>
+                    <span>Percentage</span>
+                    <span>{stat.change}</span>
                   </div>
                   <div className="w-full h-2 bg-gray-200 rounded-full">
                     <div
                       className={`h-2 rounded-full ${
-                        stat.title === "Payment Rate"
+                        stat.title === "Cash Payments"
                           ? "bg-green-500"
+                          : stat.title === "Card Payments"
+                          ? "bg-purple-500"
+                          : stat.title === "UPI Payments"
+                          ? "bg-blue-500"
                           : "bg-orange-500"
                       }`}
                       style={{
-                        width:
-                          stat.title === "Payment Rate"
-                            ? `${
-                                Math.round(
-                                  (stats.paidInvoices / stats.totalInvoices) *
-                                    100
-                                ) || 0
-                              }%`
-                            : `${
-                                Math.round(
-                                  (stats.pendingInvoices /
-                                    stats.totalInvoices) *
-                                    100
-                                ) || 0
-                              }%`,
+                        width: stat.change.split("%")[0] + "%",
                       }}
                     ></div>
                   </div>
@@ -895,7 +987,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Bottom Row */}
+      {/* Bottom Row - Three Columns */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Metal Distribution */}
         <motion.div
@@ -949,7 +1041,7 @@ const Dashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 1 }}
-          className="p-6 bg-white border border-gray-200 shadow-sm rounded-2xl lg:col-span-2"
+          className="p-6 bg-white border border-gray-200 shadow-sm rounded-2xl"
         >
           <h3 className="mb-4 text-lg font-semibold text-gray-800">
             Recent Activities
@@ -988,6 +1080,59 @@ const Dashboard = () => {
               <div className="p-8 text-center text-gray-500 bg-gray-50 rounded-xl">
                 <MdPersonAdd className="mx-auto mb-2 text-4xl text-gray-300" />
                 <p>No recent activities found</p>
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Customers from Invoices */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 1.2 }}
+          className="p-6 bg-white border border-gray-200 shadow-sm rounded-2xl"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Top Customers (From Invoices)
+            </h3>
+            <span className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">
+              {stats.uniqueCustomersFromInvoices} unique
+            </span>
+          </div>
+          <div className="space-y-3">
+            {customersFromInvoices.length > 0 ? (
+              customersFromInvoices.map((customer, index) => (
+                <div
+                  key={customer.id}
+                  className="flex items-center justify-between p-4 transition-all duration-200 bg-gray-50 rounded-xl hover:bg-gray-100 hover:shadow-sm"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-center w-10 h-10 font-semibold text-white rounded-full bg-gradient-to-r from-blue-500 to-indigo-600">
+                      {customer.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-800">
+                        {customer.name}
+                      </p>
+                      <p className="text-sm text-gray-600">{customer.phone}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-gray-900">
+                      ₹{customer.totalSpent.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {customer.totalInvoices} invoice
+                      {customer.totalInvoices > 1 ? "s" : ""}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-8 text-center text-gray-500 bg-gray-50 rounded-xl">
+                <MdPeople className="mx-auto mb-2 text-4xl text-gray-300" />
+                <p>No customer data from invoices</p>
               </div>
             )}
           </div>
