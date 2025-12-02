@@ -5,8 +5,9 @@ import {
     getInvoices,
     getInvoiceByNumber,
     getLatestInvoice,
+    downloadInvoicePDF,
+    downloadInvoicePDFAuto
 } from "../controllers/invoiceController";
-import { downloadInvoicePDF } from "../controllers/invoiceController";
 
 const router = express.Router();
 
@@ -21,6 +22,9 @@ router.get("/:invoiceNumber", getInvoiceByNumber);
 
 // GET /api/invoices/download/:invoiceNumber - PDF download route
 router.get("/download/:invoiceNumber", downloadInvoicePDF);
+
+// GET /api/invoices/download/:invoiceNumber?auto=1 - PDF auto-download route
+router.get("/download/:invoiceNumber", downloadInvoicePDFAuto);
 
 // GET /api/invoices/latest - Get the latest invoice
 router.get("/latest", getLatestInvoice);

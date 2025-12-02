@@ -97,6 +97,16 @@ const InvoiceSchema = new Schema<IInvoice>(
     { timestamps: true }
 );
 
+InvoiceSchema.methods.getDownloadUrl = function (): string {
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    return `${baseUrl}/api/invoices/download/${this.invoiceNumber}?auto=1`;
+};
+
+// Add virtual for QR code URL
+InvoiceSchema.virtual('qrCodeUrl').get(function () {
+    return `${process.env.FRONTEND_URL || 'http://localhost:3000'}/api/invoices/download/${this.invoiceNumber}?auto=1`;
+});
+
 // Export the model
 const Invoice = mongoose.model<IInvoice>("Invoice", InvoiceSchema);
 export default Invoice;

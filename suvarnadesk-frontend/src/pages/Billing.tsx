@@ -64,7 +64,7 @@ export default function Billing() {
     data: liveRates,
     refetch: refetchLiveRates,
     isLoading: liveRatesLoading,
-  } = useLiveRates(); // Add live rates
+  } = useLiveRates();
   const createInvoice = useCreateInvoice();
 
   const [invoiceDate, setInvoiceDate] = useState<string>(
@@ -78,7 +78,7 @@ export default function Billing() {
   const [customerPhone, setCustomerPhone] = useState<string>("");
   const [customerAddress, setCustomerAddress] = useState<string>("");
   const [generatingInvoiceNumber, setGeneratingInvoiceNumber] = useState(false);
-  const [useLiveRatesEnabled, setUseLiveRatesEnabled] = useState(true); // Toggle for live rates
+  const [useLiveRatesEnabled, setUseLiveRatesEnabled] = useState(true);
   const [lineItems, setLineItems] = useState<LineItem[]>([
     {
       itemType: "gold",
@@ -99,14 +99,9 @@ export default function Billing() {
   const [paymentMode, setPaymentMode] = useState<string>("cash");
   const [showQRCode, setShowQRCode] = useState<boolean>(false);
   const [invoiceData, setInvoiceData] = useState<PdfData[] | null>(null);
-  // const [shopSettings, setShopSettings] = useState({
-  //   shopName: "JEWELRY COMMERCIAL INVOICE",
-  //   gstNumber: "",
-  // });
 
   // Fetch shop settings and generate invoice number on component mount
   React.useEffect(() => {
-    // fetchShopSettings();
     generateInvoiceNumber();
   }, []);
 
@@ -116,20 +111,6 @@ export default function Billing() {
       refetchLiveRates();
     }
   }, [useLiveRatesEnabled, refetchLiveRates]);
-
-  // const fetchShopSettings = async () => {
-  //   try {
-  //     const response = await apiClient.get("/shop-settings");
-  //     if (response.data) {
-  //       setShopSettings({
-  //         shopName: response.data.shopName || "JEWELRY COMMERCIAL INVOICE",
-  //         gstNumber: response.data.gstNumber || "",
-  //       });
-  //     }
-  //   } catch (error) {
-  //     console.error("Failed to fetch shop settings:", error);
-  //   }
-  // };
 
   const generateInvoiceNumber = async (): Promise<string> => {
     try {
@@ -283,7 +264,6 @@ export default function Billing() {
       if (field === "weightValue") item.weight.value = Number(value) || 0;
       else if (typeof value === "string") item.weight.unit = value;
 
-      // Use live rates or metal rates based on toggle
       item.ratePerGram = getRateForItem(item.itemType, item.purity);
 
       const weightInGrams = convertToGrams(item.weight.value, item.weight.unit);
@@ -358,7 +338,7 @@ export default function Billing() {
         purity: "24K",
         description: "",
         weight: { value: 0, unit: "g" },
-        ratePerGram: getRateForItem("gold", "24K"), // Set initial rate
+        ratePerGram: getRateForItem("gold", "24K"),
         labourChargeReferenceId: "",
         labourChargeType: null,
         labourChargeAmount: 0,
@@ -385,7 +365,6 @@ export default function Billing() {
       await refetchLiveRates();
       showToast.success("Rates refreshed successfully");
 
-      // Update all line items with new rates
       const updatedItems = lineItems.map((item) => ({
         ...item,
         ratePerGram: getRateForItem(item.itemType, item.purity),
@@ -409,7 +388,6 @@ export default function Billing() {
       ? Math.floor((new Date().getTime() - lastUpdated.getTime()) / 60000)
       : null;
 
-    // Get available metal types for status
     const availableMetals = liveRates
       ? Array.from(new Set(liveRates.map((rate) => rate.metalType)))
       : [];
@@ -417,7 +395,6 @@ export default function Billing() {
     return (
       <div className="p-4 mt-4 bg-white border border-blue-100 rounded-lg">
         <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
-          {/* Connection Status */}
           <div className="flex items-center justify-between">
             <span className="text-gray-600">Connection Status:</span>
             <div className="flex items-center gap-2">
@@ -448,7 +425,6 @@ export default function Billing() {
             </div>
           </div>
 
-          {/* Last Update */}
           <div className="flex items-center justify-between">
             <span className="text-gray-600">Last Update:</span>
             <span className="font-medium text-gray-800">
@@ -458,7 +434,6 @@ export default function Billing() {
             </span>
           </div>
 
-          {/* Available Metals */}
           <div className="flex items-center justify-between">
             <span className="text-gray-600">Available Metals:</span>
             <div className="flex gap-2">
@@ -477,7 +452,6 @@ export default function Billing() {
             </div>
           </div>
 
-          {/* Rate Count */}
           <div className="flex items-center justify-between">
             <span className="text-gray-600">Active Rates:</span>
             <span className="font-medium text-gray-800">
@@ -486,7 +460,6 @@ export default function Billing() {
           </div>
         </div>
 
-        {/* Current Rates Preview */}
         {liveRates && liveRates.length > 0 && (
           <div className="pt-3 mt-3 border-t border-gray-100">
             <h4 className="mb-2 text-xs font-semibold text-gray-700">
@@ -518,6 +491,7 @@ export default function Billing() {
     );
   };
 
+  // Fixed handleSubmit function
   const handleSubmit = async () => {
     if (!customerName.trim()) {
       showToast.error("Please enter customer name");
@@ -547,21 +521,19 @@ export default function Billing() {
     }
 
     try {
-      // Fetch shop settings to get GST numbers
       const shopSettingsResponse = await apiClient.get("/shop-settings");
       const shopData = shopSettingsResponse.data || {};
 
       const goldGstNumber = shopData.goldGstNumber || "";
       const silverGstNumber = shopData.silverGstNumber || "";
+      const shopName = shopData.shopName || "JEWELRY COMMERCIAL INVOICE";
 
-      // Separate items by type
       const goldItems = lineItems.filter((item) => item.itemType === "gold");
       const silverItems = lineItems.filter(
         (item) => item.itemType === "silver"
       );
       const otherItems = lineItems.filter((item) => item.itemType === "other");
 
-      // Calculate totals for each type
       const calculateTotals = (items: LineItem[], applyGST: boolean = true) => {
         const subtotal = items.reduce((acc, item) => acc + item.itemTotal, 0);
         let CGSTAmount = 0;
@@ -585,12 +557,10 @@ export default function Billing() {
 
       const goldTotals = calculateTotals(goldItems);
       const silverTotals = calculateTotals(silverItems);
-      const otherTotals = calculateTotals(otherItems, false); // No GST for other items
+      const otherTotals = calculateTotals(otherItems, false);
 
-      // Prepare PDF data arrays
       const pdfDataArray: PdfData[] = [];
 
-      // Gold PDF - Jay Krishna Haribhai Soni
       if (goldItems.length > 0) {
         const goldPdfData = {
           invoiceNumber: finalInvoiceNumber,
@@ -628,7 +598,6 @@ export default function Billing() {
         pdfDataArray.push(goldPdfData);
       }
 
-      // Silver PDF - Measers Yogeshkumar and Brothers
       if (silverItems.length > 0) {
         const silverPdfData = {
           invoiceNumber: finalInvoiceNumber,
@@ -666,7 +635,6 @@ export default function Billing() {
         pdfDataArray.push(silverPdfData);
       }
 
-      // Other items PDF - Default to Jay Krishna
       if (otherItems.length > 0) {
         const otherPdfData = {
           invoiceNumber: finalInvoiceNumber,
@@ -690,29 +658,33 @@ export default function Billing() {
             amount: item.itemTotal,
           })),
           subtotal: otherTotals.subtotal,
-          CGSTPercent: 0, // No GST for other items
+          CGSTPercent: 0,
           CGSTAmount: 0,
           SGSTPercent: 0,
           SGSTAmount: 0,
-          grandTotal: otherTotals.subtotal, // No GST added
+          grandTotal: otherTotals.subtotal,
           shopSettings: {
-            shopName: "Jay Krishna Haribhai Soni",
-            gstNumber: "", // No GST for other items
+            shopName: shopName,
+            gstNumber: "",
             gstType: "None",
           },
         };
         pdfDataArray.push(otherPdfData);
       }
 
-      // QR Code data with all PDF URLs
+      const baseUrl = window.location.origin;
+      const qrCodeUrl = `${baseUrl}/api/invoices/download/${finalInvoiceNumber}?auto=1`;
+
       const qrCodeData = JSON.stringify({
         invoiceNumber: finalInvoiceNumber,
         date: invoiceDate,
+        timestamp: new Date().toISOString(),
         customer: {
           name: customerName,
           email: customerEmail,
           phone: customerPhone,
           address: customerAddress,
+          huid: customerHUID,
         },
         totals: {
           gold: goldItems.length > 0 ? goldTotals.grandTotal : 0,
@@ -723,12 +695,13 @@ export default function Billing() {
             (silverItems.length > 0 ? silverTotals.grandTotal : 0) +
             (otherItems.length > 0 ? otherTotals.grandTotal : 0),
         },
+        downloadUrl: qrCodeUrl,
         downloadUrls: pdfDataArray.map((pdfData, index) => ({
           type: pdfData.shopSettings.shopName,
           gstType: pdfData.shopSettings.gstType,
-          url: `${
-            window.location.origin
-          }/api/invoices/download/${finalInvoiceNumber}/${index + 1}`,
+          url: `${baseUrl}/api/invoices/download/${finalInvoiceNumber}/${
+            index + 1
+          }?auto=1`,
         })),
         items: lineItems.map((item) => ({
           type: item.itemType,
@@ -741,9 +714,9 @@ export default function Billing() {
           gold: goldGstNumber,
           silver: silverGstNumber,
         },
+        shopName: shopName,
       });
 
-      // Calculate overall totals for the invoice
       const overallSubtotal = subtotal;
       const overallCGSTAmount = goldTotals.CGSTAmount + silverTotals.CGSTAmount;
       const overallSGSTAmount = goldTotals.SGSTAmount + silverTotals.SGSTAmount;
@@ -753,7 +726,6 @@ export default function Billing() {
         silverTotals.grandTotal +
         otherTotals.grandTotal;
 
-      // Fix: Explicitly type the ratesSource to match the expected type
       const ratesSource: "live" | "manual" = useLiveRatesEnabled
         ? "live"
         : "manual";
@@ -787,6 +759,7 @@ export default function Billing() {
           balanceDue: overallGrandTotal,
         },
         QRCodeData: qrCodeData,
+        QRCodeUrl: qrCodeUrl,
         pdfData: pdfDataArray,
         ratesSource,
         gstInfo: {
@@ -795,6 +768,7 @@ export default function Billing() {
           goldGstNumber: goldGstNumber,
           silverGstNumber: silverGstNumber,
         },
+        downloadUrl: qrCodeUrl,
       };
 
       createInvoice.mutate(invoicePayload, {
@@ -803,7 +777,6 @@ export default function Billing() {
           setInvoiceData(pdfDataArray);
           setShowQRCode(true);
 
-          // Show success message with PDF types
           const pdfTypes = [];
           if (goldItems.length > 0) pdfTypes.push("Gold (Jay Krishna)");
           if (silverItems.length > 0) pdfTypes.push("Silver (Yogeshkumar)");
@@ -815,20 +788,48 @@ export default function Billing() {
                 pdfTypes.length > 1 ? "s" : ""
               }`
             );
+
+            if (pdfDataArray.length === 1) {
+              const downloadLink = document.createElement("a");
+              downloadLink.href = `${baseUrl}/api/invoices/download/${finalInvoiceNumber}?auto=1`;
+              downloadLink.target = "_blank";
+              downloadLink.click();
+            }
           }
 
-          // Generate new invoice number for next invoice
           generateInvoiceNumber();
 
-          // Reset form for next invoice (optional)
           setCustomerName("");
           setCustomerPhone("");
           setCustomerEmail("");
           setCustomerAddress("");
           setCustomerHUID("");
-          setLineItems([...lineItems]);
+          setSelectedCustomer("");
+          setLineItems([
+            {
+              itemType: "gold",
+              purity: "24K",
+              description: "",
+              weight: { value: 0, unit: "g" },
+              ratePerGram: getRateForItem("gold", "24K"),
+              labourChargeReferenceId: "",
+              labourChargeType: null,
+              labourChargeAmount: 0,
+              makingChargesTotal: 0,
+              otherCharges: 0,
+              itemTotal: 0,
+            },
+          ]);
+
+          setTimeout(() => {
+            showToast.info(
+              "Scan the QR code to download invoice on any device"
+            );
+          }, 1000);
         },
         onError: (error: any) => {
+          console.error("Invoice creation error:", error);
+
           if (error.response?.data?.error?.includes("duplicate key")) {
             showToast.error(
               "Invoice number already exists. Generating new number..."
@@ -836,16 +837,23 @@ export default function Billing() {
             setTimeout(() => {
               generateInvoiceNumber();
             }, 1000);
+          } else if (error.response?.data?.error?.includes("network")) {
+            showToast.error(
+              "Network error. Please check your connection and try again."
+            );
           } else {
             showToast.error(
-              error.response?.data?.error || "Failed to create invoice"
+              error.response?.data?.error ||
+                "Failed to create invoice. Please try again."
             );
           }
         },
       });
     } catch (error: any) {
-      console.error("Error fetching shop settings:", error);
-      showToast.error("Failed to load GST information");
+      console.error("Error in handleSubmit:", error);
+      showToast.error(
+        error.message || "Failed to process invoice. Please try again."
+      );
     }
   };
 
@@ -873,10 +881,8 @@ export default function Billing() {
         {/* Live Rates Toggle and Status */}
         <div className="p-6 mb-6 border border-blue-200 shadow-sm bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            {/* Toggle Section */}
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-3">
-                {/* Fixed Toggle Switch */}
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     title="Use Live Metal Rates"
@@ -902,9 +908,7 @@ export default function Billing() {
               )}
             </div>
 
-            {/* Status and Refresh Section */}
             <div className="flex items-center gap-4">
-              {/* Status Indicator */}
               {useLiveRatesEnabled && (
                 <div className="flex items-center gap-2 text-sm">
                   <div
@@ -934,7 +938,6 @@ export default function Billing() {
                     </span>
                   </div>
 
-                  {/* Last Updated Time */}
                   {liveRates && liveRates.length > 0 && !liveRatesLoading && (
                     <span className="text-xs text-gray-500">
                       {(() => {
@@ -949,7 +952,6 @@ export default function Billing() {
                 </div>
               )}
 
-              {/* Refresh Button */}
               {useLiveRatesEnabled && (
                 <button
                   onClick={handleRefreshRates}
@@ -967,7 +969,6 @@ export default function Billing() {
             </div>
           </div>
 
-          {/* Additional Status Information */}
           {useLiveRatesEnabled && renderLiveRatesIndicator()}
         </div>
 
@@ -1523,8 +1524,9 @@ export default function Billing() {
 
                 <div className="flex justify-center mb-4">
                   <InvoiceQRCode
-                    data={`${window.location.origin}/api/invoices/download/${invoiceData[0].invoiceNumber}`}
+                    data={`${window.location.origin}/api/invoices/download/${invoiceNumber}?auto=1`}
                     size={200}
+                    invoiceNumber={invoiceNumber}
                   />
                 </div>
 
