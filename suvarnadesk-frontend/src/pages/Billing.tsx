@@ -32,7 +32,8 @@ interface PdfData {
     address: string;
     email: string;
     phone: string;
-    huid: string;
+    hsnCode: string;
+    gstin: string; // Added GSTIN field
   };
   items: Array<{
     productNo: string;
@@ -71,8 +72,8 @@ export default function Billing() {
     new Date().toISOString().substring(0, 10)
   );
   const [invoiceNumber, setInvoiceNumber] = useState<string>("");
-  const [customerHUID, setCustomerHUID] = useState<string>("");
-  const [selectedCustomer, setSelectedCustomer] = useState<string>("");
+  const [customerHSNCode, setCustomerHSNCode] = useState<string>("");
+  const [customerGSTIN, setCustomerGSTIN] = useState<string>(""); // Added GSTIN state
   const [customerName, setCustomerName] = useState<string>("");
   const [customerEmail, setCustomerEmail] = useState<string>("");
   const [customerPhone, setCustomerPhone] = useState<string>("");
@@ -226,34 +227,14 @@ export default function Billing() {
   const grandTotal = subtotal + CGSTAmount + SGSTAmount;
   const totalGST = CGSTAmount + SGSTAmount;
 
-  // Handle customer selection from dropdown
-  const handleCustomerSelect = (customerId: string) => {
-    setSelectedCustomer(customerId);
-    if (customerId) {
-      const customer = customers?.find((c: Customer) => c._id === customerId);
-      if (customer) {
-        setCustomerName(customer.name);
-        setCustomerEmail(customer.email || "");
-        setCustomerPhone(customer.phone);
-        setCustomerAddress(customer.address || "");
-        setCustomerHUID(customer.huid || "");
-      }
-    } else {
-      setCustomerName("");
-      setCustomerEmail("");
-      setCustomerPhone("");
-      setCustomerAddress("");
-      setCustomerHUID("");
-    }
-  };
-
   // Function to create or update customer in database
   const createOrUpdateCustomerInDB = async (customerData: {
     name: string;
     phone: string;
     email?: string;
     address?: string;
-    huid?: string;
+    hsnCode?: string;
+    gstin?: string; // Added GSTIN
   }) => {
     try {
       // Call customer upsert endpoint
@@ -275,7 +256,8 @@ export default function Billing() {
       | "weightValue"
       | "weightUnit"
       | "labourChargeReferenceId"
-      | "otherCharges",
+      | "otherCharges"
+      | "makingChargesTotal", // Added makingChargesTotal
     value: string | number | null
   ) => {
     const updatedItems = [...lineItems];
@@ -290,57 +272,34 @@ export default function Billing() {
       const weightInGrams = convertToGrams(item.weight.value, item.weight.unit);
       const metalPrice = weightInGrams * item.ratePerGram;
 
-      const labourCharge = labourCharges?.find(
-        (lc: LabourCharge) => lc._id === item.labourChargeReferenceId
-      );
-
-      let labourChargeAmount = 0;
-      if (labourCharge) {
-        labourChargeAmount =
-          labourCharge.chargeType === "perGram"
-            ? weightInGrams * labourCharge.amount
-            : labourCharge.amount;
-      }
+      // Calculate labour charges based on makingChargesTotal (now a simple number field)
+      const labourChargeAmount = item.makingChargesTotal || 0;
 
       item.labourChargeAmount = labourChargeAmount;
-      item.makingChargesTotal = labourChargeAmount;
       item.itemTotal = metalPrice + labourChargeAmount + item.otherCharges;
     }
 
-    if (field === "labourChargeReferenceId" && typeof value === "string") {
-      item.labourChargeReferenceId = value;
+    if (field === "makingChargesTotal") {
+      item.makingChargesTotal = Number(value) || 0;
+      item.labourChargeAmount = item.makingChargesTotal;
 
-      const labourCharge = labourCharges?.find(
-        (lc: LabourCharge) => lc._id === value
-      );
       const weightInGrams = convertToGrams(item.weight.value, item.weight.unit);
-      let labourChargeAmount = 0;
-      if (labourCharge) {
-        labourChargeAmount =
-          labourCharge.chargeType === "perGram"
-            ? weightInGrams * labourCharge.amount
-            : labourCharge.amount;
-      }
-      item.labourChargeAmount = labourChargeAmount;
-      item.makingChargesTotal = labourChargeAmount;
-      item.itemTotal =
-        weightInGrams * item.ratePerGram +
-        labourChargeAmount +
-        item.otherCharges;
+      const metalPrice = weightInGrams * item.ratePerGram;
+      item.itemTotal = metalPrice + item.makingChargesTotal + item.otherCharges;
     }
 
     if (field === "otherCharges") {
       item.otherCharges = Number(value) || 0;
       const weightInGrams = convertToGrams(item.weight.value, item.weight.unit);
       const metalPrice = weightInGrams * item.ratePerGram;
-      item.itemTotal = metalPrice + item.labourChargeAmount + item.otherCharges;
+      item.itemTotal = metalPrice + item.makingChargesTotal + item.otherCharges;
     }
 
     if (
       ![
         "weightValue",
         "weightUnit",
-        "labourChargeReferenceId",
+        "makingChargesTotal",
         "otherCharges",
       ].includes(field)
     ) {
@@ -548,12 +507,12 @@ export default function Billing() {
         phone: customerPhone,
         email: customerEmail || undefined,
         address: customerAddress || undefined,
-        huid: customerHUID || undefined,
+        hsnCode: customerHSNCode || undefined,
+        gstin: customerGSTIN || undefined, // Added GSTIN
       });
 
       // Use the customer ID from database response
-      const customerId =
-        customerResponse._id || selectedCustomer || "new-customer";
+      const customerId = customerResponse._id || "new-customer";
 
       const shopSettingsResponse = await apiClient.get("/shop-settings");
       const shopData = shopSettingsResponse.data || {};
@@ -604,7 +563,8 @@ export default function Billing() {
             address: customerAddress,
             email: customerEmail,
             phone: customerPhone,
-            huid: customerHUID,
+            hsnCode: customerHSNCode,
+            gstin: customerGSTIN, // Added GSTIN
           },
           items: goldItems.map((item, index) => ({
             productNo: `GOLD-${index + 1}`,
@@ -641,7 +601,8 @@ export default function Billing() {
             address: customerAddress,
             email: customerEmail,
             phone: customerPhone,
-            huid: customerHUID,
+            hsnCode: customerHSNCode,
+            gstin: customerGSTIN, // Added GSTIN
           },
           items: silverItems.map((item, index) => ({
             productNo: `SILVER-${index + 1}`,
@@ -678,7 +639,8 @@ export default function Billing() {
             address: customerAddress,
             email: customerEmail,
             phone: customerPhone,
-            huid: customerHUID,
+            hsnCode: customerHSNCode,
+            gstin: customerGSTIN, // Added GSTIN
           },
           items: otherItems.map((item, index) => ({
             productNo: `OTHER-${index + 1}`,
@@ -718,7 +680,8 @@ export default function Billing() {
           email: customerEmail,
           phone: customerPhone,
           address: customerAddress,
-          huid: customerHUID,
+          hsnCode: customerHSNCode,
+          gstin: customerGSTIN, // Added GSTIN
         },
         totals: {
           gold: goldItems.length > 0 ? goldTotals.grandTotal : 0,
@@ -773,7 +736,8 @@ export default function Billing() {
           email: customerEmail,
           phone: customerPhone,
           address: customerAddress,
-          huid: customerHUID,
+          hsnCode: customerHSNCode,
+          gstin: customerGSTIN, // Added GSTIN
         },
         lineItems,
         totals: {
@@ -822,13 +786,6 @@ export default function Billing() {
                 pdfTypes.length > 1 ? "s" : ""
               }`
             );
-
-            // if (pdfDataArray.length === 1) {
-            //   const downloadLink = document.createElement("a");
-            //   downloadLink.href = `${baseUrl}/api/invoices/download/${finalInvoiceNumber}?auto=1`;
-            //   downloadLink.target = "_blank";
-            //   downloadLink.click();
-            // }
           }
 
           generateInvoiceNumber();
@@ -837,8 +794,8 @@ export default function Billing() {
           setCustomerPhone("");
           setCustomerEmail("");
           setCustomerAddress("");
-          setCustomerHUID("");
-          setSelectedCustomer("");
+          setCustomerHSNCode("");
+          setCustomerGSTIN(""); // Reset GSTIN
           setLineItems([
             {
               itemType: "gold",
@@ -1052,27 +1009,7 @@ export default function Billing() {
                   />
                 </div>
 
-                <div className="md:col-span-2">
-                  <label
-                    htmlFor="customer-select"
-                    className="block mb-2 text-sm font-medium text-gray-700"
-                  >
-                    Select Customer
-                  </label>
-                  <CustomDropdown
-                    options={[
-                      { value: "", label: "Add New Customer" },
-                      ...(customers?.map((c: Customer) => ({
-                        value: c._id,
-                        label: `${c.name} - ${c.phone}`,
-                      })) || []),
-                    ]}
-                    value={selectedCustomer}
-                    onChange={handleCustomerSelect}
-                    placeholder="Choose a customer or add new..."
-                    aria-label="Select customer"
-                  />
-                </div>
+                {/* Removed customer selection dropdown */}
               </div>
 
               {/* Customer Information Form */}
@@ -1132,18 +1069,35 @@ export default function Billing() {
 
                 <div>
                   <label
-                    htmlFor="customer-huid"
+                    htmlFor="customer-gstin"
                     className="block mb-2 text-sm font-medium text-gray-700"
                   >
-                    HUID (Hallmark Unique ID)
+                    GSTIN Number
                   </label>
                   <input
-                    id="customer-huid"
+                    id="customer-gstin"
                     type="text"
-                    value={customerHUID}
-                    onChange={(e) => setCustomerHUID(e.target.value)}
+                    value={customerGSTIN}
+                    onChange={(e) => setCustomerGSTIN(e.target.value)}
                     className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter HUID number"
+                    placeholder="Enter GSTIN number (optional)"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="customer-hsncode"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    HSN Code
+                  </label>
+                  <input
+                    id="customer-hsncode"
+                    type="text"
+                    value={customerHSNCode}
+                    onChange={(e) => setCustomerHSNCode(e.target.value)}
+                    className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter HSN Code"
                   />
                 </div>
 
@@ -1246,35 +1200,32 @@ export default function Billing() {
                         />
                       </div>
 
-                      {/* Labour Charge */}
+                      {/* Labour Charges */}
                       <div className="min-w-0">
                         <label className="block mb-1 text-sm font-medium text-gray-700">
-                          Labour Charge
+                          Labour Charges
                         </label>
-                        <CustomDropdown
-                          options={[
-                            { value: "", label: "No LC" },
-                            ...(labourCharges
-                              ?.filter((lc) => lc.isActive)
-                              .map((lc: LabourCharge) => ({
-                                value: lc._id,
-                                label: `${lc.name} (${
-                                  lc.chargeType === "perGram"
-                                    ? "per gram"
-                                    : "fixed"
-                                })`,
-                              })) || []),
-                          ]}
-                          value={item.labourChargeReferenceId || ""}
-                          onChange={(value) =>
-                            handleLineItemChange(
-                              index,
-                              "labourChargeReferenceId",
-                              value
-                            )
-                          }
-                          aria-label="Select labour charge"
-                        />
+                        <div className="relative">
+                          <span className="absolute text-gray-500 transform -translate-y-1/2 left-3 top-1/2">
+                            ₹
+                          </span>
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={item.labourChargesTotal || 0}
+                            onChange={(e) =>
+                              handleLineItemChange(
+                                index,
+                                "labourChargesTotal",
+                                e.target.value
+                              )
+                            }
+                            className="w-full px-3 py-2 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="0.00"
+                            aria-label="Enter Labour Charges"
+                          />
+                        </div>
                       </div>
 
                       {/* Weight */}
@@ -1377,7 +1328,7 @@ export default function Billing() {
                           )}
                         </div>
                         <div>
-                          <span className="text-gray-600">Making Charges:</span>
+                          <span className="text-gray-600">Labour Charges:</span>
                           <span className="ml-1 font-medium">
                             ₹{item.makingChargesTotal.toFixed(2)}
                           </span>
