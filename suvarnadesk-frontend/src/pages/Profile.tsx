@@ -36,14 +36,15 @@ interface ChangePasswordData {
 
 const fetchAdminProfile = async (): Promise<AdminProfile> => {
   const { data } = await apiClient.get("/admin/profile");
-  return data;
+  // The backend returns { toast: {...}, admin: {...} }
+  return data.admin; // Extract the admin object
 };
 
 const updateAdminProfile = async (
   profileData: Partial<AdminProfile>
 ): Promise<AdminProfile> => {
   const { data } = await apiClient.put("/admin/profile", profileData);
-  return data;
+  return data.admin; // Extract admin from response
 };
 
 const changeAdminPassword = async (
@@ -690,27 +691,6 @@ const Profile: React.FC = () => {
                   </span>
                 </div>
               </div> */}
-            </div>
-          </motion.div>
-
-          {/* Quick Actions */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="p-6 bg-white border border-gray-100 shadow-sm rounded-xl"
-          >
-            <h4 className="mb-4 font-semibold text-gray-800">Quick Actions</h4>
-            <div className="space-y-2">
-              <button className="w-full p-3 text-left text-blue-600 transition-colors rounded-lg hover:bg-blue-50 focus:outline-none focus:ring-0">
-                Notification Settings
-              </button>
-              <button className="w-full p-3 text-left text-blue-600 transition-colors rounded-lg hover:bg-blue-50 focus:outline-none focus:ring-0">
-                Privacy Settings
-              </button>
-              <button className="w-full p-3 text-left text-blue-600 transition-colors rounded-lg hover:bg-blue-50 focus:outline-none focus:ring-0">
-                Two-Factor Authentication
-              </button>
             </div>
           </motion.div>
         </div>
