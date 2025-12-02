@@ -3,13 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "ts-node-dev src/index.ts",
+    "dev": "ts-node-dev --no-warnings src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
-    "test": "node test-files/test-api.js",
-    "check": "node test-files/simple-check.js",
-    "reset": "node test-files/simple-reset.js",
-    "seed": "npx ts-node src/seed/seedAdmin.ts"
+    "start": "node --no-warnings dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",

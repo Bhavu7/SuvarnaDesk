@@ -1,4 +1,4 @@
-// src/models/Customer.ts - Remove duplicate indexes
+// src/models/Customer.ts
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface ICustomer extends Document {
