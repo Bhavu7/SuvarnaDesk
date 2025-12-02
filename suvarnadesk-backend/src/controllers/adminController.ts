@@ -149,7 +149,7 @@ export const createAdmin = async (req: AuthRequest, res: Response) => {
 export const updateAdmin = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const updates = req.body;
+        const { name, email, phone, role } = req.body;
 
         // Check permissions
         const isSelf = req.admin?.adminId === id;
@@ -161,55 +161,111 @@ export const updateAdmin = async (req: AuthRequest, res: Response) => {
             );
         }
 
-        // Remove password from updates if present
-        if (updates.password) {
-            delete updates.password;
-        }
-
-        // Prevent role change unless super_admin
-        if (updates.role && !isSuperAdmin) {
-            return res.status(403).json(
-                formatToastResponse('error', 'Only super admin can change roles')
-            );
-        }
-
-        // Find and update admin
-        const admin = await Admin.findOne({ _id: id, isActive: true });
+        // Find admin
+        const admin = await Admin.findById(id);
         if (!admin) {
             return res.status(404).json(
                 formatToastResponse('error', 'Admin not found')
             );
         }
 
-        if (admin && updates && typeof updates === 'object') {
-            Object.keys(updates).forEach((key: string) => {
-                if (key in admin) {
-                    (admin as any)[key] = updates[key as keyof typeof updates];
+        // Prepare updates
+        const updates: any = {};
+
+        if (name) updates.name = name;
+        if (phone !== undefined) updates.phone = phone || null;
+
+        // Only super admin can change role and email
+        if (isSuperAdmin) {
+            if (role) updates.role = role;
+            if (email && email !== admin.email) {
+                // Check if new email exists
+                const existingAdmin = await Admin.findOne({
+                    email,
+                    _id: { $ne: id }
+                });
+
+                if (existingAdmin) {
+                    return res.status(400).json(
+                        formatToastResponse('error', 'Email already exists')
+                    );
                 }
-            });
+                updates.email = email;
+            }
         }
 
+        // Update admin
+        Object.assign(admin, updates);
         await admin.save();
 
         res.json(
             formatToastResponse('success', 'Admin updated successfully', {
-                admin: admin.toJSON()
+                admin: {
+                    id: admin._id,
+                    name: admin.name,
+                    email: admin.email,
+                    role: admin.role,
+                    phone: admin.phone,
+                    memberSince: admin.memberSince,
+                    lastLogin: admin.lastLogin,
+                    createdAt: admin.createdAt,
+                    updatedAt: admin.updatedAt
+                }
             })
         );
 
     } catch (error: any) {
         console.error("Update admin error:", error);
 
-        // Handle validation errors
-        if (error.name === 'ValidationError') {
-            const errors = Object.values(error.errors).map((err: any) => err.message);
+        if (error.code === 11000) {
             return res.status(400).json(
-                formatToastResponse('error', `Update failed: ${errors.join(', ')}`)
+                formatToastResponse('error', 'Email already exists')
             );
         }
 
         res.status(500).json(
             formatToastResponse('error', 'Failed to update admin')
+        );
+    }
+};
+
+export const resetAdminPassword = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { newPassword } = req.body;
+
+        // Check if requester is super admin
+        if (req.admin?.role !== 'super_admin') {
+            return res.status(403).json(
+                formatToastResponse('error', 'Only super admin can reset passwords')
+            );
+        }
+
+        // Validation
+        if (!newPassword || newPassword.length < 6) {
+            return res.status(400).json(
+                formatToastResponse('error', 'New password must be at least 6 characters')
+            );
+        }
+
+        const admin = await Admin.findById(id);
+        if (!admin) {
+            return res.status(404).json(
+                formatToastResponse('error', 'Admin not found')
+            );
+        }
+
+        // Update password (will be hashed by pre-save hook)
+        admin.password = newPassword;
+        await admin.save();
+
+        res.json(
+            formatToastResponse('success', 'Password reset successfully')
+        );
+    } catch (error: any) {
+        console.error("Reset password error:", error);
+        res.status(500).json(
+            formatToastResponse('error', 'Failed to reset password')
         );
     }
 };
@@ -486,18 +542,41 @@ export const getAdminProfile = async (req: AuthRequest, res: Response) => {
 // Update Admin Profile
 export const updateAdminProfile = async (req: AuthRequest, res: Response) => {
     try {
-        const { name, phone } = req.body;
+        const { name, email, phone } = req.body;
 
         // Validation
-        if (!name) {
+        if (!name || !email) {
             return res.status(400).json(
-                formatToastResponse('error', 'Name is required')
+                formatToastResponse('error', 'Name and email are required')
             );
         }
 
+        // Check if email is being changed
+        const currentAdmin = await Admin.findById(req.admin?.adminId);
+        if (!currentAdmin) {
+            return res.status(404).json(
+                formatToastResponse('error', 'Admin not found')
+            );
+        }
+
+        // If email is being changed, check if it already exists
+        if (email !== currentAdmin.email) {
+            const existingAdmin = await Admin.findOne({
+                email,
+                _id: { $ne: req.admin?.adminId }
+            });
+
+            if (existingAdmin) {
+                return res.status(400).json(
+                    formatToastResponse('error', 'Email already exists')
+                );
+            }
+        }
+
+        // Update the admin
         const admin = await Admin.findByIdAndUpdate(
             req.admin?.adminId,
-            { name, phone },
+            { name, email, phone: phone || null },
             { new: true, runValidators: true }
         ).select("-password");
 
@@ -516,18 +595,25 @@ export const updateAdminProfile = async (req: AuthRequest, res: Response) => {
                     role: admin.role,
                     phone: admin.phone,
                     memberSince: admin.memberSince,
-                    lastLogin: admin.lastLogin
+                    lastLogin: admin.lastLogin,
+                    createdAt: admin.createdAt,
+                    updatedAt: admin.updatedAt
                 }
             })
         );
     } catch (error: any) {
         console.error("Update profile error:", error);
 
-        // Handle validation errors
         if (error.name === 'ValidationError') {
             const errors = Object.values(error.errors).map((err: any) => err.message);
             return res.status(400).json(
                 formatToastResponse('error', `Update failed: ${errors.join(', ')}`)
+            );
+        }
+
+        if (error.code === 11000) {
+            return res.status(400).json(
+                formatToastResponse('error', 'Email already exists')
             );
         }
 

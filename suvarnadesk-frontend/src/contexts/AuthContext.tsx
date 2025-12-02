@@ -10,7 +10,7 @@ interface Admin {
   name: string;
   email: string;
   phone?: string;
-  role: string; // Keep as string to be compatible with existing code
+  role: string;
   memberSince?: string;
   lastLogin?: string;
   createdAt?: string;
@@ -44,6 +44,7 @@ interface AuthContextType {
   getAllAdmins: () => Promise<Admin[]>;
   createAdmin: (adminData: CreateAdminData) => Promise<Admin>;
   updateAdmin: (id: string, adminData: Partial<Admin>) => Promise<Admin>;
+  resetPassword: (adminId: string, newPassword: string) => Promise<void>;
   deleteAdmin: (id: string) => Promise<void>;
   changePassword: (
     currentPassword: string,
@@ -194,6 +195,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const resetPassword = async (adminId: string, newPassword: string) => {
+    try {
+      const response = await apiClient.patch(
+        `/admin/${adminId}/reset-password`,
+        {
+          newPassword,
+        }
+      );
+      toast.success(
+        response.data.toast?.message || "Password reset successfully!"
+      );
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.toast?.message || "Failed to reset password";
+      toast.error(errorMessage);
+      throw error;
+    }
+  };
+
   const deleteAdmin = async (id: string) => {
     try {
       const response = await apiClient.delete(`/admin/${id}`);
@@ -246,6 +266,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         getAllAdmins,
         createAdmin,
         updateAdmin,
+        resetPassword,
         deleteAdmin,
         changePassword,
         adminStats,

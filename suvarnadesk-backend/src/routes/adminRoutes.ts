@@ -17,6 +17,7 @@ import {
 } from "../controllers/adminController";
 import { authMiddleware } from "../middleware/auth";
 import { checkAdminLimit } from "../middleware/adminLimit";
+import { resetAdminPassword } from "../controllers/adminController";
 
 const router = Router();
 
@@ -36,6 +37,7 @@ router.get("/all", authMiddleware, getAllAdmins);
 router.post("/create", authMiddleware, checkAdminLimit, createAdmin);
 router.put("/:id", authMiddleware, updateAdmin);
 router.delete("/:id", authMiddleware, deleteAdmin);
+router.patch("/:id/reset-password", authMiddleware, resetAdminPassword);
 
 // Shop Settings routes
 router.get("/shop-settings", authMiddleware, getShopSettings);

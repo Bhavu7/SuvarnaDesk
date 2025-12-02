@@ -9,8 +9,10 @@ import {
   MdClose,
   MdMenu,
   MdBuildCircle,
+  MdAdminPanelSettings, // Add this icon
 } from "react-icons/md";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "../contexts/AuthContext"; // Import useAuth
 
 interface SidebarProps {
   collapsed?: boolean;
@@ -19,15 +21,6 @@ interface SidebarProps {
   onToggle?: () => void;
   onDesktopExpand?: (expanded: boolean) => void;
 }
-
-const links = [
-  { to: "/", label: "Dashboard", icon: <MdDashboard /> },
-  { to: "/billing", label: "Billing", icon: <MdReceipt /> },
-  { to: "/manage-customers", label: "Manage Customers", icon: <MdPeople /> },
-  { to: "/rates", label: "Live Rates", icon: <MdCurrencyRupee /> },
-  { to: "/repairings", label: "AC Receipt", icon: <MdBuildCircle /> },
-  { to: "/settings", label: "Settings", icon: <MdSettings /> },
-];
 
 // Custom SVG logo
 const SuvarnaDeskSvgIcon: React.FC<{ className?: string }> = ({
@@ -129,6 +122,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const { isSuperAdmin } = useAuth(); // Get user role
 
   useEffect(() => {
     const checkIsMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -145,6 +139,40 @@ const Sidebar: React.FC<SidebarProps> = ({
       onDesktopExpand(shouldExpand);
     }
   }, [shouldExpand, isMobile, onDesktopExpand]);
+
+  // Define all possible links
+  const allLinks = [
+    { to: "/", label: "Dashboard", icon: <MdDashboard />, show: true },
+    { to: "/billing", label: "Billing", icon: <MdReceipt />, show: true },
+    {
+      to: "/manage-customers",
+      label: "Manage Customers",
+      icon: <MdPeople />,
+      show: true,
+    },
+    {
+      to: "/rates",
+      label: "Live Rates",
+      icon: <MdCurrencyRupee />,
+      show: true,
+    },
+    {
+      to: "/repairings",
+      label: "AC Receipt",
+      icon: <MdBuildCircle />,
+      show: true,
+    },
+    { to: "/settings", label: "Settings", icon: <MdSettings />, show: true },
+    {
+      to: "/admin-management",
+      label: "Admin Management",
+      icon: <MdAdminPanelSettings />,
+      show: isSuperAdmin, // Only show for Super Admin
+    },
+  ];
+
+  // Filter links based on user permissions
+  const links = allLinks.filter((link) => link.show);
 
   return (
     <>
@@ -306,6 +334,26 @@ const Sidebar: React.FC<SidebarProps> = ({
             </NavLink>
           ))}
         </nav>
+
+        {/* User Info Section */}
+        {shouldExpand && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="px-4 py-4 mt-auto border-t border-blue-700"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600">
+                <MdAdminPanelSettings className="text-lg text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white">Super Admin</p>
+                <p className="text-xs text-blue-300">Full Access</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </motion.aside>
     </>
   );

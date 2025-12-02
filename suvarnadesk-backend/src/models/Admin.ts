@@ -20,45 +20,49 @@ export interface IAdmin extends Document {
     logoUrl?: string;
     ownerName?: string;
 
+    // Add these timestamps (automatically added by Mongoose)
+    createdAt: Date;
+    updatedAt: Date;
+
     // Methods
     comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
 const AdminSchema: Schema = new Schema({
-    name: { 
-        type: String, 
+    name: {
+        type: String,
         required: true,
-        trim: true 
+        trim: true
     },
-    email: { 
-        type: String, 
-        required: true, 
+    email: {
+        type: String,
+        required: true,
         unique: true,
         lowercase: true,
         trim: true,
         match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email']
     },
-    phone: { 
+    phone: {
         type: String,
-        trim: true 
+        trim: true
     },
-    role: { 
-        type: String, 
+    role: {
+        type: String,
         default: "admin",
         enum: ["super_admin", "admin", "manager", "accountant"]
     },
-    password: { 
-        type: String, 
+    password: {
+        type: String,
         required: true,
         minlength: 6
     },
-    memberSince: { 
-        type: Date, 
-        default: Date.now 
+    memberSince: {
+        type: Date,
+        default: Date.now
     },
-    lastLogin: { 
-        type: Date, 
-        default: Date.now 
+    lastLogin: {
+        type: Date,
+        default: Date.now
     },
     isActive: {
         type: Boolean,
@@ -103,7 +107,7 @@ AdminSchema.methods.comparePassword = async function (candidatePassword: string)
 };
 
 // Method to return admin without password
-AdminSchema.methods.toJSON = function() {
+AdminSchema.methods.toJSON = function () {
     const admin = this.toObject();
     delete admin.password;
     return admin;
