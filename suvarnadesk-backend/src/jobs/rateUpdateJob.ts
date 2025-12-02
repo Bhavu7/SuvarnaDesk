@@ -175,7 +175,7 @@ export class RateUpdateJob {
         // Initialize rates on startup
         this.initializeRates();
 
-        console.log('Rate update job started successfully');
+        // console.log('Rate update job started successfully');
     }
 
     // Manual trigger for rate update
