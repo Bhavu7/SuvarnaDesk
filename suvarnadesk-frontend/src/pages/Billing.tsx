@@ -1548,7 +1548,7 @@ export default function Billing() {
                           <MdDownload className="text-lg" />
                           {loading
                             ? `Preparing ${pdfData.shopSettings.shopName}...`
-                            : `Download ${pdfData.invoiceNumber} - ${pdfData.shopSettings.shopName}`}
+                            : `Download ${pdfData.invoiceNumber}`}
                         </>
                       )}
                     </PDFDownloadLink>
