@@ -661,7 +661,7 @@ export default function Billing() {
           SGSTAmount: silverTotals.SGSTAmount,
           grandTotal: silverTotals.grandTotal,
           shopSettings: {
-            shopName: "Measers Yogeshkumar and Brothers",
+            shopName: "M/s Yogeshkumar and Brothers",
             gstNumber: silverGstNumber,
             gstType: "Silver",
           },
@@ -823,12 +823,12 @@ export default function Billing() {
               }`
             );
 
-            if (pdfDataArray.length === 1) {
-              const downloadLink = document.createElement("a");
-              downloadLink.href = `${baseUrl}/api/invoices/download/${finalInvoiceNumber}?auto=1`;
-              downloadLink.target = "_blank";
-              downloadLink.click();
-            }
+            // if (pdfDataArray.length === 1) {
+            //   const downloadLink = document.createElement("a");
+            //   downloadLink.href = `${baseUrl}/api/invoices/download/${finalInvoiceNumber}?auto=1`;
+            //   downloadLink.target = "_blank";
+            //   downloadLink.click();
+            // }
           }
 
           generateInvoiceNumber();
