@@ -247,6 +247,27 @@ export default function Billing() {
     }
   };
 
+  // Function to create or update customer in database
+  const createOrUpdateCustomerInDB = async (customerData: {
+    name: string;
+    phone: string;
+    email?: string;
+    address?: string;
+    huid?: string;
+  }) => {
+    try {
+      // Call customer upsert endpoint
+      const response = await apiClient.post("/customers/upsert", customerData);
+      showToast.success("Customer saved successfully");
+      return response.data.data; // Return the created/updated customer
+    } catch (error: any) {
+      console.error("Error creating/updating customer:", error);
+      showToast.error("Could not save customer details");
+      // Return a mock customer ID for invoice creation
+      return { _id: "temp-customer-id", ...customerData };
+    }
+  };
+
   const handleLineItemChange = (
     index: number,
     field:
@@ -521,6 +542,19 @@ export default function Billing() {
     }
 
     try {
+      // FIRST: Create or update customer in database
+      const customerResponse = await createOrUpdateCustomerInDB({
+        name: customerName,
+        phone: customerPhone,
+        email: customerEmail || undefined,
+        address: customerAddress || undefined,
+        huid: customerHUID || undefined,
+      });
+
+      // Use the customer ID from database response
+      const customerId =
+        customerResponse._id || selectedCustomer || "new-customer";
+
       const shopSettingsResponse = await apiClient.get("/shop-settings");
       const shopData = shopSettingsResponse.data || {};
 
@@ -733,7 +767,7 @@ export default function Billing() {
       const invoicePayload = {
         invoiceNumber: finalInvoiceNumber,
         date: invoiceDate,
-        customerId: selectedCustomer || "new-customer",
+        customerId: customerId,
         customerSnapshot: {
           name: customerName,
           email: customerEmail,
