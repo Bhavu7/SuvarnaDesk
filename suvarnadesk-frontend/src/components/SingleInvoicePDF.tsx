@@ -6,9 +6,10 @@ import {
   View,
   StyleSheet,
   Font,
+  Image,
 } from "@react-pdf/renderer";
 
-// Register fonts with rupee symbol support
+// Register fonts
 Font.register({
   family: "Helvetica",
   fonts: [
@@ -17,7 +18,6 @@ Font.register({
   ],
 });
 
-// Register a font that supports rupee symbol if needed, or use Unicode
 Font.register({
   family: "DejaVu",
   src: "/fonts/DejaVuSans.ttf",
@@ -35,11 +35,25 @@ const styles = StyleSheet.create({
     padding: 16,
     flex: 1,
   },
-  titleSection: {
-    textAlign: "left",
-    marginBottom: 12,
-    paddingBottom: 8,
+  headerSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 15,
+    paddingBottom: 10,
     borderBottom: "1 solid #ddd",
+  },
+  logoContainer: {
+    width: 60,
+    height: 60,
+    marginRight: 15,
+  },
+  logo: {
+    width: "100%",
+    height: "100%",
+    objectFit: "contain",
+  },
+  titleSection: {
+    flex: 1,
   },
   title: {
     fontSize: 16,
@@ -89,12 +103,6 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: "#333",
     lineHeight: 1.4,
-  },
-  huidText: {
-    fontSize: 8,
-    color: "#666",
-    marginTop: 2,
-    fontWeight: "bold",
   },
   tableSection: {
     marginBottom: 8,
@@ -283,6 +291,7 @@ interface InvoicePDFProps {
     shopSettings: {
       shopName: string;
       gstNumber?: string;
+      logoUrl?: string;
     };
   };
 }
@@ -300,7 +309,6 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
     return `₹${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,")}`;
   };
 
-  // Simple multi-page logic without empty rows
   const ITEMS_PER_PAGE = 11;
   const totalPages = Math.ceil(data.items.length / ITEMS_PER_PAGE);
 
@@ -313,16 +321,23 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
     return (
       <Page key={pageIndex} size="A4" style={styles.page}>
         <View style={styles.container}>
-          {/* Header Section - Show on every page */}
-          <View style={styles.titleSection}>
-            <Text style={styles.title}>{data.shopSettings.shopName}</Text>
-            {/* Only show GST if it exists */}
-            {data.shopSettings.gstNumber &&
-              data.shopSettings.gstNumber.trim() && (
-                <Text style={styles.gstNumber}>
-                  GST: {data.shopSettings.gstNumber}
-                </Text>
-              )}
+          {/* Header Section with Logo */}
+          <View style={styles.headerSection}>
+            <View style={styles.logoContainer}>
+              <Image
+                style={styles.logo}
+                src={data.shopSettings.logoUrl || "/logo.png"}
+              />
+            </View>
+            <View style={styles.titleSection}>
+              <Text style={styles.title}>{data.shopSettings.shopName}</Text>
+              {data.shopSettings.gstNumber &&
+                data.shopSettings.gstNumber.trim() && (
+                  <Text style={styles.gstNumber}>
+                    GST: {data.shopSettings.gstNumber}
+                  </Text>
+                )}
+            </View>
           </View>
 
           <View style={styles.metaInfoRow}>
@@ -432,7 +447,6 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
               </View>
             </View>
 
-            {/* Actual Items Only - No Empty Rows */}
             {pageItems.map((item, index) => {
               const globalIndex = startIndex + index;
               return (
