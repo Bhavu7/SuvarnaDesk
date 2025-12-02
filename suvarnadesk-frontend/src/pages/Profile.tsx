@@ -73,6 +73,7 @@ const formatDate = (dateString?: string): string => {
   }
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const formatDateTime = (dateString?: string): string => {
   if (!dateString) return "Not available";
 
@@ -146,6 +147,7 @@ const Profile: React.FC = () => {
     new: false,
     confirm: false,
   });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [currentTime, setCurrentTime] = useState<string>(getCurrentDateTime());
 
   const [formData, setFormData] = useState<Partial<AdminProfile>>({

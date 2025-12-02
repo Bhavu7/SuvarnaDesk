@@ -4,7 +4,6 @@ import {
   MdLogout,
   MdPerson,
   MdSettings,
-  MdAccountCircle,
   MdSupervisorAccount, // Add this import
 } from "react-icons/md";
 import { motion, AnimatePresence } from "framer-motion";
