@@ -4,6 +4,9 @@ import { Request, Response } from "express";
 // GST validation regex (basic format check)
 const GST_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$/;
 
+// PAN validation regex
+const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+
 const validateGstNumber = (gstNumber: string | undefined): { isValid: boolean; error?: string } => {
     if (!gstNumber || gstNumber.trim() === "") {
         return { isValid: true }; // Empty GST is allowed
@@ -13,6 +16,21 @@ const validateGstNumber = (gstNumber: string | undefined): { isValid: boolean; e
         return {
             isValid: false,
             error: "GST number should be 15 characters in format: 22AAAAA0000A1Z5"
+        };
+    }
+
+    return { isValid: true };
+};
+
+const validatePanNumber = (panNumber: string | undefined): { isValid: boolean; error?: string } => {
+    if (!panNumber || panNumber.trim() === "") {
+        return { isValid: true }; // Empty PAN is allowed
+    }
+
+    if (!PAN_REGEX.test(panNumber.toUpperCase())) {
+        return {
+            isValid: false,
+            error: "PAN number should be 10 characters in format: ABCDE1234F"
         };
     }
 
@@ -30,7 +48,7 @@ export const getShopSettings = async (req: Request, res: Response) => {
             });
         }
 
-        // Return settings with only current fields
+        // Return settings with all fields
         res.json({
             shopName: settings.shopName,
             ownerName: settings.ownerName,
@@ -38,6 +56,8 @@ export const getShopSettings = async (req: Request, res: Response) => {
             phone: settings.phone,
             goldGstNumber: settings.goldGstNumber || "",
             silverGstNumber: settings.silverGstNumber || "",
+            goldPanNumber: settings.goldPanNumber || "",    // Added
+            silverPanNumber: settings.silverPanNumber || "", // Added
             logoUrl: settings.logoUrl || "",
             createdAt: settings.createdAt,
             updatedAt: settings.updatedAt
@@ -60,6 +80,8 @@ export const updateShopSettings = async (req: Request, res: Response) => {
             phone,
             goldGstNumber,
             silverGstNumber,
+            goldPanNumber,    // Added
+            silverPanNumber,  // Added
             logoUrl
         } = req.body;
 
@@ -105,6 +127,23 @@ export const updateShopSettings = async (req: Request, res: Response) => {
             });
         }
 
+        // Validate PAN numbers if provided
+        const goldPanValidation = validatePanNumber(goldPanNumber);
+        if (!goldPanValidation.isValid) {
+            return res.status(400).json({
+                error: "Invalid Gold PAN number",
+                message: goldPanValidation.error
+            });
+        }
+
+        const silverPanValidation = validatePanNumber(silverPanNumber);
+        if (!silverPanValidation.isValid) {
+            return res.status(400).json({
+                error: "Invalid Silver PAN number",
+                message: silverPanValidation.error
+            });
+        }
+
         // Check if settings exist
         let settings = await ShopSettings.findOne();
 
@@ -117,6 +156,8 @@ export const updateShopSettings = async (req: Request, res: Response) => {
                 phone: phone.trim(),
                 goldGstNumber: goldGstNumber?.trim() || "",
                 silverGstNumber: silverGstNumber?.trim() || "",
+                goldPanNumber: goldPanNumber?.trim() || "",    // Added
+                silverPanNumber: silverPanNumber?.trim() || "", // Added
                 logoUrl: logoUrl?.trim() || ""
             });
         } else {
@@ -127,6 +168,8 @@ export const updateShopSettings = async (req: Request, res: Response) => {
             settings.phone = phone.trim();
             settings.goldGstNumber = goldGstNumber?.trim() || "";
             settings.silverGstNumber = silverGstNumber?.trim() || "";
+            settings.goldPanNumber = goldPanNumber?.trim() || "";    // Added
+            settings.silverPanNumber = silverPanNumber?.trim() || ""; // Added
             settings.logoUrl = logoUrl?.trim() || "";
         }
 
@@ -143,6 +186,8 @@ export const updateShopSettings = async (req: Request, res: Response) => {
                 phone: settings.phone,
                 goldGstNumber: settings.goldGstNumber || "",
                 silverGstNumber: settings.silverGstNumber || "",
+                goldPanNumber: settings.goldPanNumber || "",    // Added
+                silverPanNumber: settings.silverPanNumber || "", // Added
                 logoUrl: settings.logoUrl || "",
                 updatedAt: settings.updatedAt
             }
@@ -156,7 +201,6 @@ export const updateShopSettings = async (req: Request, res: Response) => {
     }
 };
 
-// Create initial settings (if you want an endpoint for this)
 export const createInitialSettings = async (req: Request, res: Response) => {
     try {
         const existingSettings = await ShopSettings.findOne();
@@ -175,6 +219,8 @@ export const createInitialSettings = async (req: Request, res: Response) => {
             phone,
             goldGstNumber,
             silverGstNumber,
+            goldPanNumber,    // Added
+            silverPanNumber,  // Added
             logoUrl
         } = req.body;
 
@@ -202,6 +248,23 @@ export const createInitialSettings = async (req: Request, res: Response) => {
             });
         }
 
+        // Validate PAN numbers if provided
+        const goldPanValidation = validatePanNumber(goldPanNumber);
+        if (!goldPanValidation.isValid) {
+            return res.status(400).json({
+                error: "Invalid Gold PAN number",
+                message: goldPanValidation.error
+            });
+        }
+
+        const silverPanValidation = validatePanNumber(silverPanNumber);
+        if (!silverPanValidation.isValid) {
+            return res.status(400).json({
+                error: "Invalid Silver PAN number",
+                message: silverPanValidation.error
+            });
+        }
+
         // Create new settings
         const settings = new ShopSettings({
             shopName: shopName.trim(),
@@ -210,6 +273,8 @@ export const createInitialSettings = async (req: Request, res: Response) => {
             phone: phone.trim(),
             goldGstNumber: goldGstNumber?.trim() || "",
             silverGstNumber: silverGstNumber?.trim() || "",
+            goldPanNumber: goldPanNumber?.trim() || "",    // Added
+            silverPanNumber: silverPanNumber?.trim() || "", // Added
             logoUrl: logoUrl?.trim() || ""
         });
 
@@ -225,6 +290,8 @@ export const createInitialSettings = async (req: Request, res: Response) => {
                 phone: settings.phone,
                 goldGstNumber: settings.goldGstNumber || "",
                 silverGstNumber: settings.silverGstNumber || "",
+                goldPanNumber: settings.goldPanNumber || "",    // Added
+                silverPanNumber: settings.silverPanNumber || "", // Added
                 logoUrl: settings.logoUrl || "",
                 createdAt: settings.createdAt
             }

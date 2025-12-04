@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MdInventory, MdAdd, MdEdit, MdDelete } from "react-icons/md";
+import {
+  MdInventory,
+  MdAdd,
+  MdEdit,
+  MdDelete,
+  MdPictureAsPdf,
+} from "react-icons/md";
 import {
   useProducts,
   useCreateProduct,
@@ -12,6 +18,7 @@ import { showToast } from "../components/CustomToast";
 import CustomDropdown from "../components/CustomDropdown";
 import { pdf } from "@react-pdf/renderer";
 import StockReportPDF, { StockProduct } from "../components/StockReportPDF";
+import apiClient from "../api/apiClient";
 
 const emptyForm: Product = {
   productNo: "",
@@ -23,6 +30,18 @@ const emptyForm: Product = {
   weightUnit: "g",
 };
 
+interface ShopSettings {
+  shopName: string;
+  address: string;
+  phone: string;
+  goldGstNumber?: string;
+  silverGstNumber?: string;
+  goldPanNumber?: string;
+  silverPanNumber?: string;
+  logoUrl?: string;
+  ownerName?: string;
+}
+
 const Stock: React.FC = () => {
   const { data: products, isLoading } = useProducts();
   const createProduct = useCreateProduct();
@@ -33,6 +52,43 @@ const Stock: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [showReportTypeDialog, setShowReportTypeDialog] = useState(false);
+  const [selectedReportType, setSelectedReportType] = useState<
+    "gold" | "silver" | "all"
+  >("all");
+  const [shopSettings, setShopSettings] = useState<ShopSettings | null>(null);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
+
+  // Fetch shop settings
+  useEffect(() => {
+    const fetchShopSettings = async () => {
+      try {
+        setIsLoadingSettings(true);
+        const response = await apiClient.get("/shop-settings");
+        if (response.data) {
+          setShopSettings(response.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch shop settings:", error);
+        // Use default settings if fetch fails
+        setShopSettings({
+          shopName: "SuvarnaDesk Jewellery",
+          address: "near ashok stambh, choksi bazar anand 388001",
+          phone: "",
+          goldGstNumber: "",
+          silverGstNumber: "",
+          goldPanNumber: "",
+          silverPanNumber: "",
+          logoUrl: "/logo.png",
+          ownerName: "",
+        });
+      } finally {
+        setIsLoadingSettings(false);
+      }
+    };
+
+    fetchShopSettings();
+  }, []);
 
   useEffect(() => {
     if (!editingId) {
@@ -40,34 +96,79 @@ const Stock: React.FC = () => {
     }
   }, [editingId]);
 
-  const handleDownloadStockPDF = async () => {
+  const handleDownloadStockPDF = async (type?: "gold" | "silver" | "all") => {
     if (!products || products.length === 0) {
       showToast.error("No products available to generate report");
       return;
     }
 
-    try {
-      showToast.loading("Generating stock report PDF, please wait...");
+    // If type is not specified, show dialog
+    if (type === undefined) {
+      setShowReportTypeDialog(true);
+      return;
+    }
 
-      const mappedProducts: StockProduct[] = products.map((p, index) => ({
-        srNo: index + 1,
-        productNo: p.productNo,
-        name: p.name,
-        productType: p.productType,
-        quantity: p.quantity || 0,
-        hsnCode: p.hsnCode || "",
-        weight: p.weight || 0,
-        weightUnit: p.weightUnit || "g",
-      }));
+    try {
+      showToast.loading(
+        `Generating ${
+          type === "all"
+            ? "Stock"
+            : type.charAt(0).toUpperCase() + type.slice(1)
+        } report PDF, please wait...`
+      );
+
+      // Filter products based on selected type
+      const filteredProducts =
+        type === "all"
+          ? products
+          : products.filter((p) => p.productType === type);
+
+      if (filteredProducts.length === 0) {
+        showToast.error(`No ${type} products available to generate report`);
+        return;
+      }
+
+      const mappedProducts: StockProduct[] = filteredProducts.map(
+        (p, index) => ({
+          srNo: index + 1,
+          productNo: p.productNo,
+          name: p.name,
+          productType: p.productType,
+          quantity: p.quantity || 0,
+          hsnCode: p.hsnCode || "",
+          weight: p.weight || 0,
+          weightUnit: p.weightUnit || "g",
+        })
+      );
+
+      // Determine owner name based on report type
+      let ownerName = shopSettings?.ownerName || "";
+      if (!ownerName) {
+        if (type === "gold") {
+          ownerName = "Jay Krushna Haribhai Soni";
+        } else if (type === "silver") {
+          ownerName = "M/s Yogeshkumar and Brothers";
+        } else {
+          ownerName = "SuvarnaDesk Jewellery";
+        }
+      }
 
       const doc = (
         <StockReportPDF
           data={{
             reportDateTime: new Date().toISOString(),
-            shopName: "SuvarnaDesk Jewellery",
-            shopAddress: "near ashok stambh, choksi bazar anand 388001",
-            logoUrl: "/logo.png",
+            shopName: shopSettings?.shopName || "SuvarnaDesk Jewellery",
+            shopAddress:
+              shopSettings?.address ||
+              "near ashok stambh, choksi bazar anand 388001",
+            logoUrl: shopSettings?.logoUrl || "/logo.png",
             products: mappedProducts,
+            reportType: type,
+            ownerName: ownerName,
+            goldGstNumber: shopSettings?.goldGstNumber || "",
+            silverGstNumber: shopSettings?.silverGstNumber || "",
+            goldPanNumber: shopSettings?.goldPanNumber || "",
+            silverPanNumber: shopSettings?.silverPanNumber || "",
           }}
         />
       );
@@ -76,7 +177,9 @@ const Stock: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `Stock_Report_${new Date()
+      const typeLabel =
+        type === "all" ? "Stock" : type.charAt(0).toUpperCase() + type.slice(1);
+      link.download = `${typeLabel}_Report_${new Date()
         .toISOString()
         .slice(0, 10)}.pdf`;
       document.body.appendChild(link);
@@ -84,10 +187,12 @@ const Stock: React.FC = () => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      showToast.success("Stock report PDF downloaded successfully!");
+      showToast.success(`${typeLabel} report PDF downloaded successfully!`);
+      setShowReportTypeDialog(false);
+      setSelectedReportType("all");
     } catch (error) {
       console.error("Stock PDF generation error:", error);
-      showToast.error("Failed to generate stock report PDF. Please try again.");
+      showToast.error("Failed to generate report PDF. Please try again.");
     }
   };
 
@@ -253,10 +358,12 @@ const Stock: React.FC = () => {
 
           <motion.button
             whileTap={{ scale: 0.98 }}
-            onClick={handleDownloadStockPDF}
-            className="px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-0"
+            onClick={() => handleDownloadStockPDF()}
+            disabled={isLoadingSettings}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-0 disabled:opacity-50"
           >
-            Download Stock PDF
+            <MdPictureAsPdf className="text-lg" />
+            {isLoadingSettings ? "Loading..." : "Download Stock PDF"}
           </motion.button>
         </div>
       </div>
@@ -623,6 +730,162 @@ const Stock: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Report Type Selection Dialog */}
+      <AnimatePresence>
+        {showReportTypeDialog && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 10 }}
+              className="w-full max-w-md p-6 bg-white shadow-xl rounded-2xl"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-xl font-bold text-gray-800">
+                  Select Report Type
+                </h4>
+                <button
+                  onClick={() => {
+                    setShowReportTypeDialog(false);
+                    setSelectedReportType("all");
+                  }}
+                  className="p-1 text-gray-400 rounded-full hover:bg-gray-100 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p className="mb-6 text-sm text-gray-600">
+                Choose the type of stock report you want to download:
+              </p>
+
+              <div className="grid grid-cols-1 gap-3 mb-6">
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setSelectedReportType("all");
+                    handleDownloadStockPDF("all");
+                  }}
+                  className={`p-4 border-2 rounded-lg text-left transition-all ${
+                    selectedReportType === "all"
+                      ? "border-green-500 bg-green-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-100 rounded-full">
+                      <MdInventory className="text-green-600" />
+                    </div>
+                    <div>
+                      <h5 className="font-semibold text-gray-800">
+                        Complete Stock Report
+                      </h5>
+                      <p className="text-xs text-gray-600">
+                        All products (Gold + Silver)
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Includes both GST & PAN numbers
+                      </p>
+                    </div>
+                  </div>
+                </motion.button>
+
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setSelectedReportType("gold");
+                    handleDownloadStockPDF("gold");
+                  }}
+                  className={`p-4 border-2 rounded-lg text-left transition-all ${
+                    selectedReportType === "gold"
+                      ? "border-yellow-500 bg-yellow-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-yellow-100 rounded-full">
+                      <MdInventory className="text-yellow-600" />
+                    </div>
+                    <div>
+                      <h5 className="font-semibold text-gray-800">
+                        Gold Products Only
+                      </h5>
+                      <p className="text-xs text-gray-600">
+                        With Gold GSTIN and PAN details
+                      </p>
+                      <p className="mt-1 text-xs text-yellow-600">
+                        {shopSettings?.goldGstNumber
+                          ? `GST: ${shopSettings.goldGstNumber}`
+                          : "GST: Not set in settings"}
+                      </p>
+                    </div>
+                  </div>
+                </motion.button>
+
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setSelectedReportType("silver");
+                    handleDownloadStockPDF("silver");
+                  }}
+                  className={`p-4 border-2 rounded-lg text-left transition-all ${
+                    selectedReportType === "silver"
+                      ? "border-gray-500 bg-gray-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gray-100 rounded-full">
+                      <MdInventory className="text-gray-600" />
+                    </div>
+                    <div>
+                      <h5 className="font-semibold text-gray-800">
+                        Silver Products Only
+                      </h5>
+                      <p className="text-xs text-gray-600">
+                        With Silver GSTIN and PAN details
+                      </p>
+                      <p className="mt-1 text-xs text-gray-600">
+                        {shopSettings?.silverGstNumber
+                          ? `GST: ${shopSettings.silverGstNumber}`
+                          : "GST: Not set in settings"}
+                      </p>
+                    </div>
+                  </div>
+                </motion.button>
+              </div>
+
+              <div className="p-3 mb-4 rounded-lg bg-blue-50">
+                <p className="text-xs text-blue-700">
+                  <strong>Note:</strong> GST and PAN numbers are fetched from
+                  Shop Settings.
+                  {!shopSettings?.goldGstNumber &&
+                    !shopSettings?.silverGstNumber &&
+                    " Please set them in Settings first for proper invoices."}
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => {
+                    setShowReportTypeDialog(false);
+                    setSelectedReportType("all");
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Delete confirmation modal */}
       <AnimatePresence>

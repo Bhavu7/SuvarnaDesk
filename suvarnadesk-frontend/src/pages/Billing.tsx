@@ -624,7 +624,7 @@ export default function Billing() {
           SGSTAmount: goldTotals.SGSTAmount,
           grandTotal: goldTotals.grandTotal,
           shopSettings: {
-            shopName: "Jay Krishna Haribhai Soni",
+            shopName: "Jay Krushna Haribhai Soni",
             gstNumber: goldGstNumber,
             gstType: "Gold",
           },

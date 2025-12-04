@@ -7,6 +7,7 @@ import {
   MdLocationOn,
   MdAttachMoney,
   MdMoneyOff,
+  MdCreditCard,
 } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
 import apiClient from "../api/apiClient";
@@ -19,6 +20,8 @@ interface ShopSettings {
   phone: string;
   goldGstNumber?: string;
   silverGstNumber?: string;
+  goldPanNumber?: string; // Added
+  silverPanNumber?: string; // Added
   logoUrl?: string;
   ownerName?: string;
 }
@@ -31,6 +34,8 @@ export default function Settings() {
     phone: "",
     goldGstNumber: "",
     silverGstNumber: "",
+    goldPanNumber: "", // Added
+    silverPanNumber: "", // Added
     logoUrl: "",
     ownerName: "",
   });
@@ -51,6 +56,8 @@ export default function Settings() {
           phone: data.phone || "",
           goldGstNumber: data.goldGstNumber || "",
           silverGstNumber: data.silverGstNumber || "",
+          goldPanNumber: data.goldPanNumber || "", // Added
+          silverPanNumber: data.silverPanNumber || "", // Added
           logoUrl: data.logoUrl || "",
           ownerName: data.ownerName || "",
         });
@@ -91,6 +98,19 @@ export default function Settings() {
         return;
       }
 
+      // Validate PAN numbers format
+      if (settings.goldPanNumber && !isValidPAN(settings.goldPanNumber)) {
+        showToast.error("Please enter a valid PAN number for Gold");
+        setIsSaving(false);
+        return;
+      }
+
+      if (settings.silverPanNumber && !isValidPAN(settings.silverPanNumber)) {
+        showToast.error("Please enter a valid PAN number for Silver");
+        setIsSaving(false);
+        return;
+      }
+
       const response = await apiClient.put("/shop-settings", {
         shopName: settings.shopName,
         ownerName: settings.ownerName,
@@ -98,6 +118,8 @@ export default function Settings() {
         phone: settings.phone,
         goldGstNumber: settings.goldGstNumber,
         silverGstNumber: settings.silverGstNumber,
+        goldPanNumber: settings.goldPanNumber, // Added
+        silverPanNumber: settings.silverPanNumber, // Added
         logoUrl: settings.logoUrl,
       });
 
@@ -134,6 +156,13 @@ export default function Settings() {
     return gstRegex.test(gstNumber);
   };
 
+  // PAN number validation
+  const isValidPAN = (panNumber: string): boolean => {
+    if (!panNumber || panNumber.trim() === "") return true; // Allow empty PAN
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+    return panRegex.test(panNumber.toUpperCase());
+  };
+
   const formatGSTForDisplay = (gstNumber: string): string => {
     if (!gstNumber || gstNumber.trim() === "") return "Not set";
     // Format as XX-XXXXX-XXXX-X-X-X
@@ -147,6 +176,11 @@ export default function Settings() {
       )}-${gstNumber.slice(13, 15)}`;
     }
     return gstNumber;
+  };
+
+  const formatPANForDisplay = (panNumber: string): string => {
+    if (!panNumber || panNumber.trim() === "") return "Not set";
+    return panNumber.toUpperCase();
   };
 
   const isSaveDisabled = (): boolean => {
@@ -166,6 +200,23 @@ export default function Settings() {
       settings.silverGstNumber &&
       settings.silverGstNumber.trim() &&
       !isValidGST(settings.silverGstNumber)
+    ) {
+      return true;
+    }
+
+    // Check if PAN numbers are valid if they exist
+    if (
+      settings.goldPanNumber &&
+      settings.goldPanNumber.trim() &&
+      !isValidPAN(settings.goldPanNumber)
+    ) {
+      return true;
+    }
+
+    if (
+      settings.silverPanNumber &&
+      settings.silverPanNumber.trim() &&
+      !isValidPAN(settings.silverPanNumber)
     ) {
       return true;
     }
@@ -256,7 +307,7 @@ export default function Settings() {
             </div>
           </motion.div>
 
-          {/* GST Information */}
+          {/* GST & PAN Information */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -266,7 +317,7 @@ export default function Settings() {
             <div className="flex items-center gap-2 mb-6">
               <MdAttachMoney className="text-xl text-yellow-600" />
               <h3 className="text-lg font-semibold text-gray-800">
-                GST Information
+                Tax Information (Gold)
               </h3>
             </div>
 
@@ -309,6 +360,61 @@ export default function Settings() {
                   )}
               </div>
 
+              {/* Gold PAN */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <MdCreditCard className="text-yellow-600" />
+                  <label className="text-sm font-medium text-gray-700">
+                    Gold PAN Number
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  value={settings.goldPanNumber || ""}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "goldPanNumber",
+                      e.target.value.toUpperCase()
+                    )
+                  }
+                  className="w-full px-4 py-3 transition-all duration-200 border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                  placeholder="PAN Number (e.g., ABCDE1234F)"
+                  maxLength={10}
+                />
+                {settings.goldPanNumber &&
+                  settings.goldPanNumber.trim() &&
+                  !isValidPAN(settings.goldPanNumber) && (
+                    <p className="mt-1 text-xs text-red-600">
+                      Please enter a valid PAN number format (10 characters:
+                      ABCDE1234F)
+                    </p>
+                  )}
+                {settings.goldPanNumber &&
+                  settings.goldPanNumber.trim() &&
+                  isValidPAN(settings.goldPanNumber) && (
+                    <p className="mt-1 text-xs text-green-600">
+                      ✓ Valid PAN: {formatPANForDisplay(settings.goldPanNumber)}
+                    </p>
+                  )}
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Silver GST & PAN Information */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.15 }}
+            className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm"
+          >
+            <div className="flex items-center gap-2 mb-6">
+              <MdAttachMoney className="text-xl text-gray-500" />
+              <h3 className="text-lg font-semibold text-gray-800">
+                Tax Information (Silver)
+              </h3>
+            </div>
+
+            <div className="space-y-6">
               {/* Silver GST */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
@@ -347,15 +453,54 @@ export default function Settings() {
                   )}
               </div>
 
-              {/* Note about GST */}
-              <div className="p-3 rounded-lg bg-gray-50">
-                <p className="text-xs text-gray-600">
-                  <strong>Note:</strong> Enter your GST numbers for Gold and
-                  Silver items separately. Format should be 15 characters (e.g.,
-                  22AAAAA0000A1Z5). GST numbers will be used on invoices based
-                  on the item type.
-                </p>
+              {/* Silver PAN */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <MdCreditCard className="text-gray-500" />
+                  <label className="text-sm font-medium text-gray-700">
+                    Silver PAN Number
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  value={settings.silverPanNumber || ""}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "silverPanNumber",
+                      e.target.value.toUpperCase()
+                    )
+                  }
+                  className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                  placeholder="PAN Number (e.g., ABCDE1234F)"
+                  maxLength={10}
+                />
+                {settings.silverPanNumber &&
+                  settings.silverPanNumber.trim() &&
+                  !isValidPAN(settings.silverPanNumber) && (
+                    <p className="mt-1 text-xs text-red-600">
+                      Please enter a valid PAN number format (10 characters:
+                      ABCDE1234F)
+                    </p>
+                  )}
+                {settings.silverPanNumber &&
+                  settings.silverPanNumber.trim() &&
+                  isValidPAN(settings.silverPanNumber) && (
+                    <p className="mt-1 text-xs text-green-600">
+                      ✓ Valid PAN:{" "}
+                      {formatPANForDisplay(settings.silverPanNumber)}
+                    </p>
+                  )}
               </div>
+            </div>
+
+            {/* Note about GST & PAN */}
+            <div className="p-3 mt-6 rounded-lg bg-gray-50">
+              <p className="text-xs text-gray-600">
+                <strong>Note:</strong> Enter your GST and PAN numbers for Gold
+                and Silver items separately. GST numbers will be used on
+                invoices based on the item type. PAN is required for high-value
+                transactions.
+              </p>
             </div>
           </motion.div>
 
@@ -452,6 +597,8 @@ export default function Settings() {
                   {settings.ownerName || "Not set"}
                 </p>
               </div>
+
+              {/* Gold Tax Info */}
               <div className="p-3 border border-yellow-200 rounded-lg bg-yellow-50">
                 <span className="block mb-1 text-xs font-medium text-yellow-700">
                   Gold GST:
@@ -476,6 +623,32 @@ export default function Settings() {
                     )}
                 </p>
               </div>
+              <div className="p-3 border border-yellow-200 rounded-lg bg-yellow-50">
+                <span className="block mb-1 text-xs font-medium text-yellow-700">
+                  Gold PAN:
+                </span>
+                <p className="font-medium text-gray-800">
+                  {settings.goldPanNumber
+                    ? formatPANForDisplay(settings.goldPanNumber)
+                    : "Not set"}
+                  {settings.goldPanNumber &&
+                    settings.goldPanNumber.trim() &&
+                    isValidPAN(settings.goldPanNumber) && (
+                      <span className="ml-2 text-xs text-green-600">
+                        ✓ Valid
+                      </span>
+                    )}
+                  {settings.goldPanNumber &&
+                    settings.goldPanNumber.trim() &&
+                    !isValidPAN(settings.goldPanNumber) && (
+                      <span className="ml-2 text-xs text-red-600">
+                        ✗ Invalid
+                      </span>
+                    )}
+                </p>
+              </div>
+
+              {/* Silver Tax Info */}
               <div className="p-3 border border-gray-200 rounded-lg bg-gray-50">
                 <span className="block mb-1 text-xs font-medium text-gray-700">
                   Silver GST:
@@ -500,6 +673,31 @@ export default function Settings() {
                     )}
                 </p>
               </div>
+              <div className="p-3 border border-gray-200 rounded-lg bg-gray-50">
+                <span className="block mb-1 text-xs font-medium text-gray-700">
+                  Silver PAN:
+                </span>
+                <p className="font-medium text-gray-800">
+                  {settings.silverPanNumber
+                    ? formatPANForDisplay(settings.silverPanNumber)
+                    : "Not set"}
+                  {settings.silverPanNumber &&
+                    settings.silverPanNumber.trim() &&
+                    isValidPAN(settings.silverPanNumber) && (
+                      <span className="ml-2 text-xs text-green-600">
+                        ✓ Valid
+                      </span>
+                    )}
+                  {settings.silverPanNumber &&
+                    settings.silverPanNumber.trim() &&
+                    !isValidPAN(settings.silverPanNumber) && (
+                      <span className="ml-2 text-xs text-red-600">
+                        ✗ Invalid
+                      </span>
+                    )}
+                </p>
+              </div>
+
               <div className="p-3 rounded-lg bg-gray-50">
                 <span className="block mb-1 text-xs font-medium text-gray-500">
                   Phone:
@@ -529,11 +727,15 @@ export default function Settings() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-1">•</span>
-                <span>Enter separate GST numbers for Gold and Silver</span>
+                <span>Enter separate GST & PAN for Gold and Silver</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-1">•</span>
                 <span>GST format: 15 characters (22AAAAA0000A1Z5)</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1">•</span>
+                <span>PAN format: 10 characters (ABCDE1234F)</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-1">•</span>
@@ -546,19 +748,20 @@ export default function Settings() {
             </ul>
           </div>
 
-          {/* GST Info Card */}
+          {/* Tax Info Card */}
           <div className="p-6 border border-yellow-200 rounded-lg bg-yellow-50">
             <div className="flex items-center gap-2 mb-3">
               <MdMoneyOff className="text-lg text-yellow-700" />
-              <h4 className="font-semibold text-yellow-800">GST Information</h4>
+              <h4 className="font-semibold text-yellow-800">Tax Information</h4>
             </div>
             <div className="text-sm text-yellow-700">
-              <p className="mb-2">Why separate GST numbers?</p>
+              <p className="mb-2">Why separate GST & PAN?</p>
               <ul className="space-y-1">
                 <li>• Different tax rates for Gold and Silver</li>
                 <li>• Separate HSN codes for each metal type</li>
                 <li>• Different invoice requirements</li>
                 <li>• Compliance with GST regulations</li>
+                <li>• PAN required for transactions over ₹2 lakhs</li>
               </ul>
             </div>
           </div>

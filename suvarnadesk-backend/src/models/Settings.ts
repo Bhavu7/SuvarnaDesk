@@ -1,4 +1,3 @@
-// src/models/Settings.ts
 import { Schema, model, Document } from "mongoose";
 
 export interface IShopSettings extends Document {
@@ -8,6 +7,8 @@ export interface IShopSettings extends Document {
     phone: string;
     goldGstNumber?: string;
     silverGstNumber?: string;
+    goldPanNumber?: string;    // Added
+    silverPanNumber?: string;  // Added
     logoUrl?: string;
     createdAt: Date;
     updatedAt: Date;
@@ -20,6 +21,8 @@ const settingsSchema = new Schema<IShopSettings>({
     phone: { type: String, required: true },
     goldGstNumber: { type: String },
     silverGstNumber: { type: String },
+    goldPanNumber: { type: String },    // Added
+    silverPanNumber: { type: String },  // Added
     logoUrl: { type: String }
 }, {
     timestamps: true
