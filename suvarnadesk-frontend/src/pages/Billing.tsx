@@ -11,10 +11,10 @@ import {
   MdDownload,
   MdRefresh,
 } from "react-icons/md";
-import { useLabourCharges, LabourCharge } from "../hooks/useLabourCharges";
 import { useMetalRates, MetalRate } from "../hooks/useMetalRates";
 import { useLiveRates, LiveRate } from "../hooks/useLiveRates";
 import { useCreateInvoice, LineItem } from "../hooks/useBilling";
+import CustomDropdown from "../components/CustomDropdown"; // Import CustomDropdown
 import InvoiceQRCode from "../components/InvoiceQRCode";
 import { showToast } from "../components/CustomToast";
 import SingleInvoicePDF from "../components/SingleInvoicePDF";
@@ -61,7 +61,6 @@ interface PdfData {
 }
 
 export default function Billing() {
-  const { data: labourCharges } = useLabourCharges();
   const { data: metalRates } = useMetalRates();
   const {
     data: liveRates,
@@ -1312,58 +1311,38 @@ export default function Billing() {
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                      {/* Item Type */}
+                      {/* Item Type - CustomDropdown */}
                       <div className="min-w-0">
                         <label className="block mb-1 text-sm font-medium text-gray-700">
                           Item Type
                         </label>
-                        <select
+                        <CustomDropdown
+                          options={itemTypeOptions}
                           value={item.itemType}
-                          onChange={(e) =>
-                            handleLineItemChange(
-                              index,
-                              "itemType",
-                              e.target.value
-                            )
+                          onChange={(value) =>
+                            handleLineItemChange(index, "itemType", value)
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           aria-label="Select item type"
-                        >
-                          {itemTypeOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </div>
 
-                      {/* Purity */}
+                      {/* Purity - CustomDropdown */}
                       <div className="min-w-0">
                         <label className="block mb-1 text-sm font-medium text-gray-700">
                           Purity
                         </label>
-                        <select
-                          value={item.purity}
-                          onChange={(e) =>
-                            handleLineItemChange(
-                              index,
-                              "purity",
-                              e.target.value
-                            )
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          aria-label="Select purity"
-                        >
-                          {(
+                        <CustomDropdown
+                          options={
                             purityOptions[
                               item.itemType as keyof typeof purityOptions
                             ] || purityOptions.other
-                          ).map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
+                          }
+                          value={item.purity}
+                          onChange={(value) =>
+                            handleLineItemChange(index, "purity", value)
+                          }
+                          aria-label="Select purity"
+                        />
                       </div>
 
                       {/* Labour Charge - Simple input field */}
@@ -1383,7 +1362,7 @@ export default function Billing() {
                             onChange={(e) =>
                               handleLabourChargeChange(index, e.target.value)
                             }
-                            className="w-full px-3 py-2 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-3 py-3 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="0.00"
                             aria-label="Enter labour charge"
                           />
@@ -1412,24 +1391,16 @@ export default function Billing() {
                             placeholder="0.00"
                             aria-label="Enter weight value"
                           />
-                          <select
+                          {/* Weight Unit - CustomDropdown */}
+                          <CustomDropdown
+                            options={weightUnitOptions}
                             value={item.weight.unit}
-                            onChange={(e) =>
-                              handleLineItemChange(
-                                index,
-                                "weightUnit",
-                                e.target.value
-                              )
+                            onChange={(value) =>
+                              handleLineItemChange(index, "weightUnit", value)
                             }
-                            className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-24"
                             aria-label="Select weight unit"
-                          >
-                            {weightUnitOptions.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
+                          />
                         </div>
                       </div>
                     </div>
@@ -1580,18 +1551,13 @@ export default function Billing() {
                   <label className="block mb-2 text-sm font-medium text-gray-700">
                     Payment Mode
                   </label>
-                  <select
+                  {/* Payment Mode - CustomDropdown */}
+                  <CustomDropdown
+                    options={paymentModeOptions}
                     value={paymentMode}
-                    onChange={(e) => setPaymentMode(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onChange={setPaymentMode}
                     aria-label="Select payment mode"
-                  >
-                    {paymentModeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
               </div>
             </motion.div>
