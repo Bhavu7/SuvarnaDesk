@@ -5,8 +5,7 @@ import {
   MdSave,
   MdStore,
   MdLocationOn,
-  MdAttachMoney,
-  MdMoneyOff,
+  MdCurrencyRupee,
   MdCreditCard,
   MdPerson,
 } from "react-icons/md";
@@ -325,7 +324,7 @@ export default function Settings() {
             className="p-6 bg-white border border-yellow-200 rounded-lg shadow-sm"
           >
             <div className="flex items-center gap-2 mb-6">
-              <MdAttachMoney className="text-xl text-yellow-600" />
+              <MdCurrencyRupee className="text-xl text-yellow-600" />
               <h3 className="text-lg font-semibold text-gray-800">
                 Gold Information
               </h3>
@@ -441,7 +440,7 @@ export default function Settings() {
             className="p-6 bg-white border border-gray-300 rounded-lg shadow-sm"
           >
             <div className="flex items-center gap-2 mb-6">
-              <MdAttachMoney className="text-xl text-gray-500" />
+              <MdCurrencyRupee className="text-xl text-gray-500" />
               <h3 className="text-lg font-semibold text-gray-800">
                 Silver Information
               </h3>
