@@ -11,12 +11,10 @@ import {
   MdDownload,
   MdRefresh,
 } from "react-icons/md";
-import { useCustomers, Customer } from "../hooks/useCustomers";
 import { useLabourCharges, LabourCharge } from "../hooks/useLabourCharges";
 import { useMetalRates, MetalRate } from "../hooks/useMetalRates";
 import { useLiveRates, LiveRate } from "../hooks/useLiveRates";
 import { useCreateInvoice, LineItem } from "../hooks/useBilling";
-import CustomDropdown from "../components/CustomDropdown";
 import InvoiceQRCode from "../components/InvoiceQRCode";
 import { showToast } from "../components/CustomToast";
 import SingleInvoicePDF from "../components/SingleInvoicePDF";
@@ -32,7 +30,9 @@ interface PdfData {
     address: string;
     email: string;
     phone: string;
-    huid: string;
+    hsnCode: string; // Changed from huid to hsnCode
+    gstin?: string; // Added
+    state?: string; // Added
   };
   items: Array<{
     productNo: string;
@@ -49,15 +49,18 @@ interface PdfData {
   SGSTPercent: number;
   SGSTAmount: number;
   grandTotal: number;
+  grandTotalInWords: string; // Added
   shopSettings: {
     shopName: string;
+    ownerName: string;
     gstNumber?: string;
-    gstType?: string;
+    panNumber?: string;
+    address: string;
+    bankDetails?: string;
   };
 }
 
 export default function Billing() {
-  const { data: customers } = useCustomers();
   const { data: labourCharges } = useLabourCharges();
   const { data: metalRates } = useMetalRates();
   const {
@@ -71,8 +74,9 @@ export default function Billing() {
     new Date().toISOString().substring(0, 10)
   );
   const [invoiceNumber, setInvoiceNumber] = useState<string>("");
-  const [customerHUID, setCustomerHUID] = useState<string>("");
-  const [selectedCustomer, setSelectedCustomer] = useState<string>("");
+  const [customerHSNCode, setCustomerHSNCode] = useState<string>(""); // Changed from HUID to HSN Code
+  const [customerGSTIN, setCustomerGSTIN] = useState<string>(""); // Added
+  const [customerState, setCustomerState] = useState<string>("Gujarat"); // Added with default
   const [customerName, setCustomerName] = useState<string>("");
   const [customerEmail, setCustomerEmail] = useState<string>("");
   const [customerPhone, setCustomerPhone] = useState<string>("");
@@ -99,18 +103,25 @@ export default function Billing() {
   const [paymentMode, setPaymentMode] = useState<string>("cash");
   const [showQRCode, setShowQRCode] = useState<boolean>(false);
   const [invoiceData, setInvoiceData] = useState<PdfData[] | null>(null);
+  const [shopSettings, setShopSettings] = useState<any>(null);
+  const [labourChargeInput, setLabourChargeInput] = useState<{
+    [key: number]: number;
+  }>({}); // Simple input for labour charges
 
   // Fetch shop settings and generate invoice number on component mount
   React.useEffect(() => {
     generateInvoiceNumber();
+    fetchShopSettings();
   }, []);
 
-  // Auto-refresh live rates when component mounts
-  useEffect(() => {
-    if (useLiveRatesEnabled) {
-      refetchLiveRates();
+  const fetchShopSettings = async () => {
+    try {
+      const response = await apiClient.get("/shop-settings");
+      setShopSettings(response.data);
+    } catch (error) {
+      console.error("Failed to fetch shop settings:", error);
     }
-  }, [useLiveRatesEnabled, refetchLiveRates]);
+  };
 
   const generateInvoiceNumber = async (): Promise<string> => {
     try {
@@ -144,6 +155,13 @@ export default function Billing() {
       setGeneratingInvoiceNumber(false);
     }
   };
+
+  // Auto-refresh live rates when component mounts
+  useEffect(() => {
+    if (useLiveRatesEnabled) {
+      refetchLiveRates();
+    }
+  }, [useLiveRatesEnabled, refetchLiveRates]);
 
   // Custom dropdown options
   const itemTypeOptions = [
@@ -226,56 +244,31 @@ export default function Billing() {
   const grandTotal = subtotal + CGSTAmount + SGSTAmount;
   const totalGST = CGSTAmount + SGSTAmount;
 
-  // Handle customer selection from dropdown
-  const handleCustomerSelect = (customerId: string) => {
-    setSelectedCustomer(customerId);
-    if (customerId) {
-      const customer = customers?.find((c: Customer) => c._id === customerId);
-      if (customer) {
-        setCustomerName(customer.name);
-        setCustomerEmail(customer.email || "");
-        setCustomerPhone(customer.phone);
-        setCustomerAddress(customer.address || "");
-        setCustomerHUID(customer.huid || "");
-      }
-    } else {
-      setCustomerName("");
-      setCustomerEmail("");
-      setCustomerPhone("");
-      setCustomerAddress("");
-      setCustomerHUID("");
-    }
-  };
-
   // Function to create or update customer in database
   const createOrUpdateCustomerInDB = async (customerData: {
     name: string;
     phone: string;
     email?: string;
     address?: string;
-    huid?: string;
+    hsnCode?: string; // Changed from huid
+    gstin?: string;
+    state?: string;
   }) => {
     try {
       // Call customer upsert endpoint
       const response = await apiClient.post("/customers/upsert", customerData);
       showToast.success("Customer saved successfully");
-      return response.data.data; // Return the created/updated customer
+      return response.data.data;
     } catch (error: any) {
       console.error("Error creating/updating customer:", error);
       showToast.error("Could not save customer details");
-      // Return a mock customer ID for invoice creation
       return { _id: "temp-customer-id", ...customerData };
     }
   };
 
   const handleLineItemChange = (
     index: number,
-    field:
-      | keyof LineItem
-      | "weightValue"
-      | "weightUnit"
-      | "labourChargeReferenceId"
-      | "otherCharges",
+    field: keyof LineItem | "weightValue" | "weightUnit" | "otherCharges",
     value: string | number | null
   ) => {
     const updatedItems = [...lineItems];
@@ -290,63 +283,46 @@ export default function Billing() {
       const weightInGrams = convertToGrams(item.weight.value, item.weight.unit);
       const metalPrice = weightInGrams * item.ratePerGram;
 
-      const labourCharge = labourCharges?.find(
-        (lc: LabourCharge) => lc._id === item.labourChargeReferenceId
-      );
-
-      let labourChargeAmount = 0;
-      if (labourCharge) {
-        labourChargeAmount =
-          labourCharge.chargeType === "perGram"
-            ? weightInGrams * labourCharge.amount
-            : labourCharge.amount;
-      }
+      // Get labour charge from input field
+      const labourChargeAmount = labourChargeInput[index] || 0;
 
       item.labourChargeAmount = labourChargeAmount;
       item.makingChargesTotal = labourChargeAmount;
       item.itemTotal = metalPrice + labourChargeAmount + item.otherCharges;
     }
 
-    if (field === "labourChargeReferenceId" && typeof value === "string") {
-      item.labourChargeReferenceId = value;
-
-      const labourCharge = labourCharges?.find(
-        (lc: LabourCharge) => lc._id === value
-      );
-      const weightInGrams = convertToGrams(item.weight.value, item.weight.unit);
-      let labourChargeAmount = 0;
-      if (labourCharge) {
-        labourChargeAmount =
-          labourCharge.chargeType === "perGram"
-            ? weightInGrams * labourCharge.amount
-            : labourCharge.amount;
-      }
-      item.labourChargeAmount = labourChargeAmount;
-      item.makingChargesTotal = labourChargeAmount;
-      item.itemTotal =
-        weightInGrams * item.ratePerGram +
-        labourChargeAmount +
-        item.otherCharges;
-    }
-
     if (field === "otherCharges") {
       item.otherCharges = Number(value) || 0;
       const weightInGrams = convertToGrams(item.weight.value, item.weight.unit);
       const metalPrice = weightInGrams * item.ratePerGram;
-      item.itemTotal = metalPrice + item.labourChargeAmount + item.otherCharges;
+      const labourChargeAmount = labourChargeInput[index] || 0;
+      item.itemTotal = metalPrice + labourChargeAmount + item.otherCharges;
     }
 
-    if (
-      ![
-        "weightValue",
-        "weightUnit",
-        "labourChargeReferenceId",
-        "otherCharges",
-      ].includes(field)
-    ) {
+    if (!["weightValue", "weightUnit", "otherCharges"].includes(field)) {
       // @ts-ignore
       item[field] = value;
     }
+
+    setLineItems(updatedItems);
+  };
+
+  // Handle labour charge input change
+  const handleLabourChargeChange = (index: number, value: string) => {
+    const numericValue = parseFloat(value) || 0;
+    setLabourChargeInput((prev) => ({
+      ...prev,
+      [index]: numericValue,
+    }));
+
+    const updatedItems = [...lineItems];
+    const item = updatedItems[index];
+    const weightInGrams = convertToGrams(item.weight.value, item.weight.unit);
+    const metalPrice = weightInGrams * item.ratePerGram;
+
+    item.labourChargeAmount = numericValue;
+    item.makingChargesTotal = numericValue;
+    item.itemTotal = metalPrice + numericValue + item.otherCharges;
 
     setLineItems(updatedItems);
   };
@@ -374,6 +350,12 @@ export default function Billing() {
     if (lineItems.length > 1) {
       const updatedItems = lineItems.filter((_, i) => i !== index);
       setLineItems(updatedItems);
+
+      // Remove labour charge input for this index
+      const newLabourChargeInput = { ...labourChargeInput };
+      delete newLabourChargeInput[index];
+      setLabourChargeInput(newLabourChargeInput);
+
       showToast.success("Item removed");
     } else {
       showToast.error("At least one item is required");
@@ -394,6 +376,92 @@ export default function Billing() {
     } catch (error) {
       showToast.error("Failed to refresh rates");
     }
+  };
+
+  // Convert number to words for total in words
+  const numberToWords = (num: number): string => {
+    const ones = [
+      "",
+      "One",
+      "Two",
+      "Three",
+      "Four",
+      "Five",
+      "Six",
+      "Seven",
+      "Eight",
+      "Nine",
+    ];
+    const teens = [
+      "Ten",
+      "Eleven",
+      "Twelve",
+      "Thirteen",
+      "Fourteen",
+      "Fifteen",
+      "Sixteen",
+      "Seventeen",
+      "Eighteen",
+      "Nineteen",
+    ];
+    const tens = [
+      "",
+      "",
+      "Twenty",
+      "Thirty",
+      "Forty",
+      "Fifty",
+      "Sixty",
+      "Seventy",
+      "Eighty",
+      "Ninety",
+    ];
+
+    if (num === 0) return "Zero";
+
+    const convertMillions = (n: number): string => {
+      if (n >= 1000000) {
+        return (
+          convertMillions(Math.floor(n / 1000000)) +
+          " Million " +
+          convertThousands(n % 1000000)
+        );
+      }
+      return convertThousands(n);
+    };
+
+    const convertThousands = (n: number): string => {
+      if (n >= 1000) {
+        return (
+          convertHundreds(Math.floor(n / 1000)) +
+          " Thousand " +
+          convertHundreds(n % 1000)
+        );
+      }
+      return convertHundreds(n);
+    };
+
+    const convertHundreds = (n: number): string => {
+      if (n > 99) {
+        return ones[Math.floor(n / 100)] + " Hundred " + convertTens(n % 100);
+      }
+      return convertTens(n);
+    };
+
+    const convertTens = (n: number): string => {
+      if (n < 10) return ones[n];
+      if (n < 20) return teens[n - 10];
+      return tens[Math.floor(n / 10)] + " " + ones[n % 10];
+    };
+
+    const paisa = Math.round((num - Math.floor(num)) * 100);
+    let result = convertMillions(Math.floor(num)).trim();
+
+    if (paisa > 0) {
+      result += " and " + convertTens(paisa) + " Paisa";
+    }
+
+    return result + " Rupees Only";
   };
 
   // Live Rates Status Indicator
@@ -548,19 +616,13 @@ export default function Billing() {
         phone: customerPhone,
         email: customerEmail || undefined,
         address: customerAddress || undefined,
-        huid: customerHUID || undefined,
+        hsnCode: customerHSNCode || undefined,
+        gstin: customerGSTIN || undefined,
+        state: customerState || "Gujarat",
       });
 
       // Use the customer ID from database response
-      const customerId =
-        customerResponse._id || selectedCustomer || "new-customer";
-
-      const shopSettingsResponse = await apiClient.get("/shop-settings");
-      const shopData = shopSettingsResponse.data || {};
-
-      const goldGstNumber = shopData.goldGstNumber || "";
-      const silverGstNumber = shopData.silverGstNumber || "";
-      const shopName = shopData.shopName || "JEWELRY COMMERCIAL INVOICE";
+      const customerId = customerResponse._id || "new-customer";
 
       const goldItems = lineItems.filter((item) => item.itemType === "gold");
       const silverItems = lineItems.filter(
@@ -604,7 +666,9 @@ export default function Billing() {
             address: customerAddress,
             email: customerEmail,
             phone: customerPhone,
-            huid: customerHUID,
+            hsnCode: customerHSNCode,
+            gstin: customerGSTIN,
+            state: customerState,
           },
           items: goldItems.map((item, index) => ({
             productNo: `GOLD-${index + 1}`,
@@ -623,10 +687,19 @@ export default function Billing() {
           SGSTPercent: goldItems.length > 0 ? SGSTPercent : 0,
           SGSTAmount: goldTotals.SGSTAmount,
           grandTotal: goldTotals.grandTotal,
+          grandTotalInWords: numberToWords(goldTotals.grandTotal),
           shopSettings: {
-            shopName: "Jay Krushna Haribhai Soni",
-            gstNumber: goldGstNumber,
-            gstType: "Gold",
+            shopName:
+              shopSettings?.goldOwnerName || "Jay Krushna Haribhai Soni",
+            ownerName:
+              shopSettings?.goldOwnerName || "Jay Krushna Haribhai Soni",
+            gstNumber: shopSettings?.goldGstNumber || "",
+            panNumber: shopSettings?.goldPanNumber || "",
+            phone: shopSettings?.phone || "",
+            address: "Near Ashok Stambh, Choksi Bazar, Anand 388001",
+            bankDetails:
+              shopSettings?.bankDetails ||
+              "Bank details to be added in settings",
           },
         };
         pdfDataArray.push(goldPdfData);
@@ -641,7 +714,9 @@ export default function Billing() {
             address: customerAddress,
             email: customerEmail,
             phone: customerPhone,
-            huid: customerHUID,
+            hsnCode: customerHSNCode,
+            gstin: customerGSTIN,
+            state: customerState,
           },
           items: silverItems.map((item, index) => ({
             productNo: `SILVER-${index + 1}`,
@@ -660,10 +735,19 @@ export default function Billing() {
           SGSTPercent: silverItems.length > 0 ? SGSTPercent : 0,
           SGSTAmount: silverTotals.SGSTAmount,
           grandTotal: silverTotals.grandTotal,
+          grandTotalInWords: numberToWords(silverTotals.grandTotal),
           shopSettings: {
-            shopName: "M/s Yogeshkumar and Brothers",
-            gstNumber: silverGstNumber,
-            gstType: "Silver",
+            shopName:
+              shopSettings?.silverOwnerName || "M/s Yogeshkumar and Brothers",
+            ownerName:
+              shopSettings?.silverOwnerName || "M/s Yogeshkumar and Brothers",
+            gstNumber: shopSettings?.silverGstNumber || "",
+            panNumber: shopSettings?.silverPanNumber || "",
+            phone: shopSettings?.phone || "",
+            address: "Near Ashok Stambh, Choksi Bazar, Anand 388001",
+            bankDetails:
+              shopSettings?.bankDetails ||
+              "Bank details to be added in settings",
           },
         };
         pdfDataArray.push(silverPdfData);
@@ -678,7 +762,9 @@ export default function Billing() {
             address: customerAddress,
             email: customerEmail,
             phone: customerPhone,
-            huid: customerHUID,
+            hsnCode: customerHSNCode,
+            gstin: customerGSTIN,
+            state: customerState,
           },
           items: otherItems.map((item, index) => ({
             productNo: `OTHER-${index + 1}`,
@@ -697,10 +783,19 @@ export default function Billing() {
           SGSTPercent: 0,
           SGSTAmount: 0,
           grandTotal: otherTotals.subtotal,
+          grandTotalInWords: numberToWords(otherTotals.subtotal),
           shopSettings: {
-            shopName: shopName,
+            shopName: shopSettings?.shopName || "JEWELRY COMMERCIAL INVOICE",
+            ownerName:
+              shopSettings?.ownerName ||
+              shopSettings?.shopName ||
+              "JEWELRY COMMERCIAL INVOICE",
             gstNumber: "",
-            gstType: "None",
+            panNumber: "",
+            address: shopSettings?.address || "Address not set",
+            bankDetails:
+              shopSettings?.bankDetails ||
+              "Bank details to be added in settings",
           },
         };
         pdfDataArray.push(otherPdfData);
@@ -718,7 +813,9 @@ export default function Billing() {
           email: customerEmail,
           phone: customerPhone,
           address: customerAddress,
-          huid: customerHUID,
+          hsnCode: customerHSNCode,
+          gstin: customerGSTIN,
+          state: customerState,
         },
         totals: {
           gold: goldItems.length > 0 ? goldTotals.grandTotal : 0,
@@ -730,13 +827,6 @@ export default function Billing() {
             (otherItems.length > 0 ? otherTotals.grandTotal : 0),
         },
         downloadUrl: qrCodeUrl,
-        downloadUrls: pdfDataArray.map((pdfData, index) => ({
-          type: pdfData.shopSettings.shopName,
-          gstType: pdfData.shopSettings.gstType,
-          url: `${baseUrl}/api/invoices/download/${finalInvoiceNumber}/${
-            index + 1
-          }?auto=1`,
-        })),
         items: lineItems.map((item) => ({
           type: item.itemType,
           purity: item.purity,
@@ -745,10 +835,10 @@ export default function Billing() {
         })),
         ratesSource: useLiveRatesEnabled ? "live" : "manual",
         gstNumbers: {
-          gold: goldGstNumber,
-          silver: silverGstNumber,
+          gold: shopSettings?.goldGstNumber,
+          silver: shopSettings?.silverGstNumber,
         },
-        shopName: shopName,
+        shopName: shopSettings?.shopName,
       });
 
       const overallSubtotal = subtotal;
@@ -773,7 +863,9 @@ export default function Billing() {
           email: customerEmail,
           phone: customerPhone,
           address: customerAddress,
-          huid: customerHUID,
+          hsnCode: customerHSNCode,
+          gstin: customerGSTIN,
+          state: customerState,
         },
         lineItems,
         totals: {
@@ -799,8 +891,8 @@ export default function Billing() {
         gstInfo: {
           goldUsed: goldItems.length > 0,
           silverUsed: silverItems.length > 0,
-          goldGstNumber: goldGstNumber,
-          silverGstNumber: silverGstNumber,
+          goldGstNumber: shopSettings?.goldGstNumber || "",
+          silverGstNumber: shopSettings?.silverGstNumber || "",
         },
         downloadUrl: qrCodeUrl,
       };
@@ -812,8 +904,8 @@ export default function Billing() {
           setShowQRCode(true);
 
           const pdfTypes = [];
-          if (goldItems.length > 0) pdfTypes.push("Gold (Jay Krishna)");
-          if (silverItems.length > 0) pdfTypes.push("Silver (Yogeshkumar)");
+          if (goldItems.length > 0) pdfTypes.push("Gold");
+          if (silverItems.length > 0) pdfTypes.push("Silver");
           if (otherItems.length > 0) pdfTypes.push("Other Items");
 
           if (pdfTypes.length > 0) {
@@ -822,23 +914,18 @@ export default function Billing() {
                 pdfTypes.length > 1 ? "s" : ""
               }`
             );
-
-            // if (pdfDataArray.length === 1) {
-            //   const downloadLink = document.createElement("a");
-            //   downloadLink.href = `${baseUrl}/api/invoices/download/${finalInvoiceNumber}?auto=1`;
-            //   downloadLink.target = "_blank";
-            //   downloadLink.click();
-            // }
           }
 
           generateInvoiceNumber();
 
+          // Clear form
           setCustomerName("");
           setCustomerPhone("");
           setCustomerEmail("");
           setCustomerAddress("");
-          setCustomerHUID("");
-          setSelectedCustomer("");
+          setCustomerHSNCode("");
+          setCustomerGSTIN("");
+          setCustomerState("Gujarat");
           setLineItems([
             {
               itemType: "gold",
@@ -854,6 +941,7 @@ export default function Billing() {
               itemTotal: 0,
             },
           ]);
+          setLabourChargeInput({});
 
           setTimeout(() => {
             showToast.info(
@@ -1051,28 +1139,6 @@ export default function Billing() {
                     placeholder="Select invoice date"
                   />
                 </div>
-
-                <div className="md:col-span-2">
-                  <label
-                    htmlFor="customer-select"
-                    className="block mb-2 text-sm font-medium text-gray-700"
-                  >
-                    Select Customer
-                  </label>
-                  <CustomDropdown
-                    options={[
-                      { value: "", label: "Add New Customer" },
-                      ...(customers?.map((c: Customer) => ({
-                        value: c._id,
-                        label: `${c.name} - ${c.phone}`,
-                      })) || []),
-                    ]}
-                    value={selectedCustomer}
-                    onChange={handleCustomerSelect}
-                    placeholder="Choose a customer or add new..."
-                    aria-label="Select customer"
-                  />
-                </div>
               </div>
 
               {/* Customer Information Form */}
@@ -1132,18 +1198,52 @@ export default function Billing() {
 
                 <div>
                   <label
-                    htmlFor="customer-huid"
+                    htmlFor="customer-hsn"
                     className="block mb-2 text-sm font-medium text-gray-700"
                   >
-                    HUID (Hallmark Unique ID)
+                    HSN Code
                   </label>
                   <input
-                    id="customer-huid"
+                    id="customer-hsn"
                     type="text"
-                    value={customerHUID}
-                    onChange={(e) => setCustomerHUID(e.target.value)}
+                    value={customerHSNCode}
+                    onChange={(e) => setCustomerHSNCode(e.target.value)}
                     className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter HUID number"
+                    placeholder="Enter HSN code"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="customer-gstin"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    Customer GSTIN
+                  </label>
+                  <input
+                    id="customer-gstin"
+                    type="text"
+                    value={customerGSTIN}
+                    onChange={(e) => setCustomerGSTIN(e.target.value)}
+                    className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter GSTIN"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="customer-state"
+                    className="block mb-2 text-sm font-medium text-gray-700"
+                  >
+                    State
+                  </label>
+                  <input
+                    id="customer-state"
+                    type="text"
+                    value={customerState}
+                    onChange={(e) => setCustomerState(e.target.value)}
+                    className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter state"
                   />
                 </div>
 
@@ -1217,14 +1317,24 @@ export default function Billing() {
                         <label className="block mb-1 text-sm font-medium text-gray-700">
                           Item Type
                         </label>
-                        <CustomDropdown
-                          options={itemTypeOptions}
+                        <select
                           value={item.itemType}
-                          onChange={(value) =>
-                            handleLineItemChange(index, "itemType", value)
+                          onChange={(e) =>
+                            handleLineItemChange(
+                              index,
+                              "itemType",
+                              e.target.value
+                            )
                           }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           aria-label="Select item type"
-                        />
+                        >
+                          {itemTypeOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
                       </div>
 
                       {/* Purity */}
@@ -1232,49 +1342,52 @@ export default function Billing() {
                         <label className="block mb-1 text-sm font-medium text-gray-700">
                           Purity
                         </label>
-                        <CustomDropdown
-                          options={
+                        <select
+                          value={item.purity}
+                          onChange={(e) =>
+                            handleLineItemChange(
+                              index,
+                              "purity",
+                              e.target.value
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          aria-label="Select purity"
+                        >
+                          {(
                             purityOptions[
                               item.itemType as keyof typeof purityOptions
                             ] || purityOptions.other
-                          }
-                          value={item.purity}
-                          onChange={(value) =>
-                            handleLineItemChange(index, "purity", value)
-                          }
-                          aria-label="Select purity"
-                        />
+                          ).map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
                       </div>
 
-                      {/* Labour Charge */}
+                      {/* Labour Charge - Simple input field */}
                       <div className="min-w-0">
                         <label className="block mb-1 text-sm font-medium text-gray-700">
                           Labour Charge
                         </label>
-                        <CustomDropdown
-                          options={[
-                            { value: "", label: "No LC" },
-                            ...(labourCharges
-                              ?.filter((lc) => lc.isActive)
-                              .map((lc: LabourCharge) => ({
-                                value: lc._id,
-                                label: `${lc.name} (${
-                                  lc.chargeType === "perGram"
-                                    ? "per gram"
-                                    : "fixed"
-                                })`,
-                              })) || []),
-                          ]}
-                          value={item.labourChargeReferenceId || ""}
-                          onChange={(value) =>
-                            handleLineItemChange(
-                              index,
-                              "labourChargeReferenceId",
-                              value
-                            )
-                          }
-                          aria-label="Select labour charge"
-                        />
+                        <div className="relative">
+                          <span className="absolute text-gray-500 transform -translate-y-1/2 left-3 top-1/2">
+                            ₹
+                          </span>
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={labourChargeInput[index] || 0}
+                            onChange={(e) =>
+                              handleLabourChargeChange(index, e.target.value)
+                            }
+                            className="w-full px-3 py-2 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="0.00"
+                            aria-label="Enter labour charge"
+                          />
+                        </div>
                       </div>
 
                       {/* Weight */}
@@ -1299,15 +1412,24 @@ export default function Billing() {
                             placeholder="0.00"
                             aria-label="Enter weight value"
                           />
-                          <CustomDropdown
-                            options={weightUnitOptions}
+                          <select
                             value={item.weight.unit}
-                            onChange={(value) =>
-                              handleLineItemChange(index, "weightUnit", value)
+                            onChange={(e) =>
+                              handleLineItemChange(
+                                index,
+                                "weightUnit",
+                                e.target.value
+                              )
                             }
-                            className="w-18"
+                            className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             aria-label="Select weight unit"
-                          />
+                          >
+                            {weightUnitOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                     </div>
@@ -1379,7 +1501,7 @@ export default function Billing() {
                         <div>
                           <span className="text-gray-600">Making Charges:</span>
                           <span className="ml-1 font-medium">
-                            ₹{item.makingChargesTotal.toFixed(2)}
+                            ₹{(labourChargeInput[index] || 0).toFixed(2)}
                           </span>
                         </div>
                         <div>
@@ -1458,12 +1580,18 @@ export default function Billing() {
                   <label className="block mb-2 text-sm font-medium text-gray-700">
                     Payment Mode
                   </label>
-                  <CustomDropdown
-                    options={paymentModeOptions}
+                  <select
                     value={paymentMode}
-                    onChange={setPaymentMode}
+                    onChange={(e) => setPaymentMode(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     aria-label="Select payment mode"
-                  />
+                  >
+                    {paymentModeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </motion.div>
@@ -1556,12 +1684,20 @@ export default function Billing() {
                   </h3>
                 </div>
 
-                <div className="flex justify-center mb-4">
+                <div className="flex flex-col items-center mb-4">
                   <InvoiceQRCode
                     data={`${window.location.origin}/api/invoices/download/${invoiceNumber}?auto=1`}
                     size={200}
                     invoiceNumber={invoiceNumber}
                   />
+                  <div className="mt-4 text-center">
+                    <p className="text-sm font-medium text-gray-700">
+                      Invoice: {invoiceNumber}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Scan to download PDF
+                    </p>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -1571,7 +1707,7 @@ export default function Billing() {
                       document={<SingleInvoicePDF data={pdfData} />}
                       fileName={`${pdfData.invoiceNumber}_${
                         pdfData.customer.name
-                      }_${pdfData.shopSettings.shopName.replace(
+                      }_${pdfData.shopSettings.ownerName.replace(
                         /\s+/g,
                         "_"
                       )}.pdf`}
@@ -1581,7 +1717,7 @@ export default function Billing() {
                         <>
                           <MdDownload className="text-lg" />
                           {loading
-                            ? `Preparing ${pdfData.shopSettings.shopName}...`
+                            ? `Preparing ${pdfData.shopSettings.ownerName}...`
                             : `Download ${pdfData.invoiceNumber}`}
                         </>
                       )}

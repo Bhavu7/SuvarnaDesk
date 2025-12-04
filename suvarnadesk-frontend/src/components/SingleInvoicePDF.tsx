@@ -37,10 +37,14 @@ const styles = StyleSheet.create({
   },
   headerSection: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 15,
-    paddingBottom: 10,
+    justifyContent: "space-between",
+    marginBottom: 20,
+    paddingBottom: 15,
     borderBottom: "1 solid #ddd",
+  },
+  leftHeader: {
+    flex: 1,
+    marginRight: 20,
   },
   logoContainer: {
     width: 60,
@@ -52,60 +56,86 @@ const styles = StyleSheet.create({
     height: "100%",
     objectFit: "contain",
   },
-  titleSection: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 16,
+  shopName: {
+    fontSize: 18,
     fontWeight: "bold",
     color: "#1f9e4d",
-    marginBottom: 3,
+    marginBottom: 4,
   },
-  metaInfoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 12,
+  shopAddress: {
     fontSize: 10,
-  },
-  metaInfoItem: {
-    flex: 1,
-  },
-  metaLabel: {
-    fontWeight: "bold",
     color: "#333",
     marginBottom: 2,
+    lineHeight: 1.4,
   },
-  metaValue: {
+  rightHeader: {
+    alignItems: "flex-end",
+    width: "30%",
+  },
+  invoiceNumber: {
+    fontSize: 14,
+    fontWeight: "bold",
     color: "#333",
+    marginBottom: 4, // Reduced margin
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 1, // Reduced margin
+    fontSize: 8, // Smaller font
+  },
+  headerLabel: {
+    fontWeight: "bold",
+    color: "#666",
+    width: "35%",
+  },
+  headerValue: {
+    color: "#333",
+    width: "65%",
+    textAlign: "right",
+    fontSize: 8, // Smaller font
   },
   boxesRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 12,
+    marginBottom: 20,
     gap: 16,
   },
   box: {
     flex: 1,
     border: "1 solid #ccc",
+    borderRadius: 4,
   },
   boxHeader: {
     backgroundColor: "#1f9e4d",
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     color: "#fff",
     fontWeight: "bold",
     fontSize: 10,
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
   },
   boxBody: {
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    minHeight: 50,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
     fontSize: 9,
     color: "#333",
-    lineHeight: 1.4,
+    lineHeight: 1.5,
+  },
+  boxRow: {
+    flexDirection: "row",
+    marginBottom: 4,
+  },
+  boxLabel: {
+    fontWeight: "bold",
+    width: "40%",
+  },
+  boxValue: {
+    width: "60%",
   },
   tableSection: {
-    marginBottom: 8,
+    marginBottom: 10,
     border: "1 solid #1f9e4d",
     flex: 1,
   },
@@ -115,8 +145,7 @@ const styles = StyleSheet.create({
     borderBottom: "1 solid #1f9e4d",
   },
   tableHeaderCell: {
-    flex: 1,
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 6,
     color: "#fff",
     fontWeight: "bold",
@@ -130,11 +159,10 @@ const styles = StyleSheet.create({
   tableRow: {
     flexDirection: "row",
     borderBottom: "1 solid #ddd",
-    minHeight: 24,
+    minHeight: 28,
   },
   tableCell: {
-    flex: 1,
-    paddingVertical: 4,
+    paddingVertical: 6,
     paddingHorizontal: 6,
     fontSize: 9,
     color: "#333",
@@ -150,53 +178,54 @@ const styles = StyleSheet.create({
   tableCellRight: {
     textAlign: "right",
   },
-  colProductNo: { flex: 1.2 },
-  colDescription: { flex: 1.5 },
-  colHUID: { flex: 1.0 },
-  colQty: { flex: 0.6 },
-  colWeight: { flex: 0.8 },
-  colPrice: { flex: 0.8 },
-  colOtherCharges: { flex: 0.8 },
-  colAmount: { flex: 0.8 },
+  colProductNo: { width: "12%" },
+  colDescription: { width: "28%" },
+  colHSN: { width: "12%" },
+  colQty: { width: "8%" },
+  colWeight: { width: "10%" },
+  colPrice: { width: "10%" },
+  colOtherCharges: { width: "10%" },
+  colAmount: { width: "10%" },
   footerSection: {
     flexDirection: "row",
-    marginTop: 8,
+    marginTop: 10,
     justifyContent: "space-between",
   },
   notesBox: {
     flex: 1,
     borderTop: "1 solid #1f9e4d",
-    paddingVertical: 8,
-    paddingHorizontal: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
     fontSize: 9,
     color: "#333",
+    marginRight: 20,
   },
   notesTitle: {
     fontWeight: "bold",
     color: "#333",
-    marginBottom: 4,
-    fontSize: 9,
+    marginBottom: 6,
+    fontSize: 10,
   },
   notesList: {
     marginLeft: 8,
   },
   noteItem: {
-    fontSize: 8,
+    fontSize: 8.5,
     color: "#333",
-    marginBottom: 2,
-    lineHeight: 1.2,
+    marginBottom: 3,
+    lineHeight: 1.3,
   },
   totalsBox: {
     borderTop: "1 solid #1f9e4d",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    width: "200px",
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    width: "220px",
   },
   totalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 4,
-    fontSize: 9,
+    marginBottom: 5,
+    fontSize: 9.5,
   },
   totalLabel: {
     color: "#666",
@@ -205,15 +234,15 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#333",
     textAlign: "right",
-    minWidth: 70,
+    minWidth: 80,
   },
   totalRowBold: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 6,
-    paddingTop: 6,
+    marginTop: 8,
+    paddingTop: 8,
     borderTop: "1 solid #ddd",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "bold",
   },
   totalBoldLabel: {
@@ -222,41 +251,53 @@ const styles = StyleSheet.create({
   totalBoldValue: {
     color: "#1f9e4d",
     textAlign: "right",
-    minWidth: 70,
+    minWidth: 80,
+  },
+  totalInWords: {
+    marginTop: 2, // Even smaller margin
+    padding: 2, // Minimal padding
+    fontSize: 8, // Smaller font
+    color: "#333",
+    lineHeight: 1.1, // Tight line height
+    fontStyle: "italic",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
   },
   signatureSection: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 32,
-    paddingTop: 12,
+    marginTop: 30,
+    paddingTop: 15,
+    borderTop: "1 solid #999",
   },
   signatureBlock: {
     width: "45%",
     alignItems: "center",
   },
   signatureLine: {
-    borderTop: "1 solid #999",
     width: "100%",
-    marginBottom: 4,
-    minHeight: 40,
+    marginBottom: 6,
+    minHeight: 50,
   },
   signatureLabel: {
-    fontSize: 9,
+    fontSize: 10,
     color: "#1f9e4d",
     fontWeight: "bold",
   },
   footer: {
     textAlign: "center",
-    marginTop: 16,
-    paddingTop: 8,
+    marginTop: 20,
+    paddingTop: 10,
     fontSize: 10,
     color: "#1f9e4d",
     fontWeight: "bold",
+    borderTop: "1 solid #eee",
   },
-  gstNumber: {
+  pageNumber: {
+    textAlign: "center",
+    marginTop: 10,
     fontSize: 9,
     color: "#666",
-    marginTop: 2,
   },
 });
 
@@ -279,7 +320,8 @@ interface InvoicePDFProps {
       address: string;
       email: string;
       phone: string;
-      huid?: string;
+      hsnCode: string;
+      gstin?: string;
     };
     items: InvoiceItem[];
     subtotal: number;
@@ -288,9 +330,15 @@ interface InvoicePDFProps {
     SGSTPercent: number;
     SGSTAmount: number;
     grandTotal: number;
+    grandTotalInWords: string;
     shopSettings: {
       shopName: string;
+      ownerName: string;
       gstNumber?: string;
+      panNumber?: string;
+      address: string;
+      phone?: string;
+      bankDetails?: string;
       logoUrl?: string;
     };
   };
@@ -309,7 +357,7 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
     return `₹${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,")}`;
   };
 
-  const ITEMS_PER_PAGE = 11;
+  const ITEMS_PER_PAGE = 10;
   const totalPages = Math.ceil(data.items.length / ITEMS_PER_PAGE);
 
   const renderPage = (pageIndex: number) => {
@@ -321,62 +369,137 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
     return (
       <Page key={pageIndex} size="A4" style={styles.page}>
         <View style={styles.container}>
-          {/* Header Section with Logo */}
+          {/* Header Section with Logo and Invoice Info */}
           <View style={styles.headerSection}>
-            <View style={styles.logoContainer}>
-              <Image
-                style={styles.logo}
-                src={data.shopSettings.logoUrl || "/logo.png"}
-              />
-            </View>
-            <View style={styles.titleSection}>
-              <Text style={styles.title}>{data.shopSettings.shopName}</Text>
-              {data.shopSettings.gstNumber &&
-                data.shopSettings.gstNumber.trim() && (
-                  <Text style={styles.gstNumber}>
-                    GST: {data.shopSettings.gstNumber}
+            <View
+              style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
+            >
+              <View style={styles.logoContainer}>
+                <Image
+                  style={styles.logo}
+                  src={data.shopSettings.logoUrl || "/logo.png"}
+                />
+              </View>
+              <View style={styles.leftHeader}>
+                <Text style={styles.shopName}>
+                  {data.shopSettings.ownerName}
+                </Text>
+                <Text style={styles.shopAddress}>
+                  {data.shopSettings.address}
+                </Text>
+                {data.shopSettings.phone && (
+                  <Text style={styles.shopAddress}>
+                    Phone: {data.shopSettings.phone}
                   </Text>
                 )}
+              </View>
             </View>
-          </View>
 
-          <View style={styles.metaInfoRow}>
-            <View style={styles.metaInfoItem}>
-              <Text style={styles.metaLabel}>Invoice Number:</Text>
-              <Text style={styles.metaValue}>{data.invoiceNumber}</Text>
-            </View>
-            <View style={styles.metaInfoItem}>
-              <Text style={styles.metaLabel}>Issued To:</Text>
-              <Text style={styles.metaValue}>{data.customer.name}</Text>
-            </View>
-            <View style={styles.metaInfoItem}>
-              <Text style={styles.metaLabel}>Date Issued:</Text>
-              <Text style={styles.metaValue}>
-                {formatDate(data.invoiceDate)}
+            <View style={styles.rightHeader}>
+              <Text style={styles.invoiceNumber}>
+                INVOICE: {data.invoiceNumber}
               </Text>
+
+              <View style={styles.headerRow}>
+                <Text style={styles.headerLabel}>Issued Date:</Text>
+                <Text style={styles.headerValue}>
+                  {formatDate(data.invoiceDate)}
+                </Text>
+              </View>
+
+              <View style={styles.headerRow}>
+                <Text style={styles.headerLabel}>GSTIN:</Text>
+                <Text style={styles.headerValue}>
+                  {data.shopSettings.gstNumber || "N/A"}
+                </Text>
+              </View>
+
+              <View style={styles.headerRow}>
+                <Text style={styles.headerLabel}>PAN:</Text>
+                <Text style={styles.headerValue}>
+                  {data.shopSettings.panNumber || "N/A"}
+                </Text>
+              </View>
             </View>
           </View>
 
+          {/* Seller and Customer Information */}
           <View style={styles.boxesRow}>
+            {/* Seller Box - Left */}
             <View style={styles.box}>
               <View style={styles.boxHeader}>
-                <Text>Customer</Text>
+                <Text>SELLER</Text>
               </View>
               <View style={styles.boxBody}>
-                <Text>{data.customer.name}</Text>
-                <Text>{data.customer.address}</Text>
-                <Text>{data.customer.email}</Text>
-                <Text>{data.customer.phone}</Text>
+                <View style={styles.boxRow}>
+                  <Text style={styles.boxLabel}>Name:</Text>
+                  <Text style={styles.boxValue}>
+                    {data.shopSettings.ownerName}
+                  </Text>
+                </View>
+                <View style={styles.boxRow}>
+                  <Text style={styles.boxLabel}>Address:</Text>
+                  <Text style={styles.boxValue}>
+                    Near Ashok Stambh, Choksi Bazar, Anand 388001
+                  </Text>
+                </View>
+                <View style={styles.boxRow}>
+                  <Text style={styles.boxLabel}>GSTIN:</Text>
+                  <Text style={styles.boxValue}>
+                    {data.shopSettings.gstNumber || "N/A"}
+                  </Text>
+                </View>
+                <View style={styles.boxRow}>
+                  <Text style={styles.boxLabel}>PAN:</Text>
+                  <Text style={styles.boxValue}>
+                    {data.shopSettings.panNumber || "N/A"}
+                  </Text>
+                </View>
+                <View style={styles.boxRow}>
+                  <Text style={styles.boxLabel}>Bank Details:</Text>
+                  <Text style={styles.boxValue}>
+                    {data.shopSettings.bankDetails || "To be added in settings"}
+                  </Text>
+                </View>
               </View>
             </View>
 
+            {/* Customer Box - Right */}
             <View style={styles.box}>
               <View style={styles.boxHeader}>
-                <Text>Seller</Text>
+                <Text>CUSTOMER</Text>
               </View>
               <View style={styles.boxBody}>
-                <Text>{data.shopSettings.shopName}</Text>
-                <Text>Professional Jewelry Services</Text>
+                <View style={styles.boxRow}>
+                  <Text style={styles.boxLabel}>Name:</Text>
+                  <Text style={styles.boxValue}>{data.customer.name}</Text>
+                </View>
+                <View style={styles.boxRow}>
+                  <Text style={styles.boxLabel}>Address:</Text>
+                  <Text style={styles.boxValue}>
+                    {data.customer.address || "N/A"}
+                  </Text>
+                </View>
+                <View style={styles.boxRow}>
+                  <Text style={styles.boxLabel}>Phone:</Text>
+                  <Text style={styles.boxValue}>{data.customer.phone}</Text>
+                </View>
+                <View style={styles.boxRow}>
+                  <Text style={styles.boxLabel}>Email:</Text>
+                  <Text style={styles.boxValue}>
+                    {data.customer.email || "N/A"}
+                  </Text>
+                </View>
+                <View style={styles.boxRow}>
+                  <Text style={styles.boxLabel}>GSTIN:</Text>
+                  <Text style={styles.boxValue}>
+                    {data.customer.gstin || "N/A"}
+                  </Text>
+                </View>
+                <View style={styles.boxRow}>
+                  <Text style={styles.boxLabel}>State:</Text>
+                  <Text style={styles.boxValue}>Gujarat /2</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -393,11 +516,11 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
               <View
                 style={[
                   styles.tableHeaderCell,
-                  styles.colHUID,
+                  styles.colHSN,
                   styles.tableCellCenter,
                 ]}
               >
-                <Text>HUID</Text>
+                <Text>HSN CODE</Text>
               </View>
               <View
                 style={[
@@ -451,7 +574,13 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
               const globalIndex = startIndex + index;
               return (
                 <View key={globalIndex} style={styles.tableRow}>
-                  <View style={[styles.tableCell, styles.colProductNo]}>
+                  <View
+                    style={[
+                      styles.tableCell,
+                      styles.colProductNo,
+                      styles.tableCellCenter,
+                    ]}
+                  >
                     <Text>{item.productNo}</Text>
                   </View>
                   <View style={[styles.tableCell, styles.colDescription]}>
@@ -460,11 +589,11 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                   <View
                     style={[
                       styles.tableCell,
-                      styles.colHUID,
+                      styles.colHSN,
                       styles.tableCellCenter,
                     ]}
                   >
-                    <Text>{data.customer.huid || "-"}</Text>
+                    <Text>{data.customer.hsnCode || "-"}</Text>
                   </View>
                   <View
                     style={[
@@ -482,7 +611,7 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                       styles.tableCellRight,
                     ]}
                   >
-                    <Text>{item.weight.toFixed(1)}</Text>
+                    <Text>{item.weight.toFixed(2)}</Text>
                   </View>
                   <View
                     style={[
@@ -533,6 +662,9 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                     <Text style={styles.noteItem}>
                       • Goods once sold cannot be returned
                     </Text>
+                    <Text style={styles.noteItem}>
+                      • Subject to Anand jurisdiction
+                    </Text>
                   </View>
                 </View>
                 <View style={styles.totalsBox}>
@@ -570,6 +702,11 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                       {formatCurrency(data.grandTotal)}
                     </Text>
                   </View>
+
+                  {/* Total in Words moved below Grand Total */}
+                  <View style={styles.totalInWords}>
+                    <Text>Total in Words: {data.grandTotalInWords}</Text>
+                  </View>
                 </View>
               </View>
 
@@ -577,11 +714,8 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                 <View style={styles.signatureBlock}>
                   <View style={styles.signatureLine} />
                   <Text style={styles.signatureLabel}>
-                    Authorized Signature
+                    Authorized Signature (Seller)
                   </Text>
-                </View>
-                <View style={styles.signatureBlock}>
-                  {/* Empty space for customer signature */}
                 </View>
               </View>
 
@@ -596,14 +730,7 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
 
           {/* Show page number if multiple pages */}
           {totalPages > 1 && (
-            <View
-              style={{
-                textAlign: "center",
-                marginTop: 10,
-                fontSize: 9,
-                color: "#666",
-              }}
-            >
+            <View style={styles.pageNumber}>
               <Text>
                 Page {pageIndex + 1} of {totalPages}
               </Text>
