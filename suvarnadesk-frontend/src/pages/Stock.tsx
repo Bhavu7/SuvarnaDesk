@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MdInventory, MdAdd, MdEdit, MdDelete, MdClose } from "react-icons/md";
+import { MdInventory, MdAdd, MdEdit, MdDelete } from "react-icons/md";
 import {
   useProducts,
   useCreateProduct,
@@ -8,7 +8,7 @@ import {
   useDeleteProduct,
   Product,
 } from "../hooks/useStock";
-import { showToast } from "../components/CustomToast"; // same toast you use elsewhere
+import { showToast } from "../components/CustomToast";
 
 const emptyForm: Product = {
   productNo: "",
@@ -24,27 +24,26 @@ const Stock: React.FC = () => {
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
 
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Product>(emptyForm);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   useEffect(() => {
-    if (!isFormOpen) {
-      setEditingId(null);
+    if (!editingId) {
       setFormData(emptyForm);
     }
-  }, [isFormOpen]);
+  }, [editingId]);
 
   const handleOpenAdd = () => {
-    setFormData(emptyForm);
     setEditingId(null);
+    setFormData(emptyForm);
     setIsFormOpen(true);
   };
 
   const handleOpenEdit = (product: Product) => {
-    setFormData(product);
     setEditingId(product._id || null);
+    setFormData(product);
     setIsFormOpen(true);
   };
 
@@ -70,6 +69,7 @@ const Stock: React.FC = () => {
         {
           onSuccess: () => {
             showToast.success("Product updated successfully");
+            setEditingId(null);
             setIsFormOpen(false);
           },
           onError: () => showToast.error("Failed to update product"),
@@ -79,6 +79,7 @@ const Stock: React.FC = () => {
       createProduct.mutate(formData, {
         onSuccess: () => {
           showToast.success("Product added successfully");
+          setFormData(emptyForm);
           setIsFormOpen(false);
         },
         onError: (error: any) =>
@@ -87,6 +88,12 @@ const Stock: React.FC = () => {
           ),
       });
     }
+  };
+
+  const handleReset = () => {
+    setEditingId(null);
+    setFormData(emptyForm);
+    showToast.success("Form reset successfully");
   };
 
   const handleConfirmDelete = (id: string) => {
@@ -111,15 +118,23 @@ const Stock: React.FC = () => {
     });
   };
 
+  const totalQuantity = (products || []).reduce(
+    (sum, p) => sum + (p.quantity || 0),
+    0
+  );
+  const totalWeight = (products || []).reduce(
+    (sum, p) => sum + (p.weight || 0),
+    0
+  );
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
       className="space-y-6"
     >
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-blue-100 rounded-xl">
             <MdInventory className="text-2xl text-blue-600" />
@@ -133,220 +148,291 @@ const Stock: React.FC = () => {
         </div>
 
         <motion.button
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
+          whileTap={{ scale: 0.98 }}
           onClick={handleOpenAdd}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700"
+          className="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50 focus:outline-none focus:ring-0"
         >
-          <MdAdd className="text-lg" />
-          Add Product
+          New Product Form
         </motion.button>
       </div>
 
-      {/* Form (slide-down panel) */}
-      <AnimatePresence>
-        {isFormOpen && (
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Form + Table Section */}
+        <div className="space-y-6 lg:col-span-2">
+          {/* Form only when open */}
+          <AnimatePresence>
+            {isFormOpen && (
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="p-6 bg-white border border-gray-100 shadow-sm rounded-xl"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    {editingId ? "Edit Product" : "Add Product"}
+                  </h3>
+                  <div className="flex gap-2">
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleReset}
+                      className="px-3 py-2 text-xs font-medium text-red-600 border border-red-300 rounded-lg hover:bg-red-50 focus:outline-none focus:ring-0"
+                    >
+                      Reset Form
+                    </motion.button>
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        setIsFormOpen(false);
+                        setEditingId(null);
+                      }}
+                      className="px-3 py-2 text-xs font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-0"
+                    >
+                      Close
+                    </motion.button>
+                  </div>
+                </div>
+
+                <form
+                  onSubmit={handleSubmit}
+                  className="grid grid-cols-1 gap-4 md:grid-cols-2"
+                >
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                      Product No *
+                    </label>
+                    <input
+                      type="text"
+                      name="productNo"
+                      value={formData.productNo}
+                      onChange={handleChange}
+                      placeholder="e.g., PRD-001"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                      Product Name *
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      placeholder="e.g., Diamond Necklace"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                      Quantity
+                    </label>
+                    <input
+                      title="Quantity"
+                      type="number"
+                      name="quantity"
+                      min={0}
+                      value={formData.quantity}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                      HSN Code
+                    </label>
+                    <input
+                      type="text"
+                      name="hsnCode"
+                      value={formData.hsnCode}
+                      onChange={handleChange}
+                      placeholder="e.g., 7113"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                      Weight (grams)
+                    </label>
+                    <input
+                      type="number"
+                      name="weight"
+                      min={0}
+                      step="0.01"
+                      value={formData.weight}
+                      onChange={handleChange}
+                      placeholder="10.50"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div className="flex items-end">
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
+                      type="submit"
+                      disabled={
+                        createProduct.isPending || updateProduct.isPending
+                      }
+                      className="flex items-center justify-center w-full gap-2 px-6 py-3 text-sm font-semibold text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 focus:outline-none focus:ring-0"
+                    >
+                      <MdAdd className="text-lg" />
+                      {editingId ? "Update Product" : "Save Product"}
+                    </motion.button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Table */}
           <motion.div
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.25 }}
-            className="p-5 bg-white border border-gray-100 shadow-sm rounded-xl"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+            className="p-6 bg-white border border-gray-100 shadow-sm rounded-xl"
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-800">
-                {editingId ? "Edit Product" : "Add Product"}
+                Products List
               </h3>
-              <button
-              title="Close Form"
-                onClick={() => setIsFormOpen(false)}
-                className="p-1 text-gray-500 rounded hover:bg-gray-100"
-              >
-                <MdClose />
-              </button>
             </div>
 
-            <form
-              onSubmit={handleSubmit}
-              className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
-            >
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Product No *
-                </label>
-                <input
-                  name="productNo"
-                  type="text"
-                  value={formData.productNo}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="PRD-001"
-                />
-              </div>
-
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Product Name *
-                </label>
-                <input
-                  name="name"
-                  type="text"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Diamond Necklace"
-                />
-              </div>
-
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Quantity
-                </label>
-                <input
-                title="Quantity"
-                  name="quantity"
-                  type="number"
-                  min={0}
-                  value={formData.quantity}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  HSN Code
-                </label>
-                <input
-                  name="hsnCode"
-                  type="text"
-                  value={formData.hsnCode}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="7113"
-                />
-              </div>
-
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Weight (grams)
-                </label>
-                <input
-                  name="weight"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={formData.weight}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="10.50"
-                />
-              </div>
-
-              <div className="flex items-end">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  disabled={createProduct.isPending || updateProduct.isPending}
-                  className="inline-flex items-center justify-center w-full px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50"
-                >
-                  {editingId ? "Update Product" : "Save Product"}
-                </motion.button>
-              </div>
-            </form>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Products table */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1, duration: 0.3 }}
-        className="overflow-hidden bg-white border border-gray-100 shadow-sm rounded-xl"
-      >
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 font-semibold text-left text-gray-700">
-                  Product No
-                </th>
-                <th className="px-4 py-2 font-semibold text-left text-gray-700">
-                  Product Name
-                </th>
-                <th className="px-4 py-2 font-semibold text-right text-gray-700">
-                  Quantity
-                </th>
-                <th className="px-4 py-2 font-semibold text-left text-gray-700">
-                  HSN Code
-                </th>
-                <th className="px-4 py-2 font-semibold text-right text-gray-700">
-                  Weight (g)
-                </th>
-                <th className="px-4 py-2 font-semibold text-center text-gray-700">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 py-6 text-center text-gray-500"
-                  >
-                    Loading products...
-                  </td>
-                </tr>
-              ) : products && products.length > 0 ? (
-                products.map((p) => (
-                  <tr
-                    key={p._id}
-                    className="transition-colors border-t hover:bg-gray-50"
-                  >
-                    <td className="px-4 py-2">{p.productNo}</td>
-                    <td className="px-4 py-2">{p.name}</td>
-                    <td className="px-4 py-2 text-right">{p.quantity}</td>
-                    <td className="px-4 py-2">{p.hsnCode}</td>
-                    <td className="px-4 py-2 text-right">
-                      {p.weight.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-2">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleOpenEdit(p)}
-                          className="p-1.5 text-blue-600 rounded hover:bg-blue-50"
-                          title="Edit"
-                        >
-                          <MdEdit />
-                        </button>
-                        <button
-                          onClick={() => handleConfirmDelete(p._id!)}
-                          className="p-1.5 text-red-600 rounded hover:bg-red-50"
-                          title="Delete"
-                        >
-                          <MdDelete />
-                        </button>
-                      </div>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b-2 border-gray-200 bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold text-left text-gray-700">
+                      Product No
+                    </th>
+                    <th className="px-4 py-3 font-semibold text-left text-gray-700">
+                      Product Name
+                    </th>
+                    <th className="px-4 py-3 font-semibold text-center text-gray-700">
+                      Qty
+                    </th>
+                    <th className="px-4 py-3 font-semibold text-left text-gray-700">
+                      HSN Code
+                    </th>
+                    <th className="px-4 py-3 font-semibold text-right text-gray-700">
+                      Weight (g)
+                    </th>
+                    <th className="px-4 py-3 font-semibold text-center text-gray-700">
+                      Actions
+                    </th>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 py-6 text-center text-gray-500"
-                  >
-                    No products found. Click “Add Product” to create one.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {isLoading ? (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="px-4 py-6 text-center text-gray-500"
+                      >
+                        Loading products...
+                      </td>
+                    </tr>
+                  ) : products && products.length > 0 ? (
+                    products.map((p) => (
+                      <tr
+                        key={p._id}
+                        className="border-b border-gray-100 hover:bg-gray-50"
+                      >
+                        <td className="px-4 py-3 text-gray-700">
+                          {p.productNo}
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">{p.name}</td>
+                        <td className="px-4 py-3 text-center text-gray-700">
+                          {p.quantity}
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">{p.hsnCode}</td>
+                        <td className="px-4 py-3 text-right text-gray-700">
+                          {p.weight.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleOpenEdit(p)}
+                              aria-label={`Edit ${p.name}`}
+                              title="Edit product"
+                              className="p-2 text-blue-600 transition-colors rounded-lg hover:bg-blue-50 focus:outline-none focus:ring-0"
+                            >
+                              <MdEdit className="text-lg" />
+                            </button>
+                            <button
+                              onClick={() =>
+                                p._id && handleConfirmDelete(p._id)
+                              }
+                              aria-label={`Delete ${p.name}`}
+                              title="Delete product"
+                              className="p-2 text-red-600 transition-colors rounded-lg hover:bg-red-50 focus:outline-none focus:ring-0"
+                            >
+                              <MdDelete className="text-lg" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="px-4 py-6 text-center text-gray-500"
+                      >
+                        No products found. Use the form button above to add one.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
         </div>
-      </motion.div>
+
+        {/* Summary card */}
+        <div className="lg:col-span-1">
+          <div className="sticky p-6 border border-gray-200 top-20 bg-gray-50 rounded-xl">
+            <h3 className="mb-4 text-lg font-semibold text-gray-800">
+              Stock Summary
+            </h3>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Total Products:</span>
+                <span className="font-semibold text-gray-900">
+                  {products?.length || 0}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Total Quantity:</span>
+                <span className="font-semibold text-gray-900">
+                  {totalQuantity}
+                </span>
+              </div>
+              <div className="flex justify-between pt-2 border-t-2 border-gray-300">
+                <span className="font-semibold text-gray-800">
+                  Total Weight:
+                </span>
+                <span className="text-lg font-bold text-blue-600">
+                  {totalWeight.toFixed(2)} g
+                </span>
+              </div>
+              <div className="p-3 mt-6 border border-blue-200 rounded-lg bg-blue-50">
+                <p className="text-xs text-blue-700">
+                  <strong>Editing:</strong>{" "}
+                  {editingId ? "Update existing product" : "Create new product"}
+                </p>
+                <p className="text-xs text-blue-700">
+                  <strong>Tip:</strong> Use the list to quickly edit or delete
+                  items from your stock.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Delete confirmation modal */}
       <AnimatePresence>
