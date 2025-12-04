@@ -23,6 +23,7 @@ import shopSettingsRoutes from "./routes/settingsRoutes";
 import pdfRoutes from "./routes/pdfRoutes";
 import liveRatesRouter from './routes/liveRates';
 import ratesRoutes from './routes/ratesRoutes';
+import productRoutes from "./routes/productRoutes";
 
 // Connect to MongoDB
 mongoose
@@ -46,6 +47,7 @@ app.use("/api/metal-rates", metalRateRoutes);
 app.use("/api/shop-settings", shopSettingsRoutes);
 app.use("/api/pdf", pdfRoutes);
 app.use('/api/customers', customerRoutes);
+app.use("/api/products", productRoutes);
 // Routes
 app.use('/api/live-rates', liveRatesRouter);
 app.use('/api/rates', ratesRoutes);
