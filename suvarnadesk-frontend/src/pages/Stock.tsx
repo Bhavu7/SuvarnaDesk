@@ -9,6 +9,7 @@ import {
   Product,
 } from "../hooks/useStock";
 import { showToast } from "../components/CustomToast";
+import CustomDropdown from "../components/CustomDropdown";
 
 const emptyForm: Product = {
   productNo: "",
@@ -16,6 +17,7 @@ const emptyForm: Product = {
   quantity: 0,
   hsnCode: "",
   weight: 0,
+  weightUnit: "g",
 };
 
 const Stock: React.FC = () => {
@@ -122,8 +124,21 @@ const Stock: React.FC = () => {
     (sum, p) => sum + (p.quantity || 0),
     0
   );
+  const toGrams = (weight: number, unit: string) => {
+    switch (unit) {
+      case "kg":
+        return weight * 1000;
+      case "mg":
+        return weight / 1000;
+      case "tola":
+        return weight * 11.66;
+      default:
+        return weight;
+    }
+  };
+
   const totalWeight = (products || []).reduce(
-    (sum, p) => sum + (p.weight || 0),
+    (sum, p) => sum + toGrams(p.weight || 0, p.weightUnit || "g"),
     0
   );
 
@@ -256,18 +271,37 @@ const Stock: React.FC = () => {
 
                   <div>
                     <label className="block mb-2 text-sm font-medium text-gray-700">
-                      Weight (grams)
+                      Weight
                     </label>
-                    <input
-                      type="number"
-                      name="weight"
-                      min={0}
-                      step="0.01"
-                      value={formData.weight}
-                      onChange={handleChange}
-                      placeholder="10.50"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        name="weight"
+                        min={0}
+                        step="0.01"
+                        value={formData.weight}
+                        onChange={handleChange}
+                        placeholder="10.50"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <div className="w-28">
+                        <CustomDropdown
+                          options={[
+                            { value: "g", label: "g" },
+                            { value: "mg", label: "mg" },
+                            { value: "kg", label: "kg" },
+                            { value: "tola", label: "Tola" },
+                          ]}
+                          value={formData.weightUnit}
+                          onChange={(value) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              weightUnit: value as any,
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex items-end">
@@ -318,7 +352,7 @@ const Stock: React.FC = () => {
                       HSN Code
                     </th>
                     <th className="px-4 py-3 font-semibold text-right text-gray-700">
-                      Weight (g)
+                      Weight
                     </th>
                     <th className="px-4 py-3 font-semibold text-center text-gray-700">
                       Actions
@@ -350,7 +384,7 @@ const Stock: React.FC = () => {
                         </td>
                         <td className="px-4 py-3 text-gray-700">{p.hsnCode}</td>
                         <td className="px-4 py-3 text-right text-gray-700">
-                          {p.weight.toFixed(2)}
+                          {p.weight.toFixed(2)} {p.weightUnit}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-2">

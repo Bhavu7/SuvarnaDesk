@@ -1,11 +1,12 @@
-import { Schema, model, Document } from "mongoose";
+import { Schema, model, Document, Model } from "mongoose";
 
 export interface IProduct extends Document {
     productNo: string;
     name: string;
     quantity: number;
     hsnCode: string;
-    weight: number; // in grams or your chosen unit
+    weight: number;
+    weightUnit: "g" | "mg" | "kg" | "tola";
     createdAt: Date;
     updatedAt: Date;
 }
@@ -17,8 +18,17 @@ const ProductSchema = new Schema<IProduct>(
         quantity: { type: Number, required: true, default: 0 },
         hsnCode: { type: String, required: true },
         weight: { type: Number, required: true },
+        weightUnit: {
+            type: String,
+            enum: ["g", "mg", "kg", "tola"],
+            default: "g",
+            required: true,
+        },
     },
     { timestamps: true }
 );
 
-export default model<IProduct>("Product", ProductSchema);
+// Create and export the model
+const Product: Model<IProduct> = model<IProduct>("Product", ProductSchema);
+
+export default Product;

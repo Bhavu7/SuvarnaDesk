@@ -8,6 +8,7 @@ export interface Product {
     quantity: number;
     hsnCode: string;
     weight: number;
+    weightUnit: "g" | "mg" | "kg" | "tola";
 }
 
 export const useProducts = () =>
