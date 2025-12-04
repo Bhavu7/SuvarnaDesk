@@ -51,7 +51,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
         className={`
-          w-full px-4 py-3 text-left bg-white border border-gray-300 rounded-lg 
+          w-full px-4 py-4 text-left bg-white border border-gray-300 rounded-lg 
           focus:outline-none focus:ring-0 focus:border-transparent transition-all duration-200
           flex items-center justify-between
           ${
