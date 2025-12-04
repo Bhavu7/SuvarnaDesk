@@ -12,6 +12,7 @@ export interface StockProduct {
   srNo: number;
   productNo: string;
   name: string;
+  productType: "gold" | "silver";
   quantity: number;
   hsnCode: string;
   weight: number;
@@ -128,10 +129,11 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   colSrNo: { width: "8%" },
-  colProductNo: { width: "16%" },
-  colName: { width: "30%" },
-  colQty: { width: "12%" },
-  colHSN: { width: "14%" },
+  colProductNo: { width: "14%" },
+  colName: { width: "26%" },
+  colType: { width: "10%" },
+  colQty: { width: "10%" },
+  colHSN: { width: "12%" },
   colWeight: { width: "20%" },
   totalsRowWrapper: {
     marginTop: 8,
@@ -183,10 +185,18 @@ const StockReportPDF: React.FC<StockReportPDFProps> = ({ data }) => {
     (sum, p) => sum + (p.quantity || 0),
     0
   );
-  const totalWeight = data.products.reduce(
+
+  const goldProducts = data.products.filter((p) => p.productType === "gold");
+  const silverProducts = data.products.filter(
+    (p) => p.productType === "silver"
+  );
+
+  const goldWeight = goldProducts.reduce((sum, p) => sum + (p.weight || 0), 0);
+  const silverWeight = silverProducts.reduce(
     (sum, p) => sum + (p.weight || 0),
     0
   );
+  const totalWeight = goldWeight + silverWeight;
 
   return (
     <Document>
@@ -234,6 +244,9 @@ const StockReportPDF: React.FC<StockReportPDFProps> = ({ data }) => {
               <View style={[styles.tableHeaderCell, styles.colName]}>
                 <Text>PRODUCT NAME</Text>
               </View>
+              <View style={[styles.tableHeaderCell, styles.colType]}>
+                <Text>TYPE</Text>
+              </View>
               <View style={[styles.tableHeaderCell, styles.colQty]}>
                 <Text>QTY</Text>
               </View>
@@ -272,6 +285,15 @@ const StockReportPDF: React.FC<StockReportPDFProps> = ({ data }) => {
                 <View
                   style={[
                     styles.tableCell,
+                    styles.colType,
+                    styles.tableCellCenter,
+                  ]}
+                >
+                  <Text>{p.productType.toUpperCase()}</Text>
+                </View>
+                <View
+                  style={[
+                    styles.tableCell,
                     styles.colQty,
                     styles.tableCellCenter,
                   ]}
@@ -304,8 +326,28 @@ const StockReportPDF: React.FC<StockReportPDFProps> = ({ data }) => {
               <Text style={styles.totalsValue}>{totalProducts}</Text>
             </View>
             <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>Gold Products:</Text>
+              <Text style={styles.totalsValue}>{goldProducts.length}</Text>
+            </View>
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>Silver Products:</Text>
+              <Text style={styles.totalsValue}>{silverProducts.length}</Text>
+            </View>
+            <View style={styles.totalsRow}>
               <Text style={styles.totalsLabel}>Total Quantity:</Text>
               <Text style={styles.totalsValue}>{totalQuantity}</Text>
+            </View>
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>Gold Weight:</Text>
+              <Text style={styles.totalsValue}>
+                {goldWeight.toFixed(2)} (sum of entered units)
+              </Text>
+            </View>
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>Silver Weight:</Text>
+              <Text style={styles.totalsValue}>
+                {silverWeight.toFixed(2)} (sum of entered units)
+              </Text>
             </View>
             <View style={styles.totalsRow}>
               <Text style={styles.totalsLabel}>Total Weight:</Text>

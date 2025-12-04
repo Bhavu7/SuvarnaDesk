@@ -5,6 +5,7 @@ export interface Product {
     _id?: string;
     productNo: string;
     name: string;
+    productType: "gold" | "silver";
     quantity: number;
     hsnCode: string;
     weight: number;

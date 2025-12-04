@@ -16,6 +16,7 @@ import StockReportPDF, { StockProduct } from "../components/StockReportPDF";
 const emptyForm: Product = {
   productNo: "",
   name: "",
+  productType: "gold",
   quantity: 0,
   hsnCode: "",
   weight: 0,
@@ -52,11 +53,11 @@ const Stock: React.FC = () => {
         srNo: index + 1,
         productNo: p.productNo,
         name: p.name,
+        productType: p.productType,
         quantity: p.quantity || 0,
         hsnCode: p.hsnCode || "",
         weight: p.weight || 0,
-        // if you added weightUnit on frontend model, use p.weightUnit, else default:
-        weightUnit: (p as any).weightUnit || "g",
+        weightUnit: p.weightUnit || "g",
       }));
 
       const doc = (
@@ -177,6 +178,7 @@ const Stock: React.FC = () => {
     (sum, p) => sum + (p.quantity || 0),
     0
   );
+
   const toGrams = (weight: number, unit: string) => {
     switch (unit) {
       case "kg":
@@ -194,6 +196,31 @@ const Stock: React.FC = () => {
     (sum, p) => sum + toGrams(p.weight || 0, p.weightUnit || "g"),
     0
   );
+
+  // Calculate weight by product type
+  const goldWeight = (products || []).reduce(
+    (sum, p) =>
+      p.productType === "gold"
+        ? sum + toGrams(p.weight || 0, p.weightUnit || "g")
+        : sum,
+    0
+  );
+
+  const silverWeight = (products || []).reduce(
+    (sum, p) =>
+      p.productType === "silver"
+        ? sum + toGrams(p.weight || 0, p.weightUnit || "g")
+        : sum,
+    0
+  );
+
+  // Count products by type
+  const goldCount = (products || []).filter(
+    (p) => p.productType === "gold"
+  ).length;
+  const silverCount = (products || []).filter(
+    (p) => p.productType === "silver"
+  ).length;
 
   return (
     <motion.div
@@ -286,6 +313,7 @@ const Stock: React.FC = () => {
                       onChange={handleChange}
                       placeholder="e.g., PRD-001"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
                     />
                   </div>
 
@@ -300,7 +328,29 @@ const Stock: React.FC = () => {
                       onChange={handleChange}
                       placeholder="e.g., Diamond Necklace"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
                     />
+                  </div>
+
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                      Product Type *
+                    </label>
+                    <div className="w-full">
+                      <CustomDropdown
+                        options={[
+                          { value: "gold", label: "Gold" },
+                          { value: "silver", label: "Silver" },
+                        ]}
+                        value={formData.productType}
+                        onChange={(value) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            productType: value as "gold" | "silver",
+                          }))
+                        }
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -359,7 +409,7 @@ const Stock: React.FC = () => {
                           onChange={(value) =>
                             setFormData((prev) => ({
                               ...prev,
-                              weightUnit: value as any,
+                              weightUnit: value as "g" | "mg" | "kg" | "tola",
                             }))
                           }
                         />
@@ -408,6 +458,9 @@ const Stock: React.FC = () => {
                     <th className="px-4 py-3 font-semibold text-left text-gray-700">
                       Product Name
                     </th>
+                    <th className="px-4 py-3 font-semibold text-left text-gray-700">
+                      Type
+                    </th>
                     <th className="px-4 py-3 font-semibold text-center text-gray-700">
                       Qty
                     </th>
@@ -426,7 +479,7 @@ const Stock: React.FC = () => {
                   {isLoading ? (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={7}
                         className="px-4 py-6 text-center text-gray-500"
                       >
                         Loading products...
@@ -442,6 +495,18 @@ const Stock: React.FC = () => {
                           {p.productNo}
                         </td>
                         <td className="px-4 py-3 text-gray-700">{p.name}</td>
+                        <td className="px-4 py-3 text-gray-700">
+                          <span
+                            className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              p.productType === "gold"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {p.productType.charAt(0).toUpperCase() +
+                              p.productType.slice(1)}
+                          </span>
+                        </td>
                         <td className="px-4 py-3 text-center text-gray-700">
                           {p.quantity}
                         </td>
@@ -476,7 +541,7 @@ const Stock: React.FC = () => {
                   ) : (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={7}
                         className="px-4 py-6 text-center text-gray-500"
                       >
                         No products found. Use the form button above to add one.
@@ -503,18 +568,46 @@ const Stock: React.FC = () => {
                 </span>
               </div>
               <div className="flex justify-between">
+                <span className="text-gray-600">Gold Products:</span>
+                <span className="font-semibold text-gray-900">{goldCount}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Silver Products:</span>
+                <span className="font-semibold text-gray-900">
+                  {silverCount}
+                </span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-gray-600">Total Quantity:</span>
                 <span className="font-semibold text-gray-900">
                   {totalQuantity}
                 </span>
               </div>
-              <div className="flex justify-between pt-2 border-t-2 border-gray-300">
-                <span className="font-semibold text-gray-800">
-                  Total Weight:
-                </span>
-                <span className="text-lg font-bold text-blue-600">
-                  {totalWeight.toFixed(2)} g
-                </span>
+              <div className="pt-2 border-t-2 border-gray-300">
+                <div className="flex justify-between mb-2">
+                  <span className="font-medium text-gray-700">
+                    Gold Weight:
+                  </span>
+                  <span className="font-semibold text-yellow-600">
+                    {goldWeight.toFixed(2)} g
+                  </span>
+                </div>
+                <div className="flex justify-between mb-2">
+                  <span className="font-medium text-gray-700">
+                    Silver Weight:
+                  </span>
+                  <span className="font-semibold text-gray-500">
+                    {silverWeight.toFixed(2)} g
+                  </span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-gray-200">
+                  <span className="font-semibold text-gray-800">
+                    Total Weight:
+                  </span>
+                  <span className="text-lg font-bold text-blue-600">
+                    {totalWeight.toFixed(2)} g
+                  </span>
+                </div>
               </div>
               <div className="p-3 mt-6 border border-blue-200 rounded-lg bg-blue-50">
                 <p className="text-xs text-blue-700">
@@ -522,8 +615,8 @@ const Stock: React.FC = () => {
                   {editingId ? "Update existing product" : "Create new product"}
                 </p>
                 <p className="text-xs text-blue-700">
-                  <strong>Tip:</strong> Use the list to quickly edit or delete
-                  items from your stock.
+                  <strong>Tip:</strong> Product type helps categorize and value
+                  your inventory.
                 </p>
               </div>
             </div>
