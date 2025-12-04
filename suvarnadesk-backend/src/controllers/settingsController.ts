@@ -52,12 +52,14 @@ export const getShopSettings = async (req: Request, res: Response) => {
         res.json({
             shopName: settings.shopName,
             ownerName: settings.ownerName,
+            goldOwnerName: settings.goldOwnerName || "Jay Krushna Haribhai Soni",     // Added
+            silverOwnerName: settings.silverOwnerName || "M/s Yogeshkumar and Brothers", // Added
             address: settings.address,
             phone: settings.phone,
             goldGstNumber: settings.goldGstNumber || "",
             silverGstNumber: settings.silverGstNumber || "",
-            goldPanNumber: settings.goldPanNumber || "",    // Added
-            silverPanNumber: settings.silverPanNumber || "", // Added
+            goldPanNumber: settings.goldPanNumber || "",
+            silverPanNumber: settings.silverPanNumber || "",
             logoUrl: settings.logoUrl || "",
             createdAt: settings.createdAt,
             updatedAt: settings.updatedAt
@@ -76,12 +78,14 @@ export const updateShopSettings = async (req: Request, res: Response) => {
         const {
             shopName,
             ownerName,
+            goldOwnerName,     // Added
+            silverOwnerName,   // Added
             address,
             phone,
             goldGstNumber,
             silverGstNumber,
-            goldPanNumber,    // Added
-            silverPanNumber,  // Added
+            goldPanNumber,
+            silverPanNumber,
             logoUrl
         } = req.body;
 
@@ -95,6 +99,18 @@ export const updateShopSettings = async (req: Request, res: Response) => {
         if (!ownerName?.trim()) {
             return res.status(400).json({
                 error: "Missing required field: ownerName"
+            });
+        }
+
+        if (!goldOwnerName?.trim()) {
+            return res.status(400).json({
+                error: "Missing required field: goldOwnerName"
+            });
+        }
+
+        if (!silverOwnerName?.trim()) {
+            return res.status(400).json({
+                error: "Missing required field: silverOwnerName"
             });
         }
 
@@ -152,24 +168,28 @@ export const updateShopSettings = async (req: Request, res: Response) => {
             settings = new ShopSettings({
                 shopName: shopName.trim(),
                 ownerName: ownerName.trim(),
+                goldOwnerName: goldOwnerName.trim(),     // Added
+                silverOwnerName: silverOwnerName.trim(), // Added
                 address: address.trim(),
                 phone: phone.trim(),
                 goldGstNumber: goldGstNumber?.trim() || "",
                 silverGstNumber: silverGstNumber?.trim() || "",
-                goldPanNumber: goldPanNumber?.trim() || "",    // Added
-                silverPanNumber: silverPanNumber?.trim() || "", // Added
+                goldPanNumber: goldPanNumber?.trim() || "",
+                silverPanNumber: silverPanNumber?.trim() || "",
                 logoUrl: logoUrl?.trim() || ""
             });
         } else {
             // Update existing settings
             settings.shopName = shopName.trim();
             settings.ownerName = ownerName.trim();
+            settings.goldOwnerName = goldOwnerName.trim();     // Added
+            settings.silverOwnerName = silverOwnerName.trim(); // Added
             settings.address = address.trim();
             settings.phone = phone.trim();
             settings.goldGstNumber = goldGstNumber?.trim() || "";
             settings.silverGstNumber = silverGstNumber?.trim() || "";
-            settings.goldPanNumber = goldPanNumber?.trim() || "";    // Added
-            settings.silverPanNumber = silverPanNumber?.trim() || ""; // Added
+            settings.goldPanNumber = goldPanNumber?.trim() || "";
+            settings.silverPanNumber = silverPanNumber?.trim() || "";
             settings.logoUrl = logoUrl?.trim() || "";
         }
 
@@ -182,12 +202,14 @@ export const updateShopSettings = async (req: Request, res: Response) => {
             data: {
                 shopName: settings.shopName,
                 ownerName: settings.ownerName,
+                goldOwnerName: settings.goldOwnerName,     // Added
+                silverOwnerName: settings.silverOwnerName, // Added
                 address: settings.address,
                 phone: settings.phone,
                 goldGstNumber: settings.goldGstNumber || "",
                 silverGstNumber: settings.silverGstNumber || "",
-                goldPanNumber: settings.goldPanNumber || "",    // Added
-                silverPanNumber: settings.silverPanNumber || "", // Added
+                goldPanNumber: settings.goldPanNumber || "",
+                silverPanNumber: settings.silverPanNumber || "",
                 logoUrl: settings.logoUrl || "",
                 updatedAt: settings.updatedAt
             }
@@ -215,19 +237,22 @@ export const createInitialSettings = async (req: Request, res: Response) => {
         const {
             shopName,
             ownerName,
+            goldOwnerName,     // Added
+            silverOwnerName,   // Added
             address,
             phone,
             goldGstNumber,
             silverGstNumber,
-            goldPanNumber,    // Added
-            silverPanNumber,  // Added
+            goldPanNumber,
+            silverPanNumber,
             logoUrl
         } = req.body;
 
         // Validate required fields
-        if (!shopName?.trim() || !ownerName?.trim() || !address?.trim() || !phone?.trim()) {
+        if (!shopName?.trim() || !ownerName?.trim() || !goldOwnerName?.trim() ||
+            !silverOwnerName?.trim() || !address?.trim() || !phone?.trim()) {
             return res.status(400).json({
-                error: "Missing required fields: shopName, ownerName, address, phone"
+                error: "Missing required fields: shopName, ownerName, goldOwnerName, silverOwnerName, address, phone"
             });
         }
 
@@ -269,12 +294,14 @@ export const createInitialSettings = async (req: Request, res: Response) => {
         const settings = new ShopSettings({
             shopName: shopName.trim(),
             ownerName: ownerName.trim(),
+            goldOwnerName: goldOwnerName.trim(),     // Added
+            silverOwnerName: silverOwnerName.trim(), // Added
             address: address.trim(),
             phone: phone.trim(),
             goldGstNumber: goldGstNumber?.trim() || "",
             silverGstNumber: silverGstNumber?.trim() || "",
-            goldPanNumber: goldPanNumber?.trim() || "",    // Added
-            silverPanNumber: silverPanNumber?.trim() || "", // Added
+            goldPanNumber: goldPanNumber?.trim() || "",
+            silverPanNumber: silverPanNumber?.trim() || "",
             logoUrl: logoUrl?.trim() || ""
         });
 
@@ -286,12 +313,14 @@ export const createInitialSettings = async (req: Request, res: Response) => {
             data: {
                 shopName: settings.shopName,
                 ownerName: settings.ownerName,
+                goldOwnerName: settings.goldOwnerName,     // Added
+                silverOwnerName: settings.silverOwnerName, // Added
                 address: settings.address,
                 phone: settings.phone,
                 goldGstNumber: settings.goldGstNumber || "",
                 silverGstNumber: settings.silverGstNumber || "",
-                goldPanNumber: settings.goldPanNumber || "",    // Added
-                silverPanNumber: settings.silverPanNumber || "", // Added
+                goldPanNumber: settings.goldPanNumber || "",
+                silverPanNumber: settings.silverPanNumber || "",
                 logoUrl: settings.logoUrl || "",
                 createdAt: settings.createdAt
             }

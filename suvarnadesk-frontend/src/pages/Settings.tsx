@@ -8,6 +8,7 @@ import {
   MdAttachMoney,
   MdMoneyOff,
   MdCreditCard,
+  MdPerson,
 } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
 import apiClient from "../api/apiClient";
@@ -20,10 +21,12 @@ interface ShopSettings {
   phone: string;
   goldGstNumber?: string;
   silverGstNumber?: string;
-  goldPanNumber?: string; // Added
-  silverPanNumber?: string; // Added
+  goldPanNumber?: string;
+  silverPanNumber?: string;
+  goldOwnerName?: string; // Added: Gold specific owner name
+  silverOwnerName?: string; // Added: Silver specific owner name
   logoUrl?: string;
-  ownerName?: string;
+  ownerName?: string; // Keep main owner name for backward compatibility
 }
 
 export default function Settings() {
@@ -34,8 +37,10 @@ export default function Settings() {
     phone: "",
     goldGstNumber: "",
     silverGstNumber: "",
-    goldPanNumber: "", // Added
-    silverPanNumber: "", // Added
+    goldPanNumber: "",
+    silverPanNumber: "",
+    goldOwnerName: "Jay Krushna Haribhai Soni", // Added with default value
+    silverOwnerName: "M/s Yogeshkumar and Brothers", // Added with default value
     logoUrl: "",
     ownerName: "",
   });
@@ -56,8 +61,11 @@ export default function Settings() {
           phone: data.phone || "",
           goldGstNumber: data.goldGstNumber || "",
           silverGstNumber: data.silverGstNumber || "",
-          goldPanNumber: data.goldPanNumber || "", // Added
-          silverPanNumber: data.silverPanNumber || "", // Added
+          goldPanNumber: data.goldPanNumber || "",
+          silverPanNumber: data.silverPanNumber || "",
+          goldOwnerName: data.goldOwnerName || "Jay Krushna Haribhai Soni", // Added
+          silverOwnerName:
+            data.silverOwnerName || "M/s Yogeshkumar and Brothers", // Added
           logoUrl: data.logoUrl || "",
           ownerName: data.ownerName || "",
         });
@@ -114,12 +122,14 @@ export default function Settings() {
       const response = await apiClient.put("/shop-settings", {
         shopName: settings.shopName,
         ownerName: settings.ownerName,
+        goldOwnerName: settings.goldOwnerName, // Added
+        silverOwnerName: settings.silverOwnerName, // Added
         address: settings.address,
         phone: settings.phone,
         goldGstNumber: settings.goldGstNumber,
         silverGstNumber: settings.silverGstNumber,
-        goldPanNumber: settings.goldPanNumber, // Added
-        silverPanNumber: settings.silverPanNumber, // Added
+        goldPanNumber: settings.goldPanNumber,
+        silverPanNumber: settings.silverPanNumber,
         logoUrl: settings.logoUrl,
       });
 
@@ -292,7 +302,7 @@ export default function Settings() {
 
               <div>
                 <label className="block mb-2 text-sm font-medium text-gray-700">
-                  Owner Name
+                  Main Owner Name
                 </label>
                 <input
                   type="text"
@@ -301,27 +311,50 @@ export default function Settings() {
                     handleInputChange("ownerName", e.target.value)
                   }
                   className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter owner's name"
+                  placeholder="Enter main owner's name"
                 />
               </div>
             </div>
           </motion.div>
 
-          {/* GST & PAN Information */}
+          {/* Gold Tax & Owner Information */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.15 }}
-            className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm"
+            className="p-6 bg-white border border-yellow-200 rounded-lg shadow-sm"
           >
             <div className="flex items-center gap-2 mb-6">
               <MdAttachMoney className="text-xl text-yellow-600" />
               <h3 className="text-lg font-semibold text-gray-800">
-                Tax Information (Gold)
+                Gold Information
               </h3>
             </div>
 
             <div className="space-y-6">
+              {/* Gold Owner Name */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <MdPerson className="text-yellow-600" />
+                  <label className="text-sm font-medium text-gray-700">
+                    Gold Owner Name *
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  value={settings.goldOwnerName || ""}
+                  onChange={(e) =>
+                    handleInputChange("goldOwnerName", e.target.value)
+                  }
+                  className="w-full px-4 py-3 transition-all duration-200 border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                  placeholder="Enter Gold owner's name"
+                  required
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  This name will appear on Gold invoices
+                </p>
+              </div>
+
               {/* Gold GST */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
@@ -400,21 +433,44 @@ export default function Settings() {
             </div>
           </motion.div>
 
-          {/* Silver GST & PAN Information */}
+          {/* Silver Tax & Owner Information */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.15 }}
-            className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm"
+            className="p-6 bg-white border border-gray-300 rounded-lg shadow-sm"
           >
             <div className="flex items-center gap-2 mb-6">
               <MdAttachMoney className="text-xl text-gray-500" />
               <h3 className="text-lg font-semibold text-gray-800">
-                Tax Information (Silver)
+                Silver Information
               </h3>
             </div>
 
             <div className="space-y-6">
+              {/* Silver Owner Name */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <MdPerson className="text-gray-500" />
+                  <label className="text-sm font-medium text-gray-700">
+                    Silver Owner Name *
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  value={settings.silverOwnerName || ""}
+                  onChange={(e) =>
+                    handleInputChange("silverOwnerName", e.target.value)
+                  }
+                  className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                  placeholder="Enter Silver owner's name"
+                  required
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  This name will appear on Silver invoices
+                </p>
+              </div>
+
               {/* Silver GST */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
@@ -496,10 +552,10 @@ export default function Settings() {
             {/* Note about GST & PAN */}
             <div className="p-3 mt-6 rounded-lg bg-gray-50">
               <p className="text-xs text-gray-600">
-                <strong>Note:</strong> Enter your GST and PAN numbers for Gold
-                and Silver items separately. GST numbers will be used on
-                invoices based on the item type. PAN is required for high-value
-                transactions.
+                <strong>Note:</strong> Enter separate owner names, GST and PAN
+                numbers for Gold and Silver items. Different owner names allow
+                you to maintain separate legal entities or partnerships for
+                different metal types.
               </p>
             </div>
           </motion.div>
@@ -591,14 +647,22 @@ export default function Settings() {
               </div>
               <div className="p-3 rounded-lg bg-gray-50">
                 <span className="block mb-1 text-xs font-medium text-gray-500">
-                  Owner:
+                  Main Owner:
                 </span>
                 <p className="font-medium text-gray-700">
                   {settings.ownerName || "Not set"}
                 </p>
               </div>
 
-              {/* Gold Tax Info */}
+              {/* Gold Information */}
+              <div className="p-3 border border-yellow-200 rounded-lg bg-yellow-50">
+                <span className="block mb-1 text-xs font-medium text-yellow-700">
+                  Gold Owner:
+                </span>
+                <p className="font-semibold text-gray-800">
+                  {settings.goldOwnerName || "Not set"}
+                </p>
+              </div>
               <div className="p-3 border border-yellow-200 rounded-lg bg-yellow-50">
                 <span className="block mb-1 text-xs font-medium text-yellow-700">
                   Gold GST:
@@ -648,7 +712,15 @@ export default function Settings() {
                 </p>
               </div>
 
-              {/* Silver Tax Info */}
+              {/* Silver Information */}
+              <div className="p-3 bg-gray-100 border border-gray-300 rounded-lg">
+                <span className="block mb-1 text-xs font-medium text-gray-700">
+                  Silver Owner:
+                </span>
+                <p className="font-semibold text-gray-800">
+                  {settings.silverOwnerName || "Not set"}
+                </p>
+              </div>
               <div className="p-3 border border-gray-200 rounded-lg bg-gray-50">
                 <span className="block mb-1 text-xs font-medium text-gray-700">
                   Silver GST:
@@ -727,7 +799,11 @@ export default function Settings() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-1">•</span>
-                <span>Enter separate GST & PAN for Gold and Silver</span>
+                <span>Enter separate owner names for Gold and Silver</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1">•</span>
+                <span>Enter separate GST & PAN for each metal type</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-1">•</span>
@@ -739,29 +815,27 @@ export default function Settings() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-1">•</span>
-                <span>Phone number should include country code</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-1">•</span>
-                <span>Address will be printed on invoices</span>
+                <span>Different owner names allow separate legal entities</span>
               </li>
             </ul>
           </div>
 
-          {/* Tax Info Card */}
+          {/* Business Structure Info */}
           <div className="p-6 border border-yellow-200 rounded-lg bg-yellow-50">
             <div className="flex items-center gap-2 mb-3">
-              <MdMoneyOff className="text-lg text-yellow-700" />
-              <h4 className="font-semibold text-yellow-800">Tax Information</h4>
+              <MdStore className="text-lg text-yellow-700" />
+              <h4 className="font-semibold text-yellow-800">
+                Business Structure
+              </h4>
             </div>
             <div className="text-sm text-yellow-700">
-              <p className="mb-2">Why separate GST & PAN?</p>
+              <p className="mb-2">Why separate owner names?</p>
               <ul className="space-y-1">
-                <li>• Different tax rates for Gold and Silver</li>
-                <li>• Separate HSN codes for each metal type</li>
-                <li>• Different invoice requirements</li>
-                <li>• Compliance with GST regulations</li>
-                <li>• PAN required for transactions over ₹2 lakhs</li>
+                <li>• Different legal entities for Gold and Silver</li>
+                <li>• Separate partnerships or proprietorships</li>
+                <li>• Different tax registration requirements</li>
+                <li>• Separate accounting and compliance</li>
+                <li>• Allows for different business models</li>
               </ul>
             </div>
           </div>
