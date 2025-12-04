@@ -7,7 +7,6 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Billing from "./pages/Billing";
 import Rates from "./pages/Rates";
-// import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
@@ -45,7 +44,6 @@ const withErrorBoundary = <P extends ComponentProps>(
 const DashboardWithErrorBoundary = withErrorBoundary(Dashboard);
 const BillingWithErrorBoundary = withErrorBoundary(Billing);
 const RatesWithErrorBoundary = withErrorBoundary(Rates);
-// const ReportsWithErrorBoundary = withErrorBoundary(Reports);
 const SettingsWithErrorBoundary = withErrorBoundary(Settings);
 const ProfileWithErrorBoundary = withErrorBoundary(Profile);
 const RepairingsWithErrorBoundary = withErrorBoundary(Repairings);
@@ -111,10 +109,6 @@ function App() {
                     element={<ManageCustomersWithErrorBoundary />}
                   />
                   <Route path="rates" element={<RatesWithErrorBoundary />} />
-                  {/* <Route
-                    path="reports"
-                    element={<ReportsWithErrorBoundary />}
-                  /> */}
                   <Route
                     path="repairings"
                     element={<RepairingsWithErrorBoundary />}

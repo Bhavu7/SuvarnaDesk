@@ -18,7 +18,6 @@ app.use(express.json());
 import adminRoutes from "./routes/adminRoutes";
 import customerRoutes from "./routes/customerRoutes";
 import invoiceRoutes from "./routes/invoiceRoutes";
-import labourChargeRoutes from "./routes/labourChargeRoutes";
 import metalRateRoutes from "./routes/metalRateRoutes";
 import shopSettingsRoutes from "./routes/settingsRoutes";
 import pdfRoutes from "./routes/pdfRoutes";
@@ -43,7 +42,6 @@ mongoose
 app.use("/api/admin", adminRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/invoices", invoiceRoutes);
-app.use("/api/labour-charges", labourChargeRoutes);
 app.use("/api/metal-rates", metalRateRoutes);
 app.use("/api/shop-settings", shopSettingsRoutes);
 app.use("/api/pdf", pdfRoutes);
