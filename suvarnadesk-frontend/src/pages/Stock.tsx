@@ -10,6 +10,8 @@ import {
 } from "../hooks/useStock";
 import { showToast } from "../components/CustomToast";
 import CustomDropdown from "../components/CustomDropdown";
+import { pdf } from "@react-pdf/renderer";
+import StockReportPDF, { StockProduct } from "../components/StockReportPDF";
 
 const emptyForm: Product = {
   productNo: "",
@@ -36,6 +38,57 @@ const Stock: React.FC = () => {
       setFormData(emptyForm);
     }
   }, [editingId]);
+
+  const handleDownloadStockPDF = async () => {
+    if (!products || products.length === 0) {
+      showToast.error("No products available to generate report");
+      return;
+    }
+
+    try {
+      showToast.loading("Generating stock report PDF, please wait...");
+
+      const mappedProducts: StockProduct[] = products.map((p, index) => ({
+        srNo: index + 1,
+        productNo: p.productNo,
+        name: p.name,
+        quantity: p.quantity || 0,
+        hsnCode: p.hsnCode || "",
+        weight: p.weight || 0,
+        // if you added weightUnit on frontend model, use p.weightUnit, else default:
+        weightUnit: (p as any).weightUnit || "g",
+      }));
+
+      const doc = (
+        <StockReportPDF
+          data={{
+            reportDateTime: new Date().toISOString(),
+            shopName: "SuvarnaDesk Jewellery",
+            shopAddress: "near ashok stambh, choksi bazar anand 388001",
+            logoUrl: "/logo.png",
+            products: mappedProducts,
+          }}
+        />
+      );
+
+      const blob = await pdf(doc).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Stock_Report_${new Date()
+        .toISOString()
+        .slice(0, 10)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      showToast.success("Stock report PDF downloaded successfully!");
+    } catch (error) {
+      console.error("Stock PDF generation error:", error);
+      showToast.error("Failed to generate stock report PDF. Please try again.");
+    }
+  };
 
   const handleOpenAdd = () => {
     setEditingId(null);
@@ -162,13 +215,23 @@ const Stock: React.FC = () => {
           </div>
         </div>
 
-        <motion.button
-          whileTap={{ scale: 0.98 }}
-          onClick={handleOpenAdd}
-          className="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50 focus:outline-none focus:ring-0"
-        >
-          New Product Form
-        </motion.button>
+        <div className="flex items-center gap-2">
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={handleOpenAdd}
+            className="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50 focus:outline-none focus:ring-0"
+          >
+            New Product Form
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={handleDownloadStockPDF}
+            className="px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-0"
+          >
+            Download Stock PDF
+          </motion.button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
