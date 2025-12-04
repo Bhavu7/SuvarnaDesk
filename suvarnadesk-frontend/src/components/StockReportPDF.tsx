@@ -27,10 +27,15 @@ interface StockReportData {
   products: StockProduct[];
   reportType: "gold" | "silver" | "all";
   ownerName: string;
+  gstNumber?: string;
+  panNumber?: string;
+  // For "all" type reports
   goldGstNumber?: string;
   silverGstNumber?: string;
   goldPanNumber?: string;
   silverPanNumber?: string;
+  goldOwnerName?: string;
+  silverOwnerName?: string;
 }
 
 const styles = StyleSheet.create({
@@ -46,7 +51,7 @@ const styles = StyleSheet.create({
   },
   headerSection: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 10,
     paddingBottom: 8,
     borderBottom: "1 solid #ddd",
@@ -79,17 +84,26 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 1,
   },
-  gstInfoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 4,
-    paddingTop: 4,
-    borderTop: "1 solid #eee",
+  // New style for right-aligned tax info
+  taxInfoColumn: {
+    width: "40%",
+    alignItems: "flex-end",
+    paddingLeft: 10,
+    marginTop: 5,
   },
-  gstInfo: {
+  taxInfoItem: {
     fontSize: 8,
     color: "#555",
     fontWeight: "bold",
+    marginBottom: 2,
+    textAlign: "right",
+  },
+  reportDate: {
+    fontSize: 8,
+    color: "#555",
+    fontWeight: "bold",
+    marginBottom: 2,
+    textAlign: "right",
   },
   metaInfoRow: {
     flexDirection: "row",
@@ -257,45 +271,66 @@ const StockReportPDF: React.FC<StockReportPDFProps> = ({ data }) => {
   );
   const totalWeight = goldWeight + silverWeight;
 
+  // Format report date for top right display
+  const formatReportDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
   // Determine report details based on report type
   const getReportDetails = () => {
     switch (data.reportType) {
       case "gold":
         return {
-          title: data.ownerName || "JayKrushna Haribhai Soni",
-          subtitle: "Gold Jewellery Stock Report",
-          gstin: `GSTIN: ${formatGST(data.goldGstNumber)}`,
-          pan: `PAN: ${formatPAN(data.goldPanNumber)}`,
+          title:
+            data.ownerName || data.goldOwnerName || "Jay Krushna Haribhai Soni",
+          gstin: formatGST(data.gstNumber || data.goldGstNumber),
+          pan: formatPAN(data.panNumber || data.goldPanNumber),
           reportLabel: "GOLD STOCK REPORT",
           backgroundColor: "#fff8e1",
           textColor: "#d4af37",
           borderColor: "#d4af37",
+          isGold: true,
         };
       case "silver":
         return {
-          title: data.ownerName || "Jay Krushna Haribhai Soni",
-          subtitle: "Silver Jewellery Stock Report",
-          gstin: `GSTIN: ${formatGST(data.silverGstNumber)}`,
-          pan: `PAN: ${formatPAN(data.silverPanNumber)}`,
+          title:
+            data.ownerName ||
+            data.silverOwnerName ||
+            "M/s Yogeshkumar and Brothers",
+          gstin: formatGST(data.gstNumber || data.silverGstNumber),
+          pan: formatPAN(data.panNumber || data.silverPanNumber),
           reportLabel: "SILVER STOCK REPORT",
           backgroundColor: "#f5f5f5",
           textColor: "#757575",
           borderColor: "#757575",
+          isGold: false,
         };
       default:
         return {
           title: data.shopName || "SuvarnaDesk Jewellery",
           subtitle: "Complete Stock Report",
-          gstin: `Gold GSTIN: ${formatGST(
-            data.goldGstNumber
-          )} | Silver GSTIN: ${formatGST(data.silverGstNumber)}`,
-          pan: `Gold PAN: ${formatPAN(
-            data.goldPanNumber
-          )} | Silver PAN: ${formatPAN(data.silverPanNumber)}`,
+          gstin: data.goldGstNumber
+            ? `Gold: ${formatGST(data.goldGstNumber)}`
+            : "Not set",
+          pan: data.goldPanNumber
+            ? `Gold: ${formatPAN(data.goldPanNumber)}`
+            : "Not set",
+          silverGstin: data.silverGstNumber
+            ? `Silver: ${formatGST(data.silverGstNumber)}`
+            : "Not set",
+          silverPan: data.silverPanNumber
+            ? `Silver: ${formatPAN(data.silverPanNumber)}`
+            : "Not set",
           reportLabel: "COMPLETE STOCK REPORT",
           backgroundColor: "#FFFFFF",
           textColor: "#1f9e4d",
           borderColor: "#1f9e4d",
+          isGold: false,
         };
     }
   };
@@ -324,7 +359,7 @@ const StockReportPDF: React.FC<StockReportPDFProps> = ({ data }) => {
         <View
           style={[styles.container, { borderColor: reportDetails.borderColor }]}
         >
-          {/* Header with Logo */}
+          {/* Header with Logo and Right-aligned GST/PAN/Date */}
           <View style={styles.headerSection}>
             {data.logoUrl && (
               <View style={styles.logoContainer}>
@@ -335,46 +370,53 @@ const StockReportPDF: React.FC<StockReportPDFProps> = ({ data }) => {
               <Text style={[styles.title, { color: reportDetails.textColor }]}>
                 {reportDetails.title}
               </Text>
-              <Text
-                style={[styles.subtitle, { color: reportDetails.textColor }]}
-              >
-                {reportDetails.subtitle}
-              </Text>
               <Text style={styles.companyInfo}>{data.shopAddress}</Text>
-
-              <View style={styles.gstInfoRow}>
-                <Text
-                  style={[styles.gstInfo, { color: reportDetails.textColor }]}
-                >
-                  {reportDetails.gstin}
-                </Text>
-                <Text
-                  style={[styles.gstInfo, { color: reportDetails.textColor }]}
-                >
-                  {reportDetails.pan}
-                </Text>
-              </View>
             </View>
-          </View>
 
-          {/* Meta Info Row */}
-          <View style={styles.metaInfoRow}>
-            <View style={styles.metaInfoItem}>
-              <Text style={styles.metaLabel}>Report Date & Time:</Text>
-              <Text style={styles.metaValue}>
-                {formatDateTime(data.reportDateTime)}
+            {/* Right-aligned GST, PAN and Date */}
+            <View style={styles.taxInfoColumn}>
+              {/* Report Date at top */}
+              <Text style={styles.reportDate}>
+                Report Date: {formatReportDate(data.reportDateTime)}
               </Text>
+
+              {/* GSTIN */}
+              {data.reportType === "all" ? (
+                <>
+                  <Text style={[styles.taxInfoItem, { color: "#d4af37" }]}>
+                    {reportDetails.gstin}
+                  </Text>
+                  <Text style={[styles.taxInfoItem, { color: "#d4af37" }]}>
+                    {reportDetails.pan}
+                  </Text>
+                  <Text style={[styles.taxInfoItem, { color: "#757575" }]}>
+                    {reportDetails.silverGstin || "Silver GSTIN: Not set"}
+                  </Text>
+                  <Text style={[styles.taxInfoItem, { color: "#757575" }]}>
+                    {reportDetails.silverPan || "Silver PAN: Not set"}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Text
+                    style={[
+                      styles.taxInfoItem,
+                      { color: reportDetails.textColor },
+                    ]}
+                  >
+                    GSTIN: {reportDetails.gstin}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.taxInfoItem,
+                      { color: reportDetails.textColor },
+                    ]}
+                  >
+                    PAN: {reportDetails.pan}
+                  </Text>
+                </>
+              )}
             </View>
-            <View style={styles.metaInfoItem}>
-              <Text style={styles.metaLabel}>Total Products:</Text>
-              <Text style={styles.metaValue}>{totalProducts}</Text>
-            </View>
-            {data.reportType === "all" && (
-              <View style={styles.metaInfoItem}>
-                <Text style={styles.metaLabel}>Report Type:</Text>
-                <Text style={styles.metaValue}>Gold & Silver Combined</Text>
-              </View>
-            )}
           </View>
 
           {/* Products Table */}
@@ -559,11 +601,20 @@ const StockReportPDF: React.FC<StockReportPDFProps> = ({ data }) => {
 
           {/* Tax Information Note */}
           {(data.reportType === "gold" &&
-            (!data.goldGstNumber || !data.goldPanNumber)) ||
+            (!data.gstNumber ||
+              !data.panNumber ||
+              !data.goldGstNumber ||
+              !data.goldPanNumber)) ||
           (data.reportType === "silver" &&
-            (!data.silverGstNumber || !data.silverPanNumber)) ||
+            (!data.gstNumber ||
+              !data.panNumber ||
+              !data.silverGstNumber ||
+              !data.silverPanNumber)) ||
           (data.reportType === "all" &&
-            (!data.goldGstNumber || !data.silverGstNumber)) ? (
+            (!data.goldGstNumber ||
+              !data.silverGstNumber ||
+              !data.goldPanNumber ||
+              !data.silverPanNumber)) ? (
             <View
               style={{
                 marginTop: 8,
@@ -585,10 +636,10 @@ const StockReportPDF: React.FC<StockReportPDFProps> = ({ data }) => {
           <View style={styles.footer}>
             <Text style={{ color: reportDetails.textColor }}>
               {data.reportType === "gold"
-                ? `${reportDetails.title} - Gold Jewellery Stock`
+                ? `Gold Jewellery Stock Report - ${reportDetails.title}`
                 : data.reportType === "silver"
-                ? `${reportDetails.title} - Silver Jewellery Stock`
-                : `${reportDetails.title} - Complete Stock Report`}
+                ? `Silver Jewellery Stock Report - ${reportDetails.title}`
+                : `Complete Stock Report - ${data.shopName}`}
             </Text>
             <Text style={{ fontSize: 9, color: "#666", marginTop: 4 }}>
               Generated on{" "}

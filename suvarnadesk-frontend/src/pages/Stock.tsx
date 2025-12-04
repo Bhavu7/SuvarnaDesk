@@ -6,6 +6,10 @@ import {
   MdEdit,
   MdDelete,
   MdPictureAsPdf,
+  MdCalendarToday,
+  MdDiamond,
+  MdOutlineDiamond,
+  MdAllInbox,
 } from "react-icons/md";
 import {
   useProducts,
@@ -16,6 +20,7 @@ import {
 } from "../hooks/useStock";
 import { showToast } from "../components/CustomToast";
 import CustomDropdown from "../components/CustomDropdown";
+import DateDropdown from "../components/DateDropdown";
 import { pdf } from "@react-pdf/renderer";
 import StockReportPDF, { StockProduct } from "../components/StockReportPDF";
 import apiClient from "../api/apiClient";
@@ -38,9 +43,22 @@ interface ShopSettings {
   silverGstNumber?: string;
   goldPanNumber?: string;
   silverPanNumber?: string;
+  goldOwnerName?: string;
+  silverOwnerName?: string;
   logoUrl?: string;
   ownerName?: string;
 }
+
+// Extend Product interface to include createdAt
+interface ProductWithDate extends Product {
+  createdAt?: string;
+}
+
+// Update the report type to include date-range
+type ReportType = "gold" | "silver" | "all" | "date-range";
+
+// Type for date range product type selection
+type DateRangeProductType = "gold" | "silver" | "both";
 
 const Stock: React.FC = () => {
   const { data: products, isLoading } = useProducts();
@@ -53,11 +71,17 @@ const Stock: React.FC = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [showReportTypeDialog, setShowReportTypeDialog] = useState(false);
-  const [selectedReportType, setSelectedReportType] = useState<
-    "gold" | "silver" | "all"
-  >("all");
+  const [selectedReportType, setSelectedReportType] =
+    useState<ReportType>("all");
   const [shopSettings, setShopSettings] = useState<ShopSettings | null>(null);
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
+
+  // Date range states
+  const [showDateRangeDialog, setShowDateRangeDialog] = useState(false);
+  const [dateRangeStart, setDateRangeStart] = useState<string>("");
+  const [dateRangeEnd, setDateRangeEnd] = useState<string>("");
+  const [dateRangeProductType, setDateRangeProductType] =
+    useState<DateRangeProductType>("both");
 
   // Fetch shop settings
   useEffect(() => {
@@ -70,7 +94,6 @@ const Stock: React.FC = () => {
         }
       } catch (error) {
         console.error("Failed to fetch shop settings:", error);
-        // Use default settings if fetch fails
         setShopSettings({
           shopName: "SuvarnaDesk Jewellery",
           address: "near ashok stambh, choksi bazar anand 388001",
@@ -79,6 +102,8 @@ const Stock: React.FC = () => {
           silverGstNumber: "",
           goldPanNumber: "",
           silverPanNumber: "",
+          goldOwnerName: "Jay Krushna Haribhai Soni",
+          silverOwnerName: "M/s Yogeshkumar and Brothers",
           logoUrl: "/logo.png",
           ownerName: "",
         });
@@ -96,7 +121,11 @@ const Stock: React.FC = () => {
     }
   }, [editingId]);
 
-  const handleDownloadStockPDF = async (type?: "gold" | "silver" | "all") => {
+  const handleDownloadStockPDF = async (
+    type?: ReportType,
+    dateRange?: { start: string; end: string },
+    dateRangeType?: DateRangeProductType
+  ) => {
     if (!products || products.length === 0) {
       showToast.error("No products available to generate report");
       return;
@@ -108,23 +137,82 @@ const Stock: React.FC = () => {
       return;
     }
 
+    // If date range is requested but not provided, show date range dialog
+    if (type === "date-range" && !dateRange) {
+      setShowDateRangeDialog(true);
+      return;
+    }
+
     try {
-      showToast.loading(
-        `Generating ${
-          type === "all"
-            ? "Stock"
-            : type.charAt(0).toUpperCase() + type.slice(1)
-        } report PDF, please wait...`
-      );
+      const loadingMessage =
+        type === "date-range"
+          ? `Generating ${
+              dateRangeType === "both"
+                ? "All"
+                : dateRangeType === "gold"
+                ? "Gold"
+                : "Silver"
+            } Date Range report PDF, please wait...`
+          : `Generating ${
+              type === "all"
+                ? "Stock"
+                : type.charAt(0).toUpperCase() + type.slice(1)
+            } report PDF, please wait...`;
+
+      showToast.loading(loadingMessage);
 
       // Filter products based on selected type
-      const filteredProducts =
-        type === "all"
-          ? products
-          : products.filter((p) => p.productType === type);
+      let filteredProducts = products;
+      let reportLabel = "";
+
+      if (type === "gold" || type === "silver") {
+        filteredProducts = products.filter((p) => p.productType === type);
+        reportLabel = type === "gold" ? "Gold" : "Silver";
+      } else if (type === "date-range" && dateRange) {
+        // Filter by date range - cast products to include createdAt
+        const productsWithDates = products as ProductWithDate[];
+
+        // First filter by date
+        let dateFilteredProducts = productsWithDates.filter((product) => {
+          // Use createdAt if available, otherwise use current date
+          const productDate = new Date(product.createdAt || new Date());
+          const startDate = new Date(dateRange.start);
+          const endDate = new Date(dateRange.end);
+          endDate.setHours(23, 59, 59, 999); // Include entire end day
+
+          return productDate >= startDate && productDate <= endDate;
+        });
+
+        // Then filter by product type if specified
+        if (dateRangeType === "gold") {
+          dateFilteredProducts = dateFilteredProducts.filter(
+            (p) => p.productType === "gold"
+          );
+        } else if (dateRangeType === "silver") {
+          dateFilteredProducts = dateFilteredProducts.filter(
+            (p) => p.productType === "silver"
+          );
+        }
+        // If "both", keep all filtered products
+
+        filteredProducts = dateFilteredProducts;
+
+        const typeLabel =
+          dateRangeType === "both"
+            ? "All"
+            : dateRangeType === "gold"
+            ? "Gold"
+            : "Silver";
+        reportLabel = `${typeLabel} Date Range ${new Date(
+          dateRange.start
+        ).toLocaleDateString()} - ${new Date(
+          dateRange.end
+        ).toLocaleDateString()}`;
+      }
+      // For "all" type, use all products
 
       if (filteredProducts.length === 0) {
-        showToast.error(`No ${type} products available to generate report`);
+        showToast.error(`No products available to generate ${type} report`);
         return;
       }
 
@@ -141,34 +229,61 @@ const Stock: React.FC = () => {
         })
       );
 
-      // Determine owner name based on report type
-      let ownerName = shopSettings?.ownerName || "";
-      if (!ownerName) {
-        if (type === "gold") {
-          ownerName = "Jay Krushna Haribhai Soni";
-        } else if (type === "silver") {
-          ownerName = "M/s Yogeshkumar and Brothers";
-        } else {
-          ownerName = "SuvarnaDesk Jewellery";
-        }
+      // Determine details based on report type
+      let ownerName = "";
+      let gstNumber = "";
+      let panNumber = "";
+      let shopTitle = shopSettings?.shopName || "SuvarnaDesk Jewellery";
+      let reportType: "gold" | "silver" | "all" = "all"; // Default to all
+
+      if (
+        type === "gold" ||
+        (type === "date-range" && dateRangeType === "gold")
+      ) {
+        ownerName = shopSettings?.goldOwnerName || "Jay Krushna Haribhai Soni";
+        gstNumber = shopSettings?.goldGstNumber || "";
+        panNumber = shopSettings?.goldPanNumber || "";
+        shopTitle = ownerName;
+        reportType = "gold";
+      } else if (
+        type === "silver" ||
+        (type === "date-range" && dateRangeType === "silver")
+      ) {
+        ownerName =
+          shopSettings?.silverOwnerName || "M/s Yogeshkumar and Brothers";
+        gstNumber = shopSettings?.silverGstNumber || "";
+        panNumber = shopSettings?.silverPanNumber || "";
+        shopTitle = ownerName;
+        reportType = "silver";
+      } else {
+        // For "all" or "both" type
+        ownerName = shopSettings?.ownerName || "SuvarnaDesk Jewellery";
+        shopTitle = shopSettings?.shopName || "SuvarnaDesk Jewellery";
+        reportType = "all";
       }
 
       const doc = (
         <StockReportPDF
           data={{
             reportDateTime: new Date().toISOString(),
-            shopName: shopSettings?.shopName || "SuvarnaDesk Jewellery",
+            shopName: shopTitle,
             shopAddress:
               shopSettings?.address ||
               "near ashok stambh, choksi bazar anand 388001",
             logoUrl: shopSettings?.logoUrl || "/logo.png",
             products: mappedProducts,
-            reportType: type,
+            reportType: reportType,
             ownerName: ownerName,
+            gstNumber: gstNumber,
+            panNumber: panNumber,
             goldGstNumber: shopSettings?.goldGstNumber || "",
             silverGstNumber: shopSettings?.silverGstNumber || "",
             goldPanNumber: shopSettings?.goldPanNumber || "",
             silverPanNumber: shopSettings?.silverPanNumber || "",
+            goldOwnerName:
+              shopSettings?.goldOwnerName || "Jay Krushna Haribhai Soni",
+            silverOwnerName:
+              shopSettings?.silverOwnerName || "M/s Yogeshkumar and Brothers",
           }}
         />
       );
@@ -177,19 +292,54 @@ const Stock: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      const typeLabel =
-        type === "all" ? "Stock" : type.charAt(0).toUpperCase() + type.slice(1);
-      link.download = `${typeLabel}_Report_${new Date()
-        .toISOString()
-        .slice(0, 10)}.pdf`;
+
+      let fileName = "";
+      if (type === "date-range" && dateRange) {
+        const start = new Date(dateRange.start).toISOString().slice(0, 10);
+        const end = new Date(dateRange.end).toISOString().slice(0, 10);
+        const typePrefix =
+          dateRangeType === "both"
+            ? "All"
+            : dateRangeType === "gold"
+            ? "Gold"
+            : "Silver";
+        fileName = `${typePrefix}_Stock_Report_${start}_to_${end}.pdf`;
+      } else {
+        const typeLabel =
+          type === "all"
+            ? "Stock"
+            : type.charAt(0).toUpperCase() + type.slice(1);
+        fileName = `${typeLabel}_Report_${new Date()
+          .toISOString()
+          .slice(0, 10)}.pdf`;
+      }
+
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      showToast.success(`${typeLabel} report PDF downloaded successfully!`);
+      const successMessage =
+        type === "date-range"
+          ? `${
+              dateRangeType === "both"
+                ? "All"
+                : dateRangeType === "gold"
+                ? "Gold"
+                : "Silver"
+            } Date Range report PDF downloaded successfully!`
+          : `${reportLabel} report PDF downloaded successfully!`;
+
+      showToast.success(successMessage);
+
+      // Reset dialogs
       setShowReportTypeDialog(false);
+      setShowDateRangeDialog(false);
       setSelectedReportType("all");
+      setDateRangeStart("");
+      setDateRangeEnd("");
+      setDateRangeProductType("both");
     } catch (error) {
       console.error("Stock PDF generation error:", error);
       showToast.error("Failed to generate report PDF. Please try again.");
@@ -326,6 +476,30 @@ const Stock: React.FC = () => {
   const silverCount = (products || []).filter(
     (p) => p.productType === "silver"
   ).length;
+
+  const handleGenerateDateRangeReport = () => {
+    if (!dateRangeStart || !dateRangeEnd) {
+      showToast.error("Please select both start and end dates");
+      return;
+    }
+
+    const start = new Date(dateRangeStart);
+    const end = new Date(dateRangeEnd);
+
+    if (start > end) {
+      showToast.error("Start date cannot be after end date");
+      return;
+    }
+
+    handleDownloadStockPDF(
+      "date-range",
+      {
+        start: dateRangeStart,
+        end: dateRangeEnd,
+      },
+      dateRangeProductType
+    );
+  };
 
   return (
     <motion.div
@@ -716,7 +890,20 @@ const Stock: React.FC = () => {
                   </span>
                 </div>
               </div>
-              <div className="p-3 mt-6 border border-blue-200 rounded-lg bg-blue-50">
+
+              {/* Date Range Report Button */}
+              <div className="pt-4 mt-4 border-t border-gray-200">
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowDateRangeDialog(true)}
+                  className="flex items-center justify-center w-full gap-2 px-4 py-3 text-sm font-medium text-white rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 focus:outline-none focus:ring-0"
+                >
+                  <MdCalendarToday className="text-lg" />
+                  Generate Date Range Report
+                </motion.button>
+              </div>
+
+              <div className="p-3 mt-4 border border-blue-200 rounded-lg bg-blue-50">
                 <p className="text-xs text-blue-700">
                   <strong>Editing:</strong>{" "}
                   {editingId ? "Update existing product" : "Create new product"}
@@ -820,9 +1007,8 @@ const Stock: React.FC = () => {
                         With Gold GSTIN and PAN details
                       </p>
                       <p className="mt-1 text-xs text-yellow-600">
-                        {shopSettings?.goldGstNumber
-                          ? `GST: ${shopSettings.goldGstNumber}`
-                          : "GST: Not set in settings"}
+                        {shopSettings?.goldOwnerName ||
+                          "Jay Krushna Haribhai Soni"}
                       </p>
                     </div>
                   </div>
@@ -852,9 +1038,8 @@ const Stock: React.FC = () => {
                         With Silver GSTIN and PAN details
                       </p>
                       <p className="mt-1 text-xs text-gray-600">
-                        {shopSettings?.silverGstNumber
-                          ? `GST: ${shopSettings.silverGstNumber}`
-                          : "GST: Not set in settings"}
+                        {shopSettings?.silverOwnerName ||
+                          "M/s Yogeshkumar and Brothers"}
                       </p>
                     </div>
                   </div>
@@ -863,10 +1048,12 @@ const Stock: React.FC = () => {
 
               <div className="p-3 mb-4 rounded-lg bg-blue-50">
                 <p className="text-xs text-blue-700">
-                  <strong>Note:</strong> GST and PAN numbers are fetched from
-                  Shop Settings.
-                  {!shopSettings?.goldGstNumber &&
-                    !shopSettings?.silverGstNumber &&
+                  <strong>Note:</strong> Owner names, GST and PAN numbers are
+                  fetched from Shop Settings.
+                  {(!shopSettings?.goldGstNumber ||
+                    !shopSettings?.goldPanNumber ||
+                    !shopSettings?.silverGstNumber ||
+                    !shopSettings?.silverPanNumber) &&
                     " Please set them in Settings first for proper invoices."}
                 </p>
               </div>
@@ -880,6 +1067,188 @@ const Stock: React.FC = () => {
                   className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
                   Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Date Range Selection Dialog */}
+      <AnimatePresence>
+        {showDateRangeDialog && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 10 }}
+              className="w-full max-w-md p-6 bg-white shadow-xl rounded-2xl"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-xl font-bold text-gray-800">
+                  Generate Date Range Report
+                </h4>
+                <button
+                  onClick={() => {
+                    setShowDateRangeDialog(false);
+                    setDateRangeStart("");
+                    setDateRangeEnd("");
+                    setDateRangeProductType("both");
+                  }}
+                  className="p-1 text-gray-400 rounded-full hover:bg-gray-100 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p className="mb-6 text-sm text-gray-600">
+                Select a date range and product type to generate a customized
+                stock report.
+              </p>
+
+              <div className="mb-6 space-y-4">
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Start Date *
+                  </label>
+                  <DateDropdown
+                    value={dateRangeStart}
+                    onChange={setDateRangeStart}
+                    placeholder="Select start date"
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    End Date *
+                  </label>
+                  <DateDropdown
+                    value={dateRangeEnd}
+                    onChange={setDateRangeEnd}
+                    placeholder="Select end date"
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Product Type *
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setDateRangeProductType("gold")}
+                      className={`p-3 border-2 rounded-lg flex flex-col items-center justify-center gap-2 ${
+                        dateRangeProductType === "gold"
+                          ? "border-yellow-500 bg-yellow-50"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <MdDiamond
+                        className={`text-xl ${
+                          dateRangeProductType === "gold"
+                            ? "text-yellow-600"
+                            : "text-yellow-400"
+                        }`}
+                      />
+                      <span className="text-xs font-medium">Gold Only</span>
+                    </motion.button>
+
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setDateRangeProductType("silver")}
+                      className={`p-3 border-2 rounded-lg flex flex-col items-center justify-center gap-2 ${
+                        dateRangeProductType === "silver"
+                          ? "border-gray-500 bg-gray-50"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <MdOutlineDiamond
+                        className={`text-xl ${
+                          dateRangeProductType === "silver"
+                            ? "text-gray-600"
+                            : "text-gray-400"
+                        }`}
+                      />
+                      <span className="text-xs font-medium">Silver Only</span>
+                    </motion.button>
+
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setDateRangeProductType("both")}
+                      className={`p-3 border-2 rounded-lg flex flex-col items-center justify-center gap-2 ${
+                        dateRangeProductType === "both"
+                          ? "border-green-500 bg-green-50"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <MdAllInbox
+                        className={`text-xl ${
+                          dateRangeProductType === "both"
+                            ? "text-green-600"
+                            : "text-green-400"
+                        }`}
+                      />
+                      <span className="text-xs font-medium">Both (All)</span>
+                    </motion.button>
+                  </div>
+                </div>
+
+                {dateRangeStart && dateRangeEnd && (
+                  <div className="p-3 rounded-lg bg-green-50">
+                    <p className="text-sm font-medium text-green-800">
+                      Report Period:{" "}
+                      {new Date(dateRangeStart).toLocaleDateString()} to{" "}
+                      {new Date(dateRangeEnd).toLocaleDateString()}
+                    </p>
+                    <p className="mt-1 text-xs text-green-600">
+                      Includes{" "}
+                      {dateRangeProductType === "both"
+                        ? "all products (Gold + Silver)"
+                        : dateRangeProductType === "gold"
+                        ? "Gold products only"
+                        : "Silver products only"}{" "}
+                      added/updated within this date range.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 mb-4 rounded-lg bg-blue-50">
+                <p className="text-xs text-blue-700">
+                  <strong>Note:</strong>{" "}
+                  {dateRangeProductType === "both"
+                    ? "All products within the date range will be included. Gold products will use Gold GSTIN/PAN, Silver products will use Silver GSTIN/PAN."
+                    : dateRangeProductType === "gold"
+                    ? "Only Gold products within the date range will be included. Report will use Gold GSTIN and PAN details."
+                    : "Only Silver products within the date range will be included. Report will use Silver GSTIN and PAN details."}
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => {
+                    setShowDateRangeDialog(false);
+                    setDateRangeStart("");
+                    setDateRangeEnd("");
+                    setDateRangeProductType("both");
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleGenerateDateRangeReport}
+                  disabled={!dateRangeStart || !dateRangeEnd}
+                  className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Generate Report
                 </button>
               </div>
             </motion.div>
