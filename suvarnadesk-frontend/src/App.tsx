@@ -16,6 +16,7 @@ import ManageCustomers from "./pages/ManageCustomers";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ComponentType } from "react";
 import AdminManagement from "./pages/AdminManagement";
+import Stock from "./pages/Stock";
 
 // Define props interface for components
 interface ComponentProps {
@@ -50,6 +51,9 @@ const RepairingsWithErrorBoundary = withErrorBoundary(Repairings);
 const ManageCustomersWithErrorBoundary = withErrorBoundary(ManageCustomers);
 const LayoutWithErrorBoundary = withErrorBoundary(Layout);
 const AdminManagementWithErrorBoundary = withErrorBoundary(AdminManagement);
+const StockWithErrorBoundary = withErrorBoundary(Stock);
+
+// Main App component
 
 function App() {
   return (
@@ -100,6 +104,8 @@ function App() {
               <Route element={<PrivateRoute />}>
                 <Route path="/" element={<LayoutWithErrorBoundary />}>
                   <Route index element={<DashboardWithErrorBoundary />} />
+                  <Route path="/stock" element={<StockWithErrorBoundary />} />
+
                   <Route
                     path="billing"
                     element={<BillingWithErrorBoundary />}

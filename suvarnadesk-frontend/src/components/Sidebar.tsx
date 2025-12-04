@@ -9,7 +9,8 @@ import {
   MdClose,
   MdMenu,
   MdBuildCircle,
-  MdAdminPanelSettings, // Add this icon
+  MdAdminPanelSettings,
+  MdInventory,
 } from "react-icons/md";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext"; // Import useAuth
@@ -150,6 +151,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       icon: <MdPeople />,
       show: true,
     },
+    { to: "/stock", label: "Stock", icon: <MdInventory />, show: true },
     {
       to: "/rates",
       label: "Live Rates",
