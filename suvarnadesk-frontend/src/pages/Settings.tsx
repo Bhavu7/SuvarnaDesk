@@ -8,6 +8,8 @@ import {
   MdCurrencyRupee,
   MdCreditCard,
   MdPerson,
+  MdAccountBalance,
+  MdAccountBalanceWallet,
 } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
 import apiClient from "../api/apiClient";
@@ -22,10 +24,22 @@ interface ShopSettings {
   silverGstNumber?: string;
   goldPanNumber?: string;
   silverPanNumber?: string;
-  goldOwnerName?: string; // Added: Gold specific owner name
-  silverOwnerName?: string; // Added: Silver specific owner name
+  goldOwnerName?: string;
+  silverOwnerName?: string;
   logoUrl?: string;
-  ownerName?: string; // Keep main owner name for backward compatibility
+  ownerName?: string;
+
+  // Gold Bank Details
+  goldBankName?: string;
+  goldBankBranch?: string;
+  goldBankIfsc?: string;
+  goldBankAccountNo?: string;
+
+  // Silver Bank Details
+  silverBankName?: string;
+  silverBankBranch?: string;
+  silverBankIfsc?: string;
+  silverBankAccountNo?: string;
 }
 
 export default function Settings() {
@@ -38,10 +52,22 @@ export default function Settings() {
     silverGstNumber: "",
     goldPanNumber: "",
     silverPanNumber: "",
-    goldOwnerName: "Jay Krushna Haribhai Soni", // Added with default value
-    silverOwnerName: "M/s Yogeshkumar and Brothers", // Added with default value
+    goldOwnerName: "Jay Krushna Haribhai Soni",
+    silverOwnerName: "M/s Yogeshkumar and Brothers",
     logoUrl: "",
     ownerName: "",
+
+    // Gold Bank Defaults
+    goldBankName: "SardarGunj Mercantile Co. Operative Bank Ltd.",
+    goldBankBranch: "Anand",
+    goldBankIfsc: "GSCB0USGUNJ",
+    goldBankAccountNo: "802001002002303",
+
+    // Silver Bank Defaults
+    silverBankName: "SardarGunj Mercantile Co. Operative Bank Ltd.",
+    silverBankBranch: "Anand",
+    silverBankIfsc: "GSCB0USGUNJ",
+    silverBankAccountNo: "802001002001532",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -62,18 +88,33 @@ export default function Settings() {
           silverGstNumber: data.silverGstNumber || "",
           goldPanNumber: data.goldPanNumber || "",
           silverPanNumber: data.silverPanNumber || "",
-          goldOwnerName: data.goldOwnerName || "Jay Krushna Haribhai Soni", // Added
+          goldOwnerName: data.goldOwnerName || "Jay Krushna Haribhai Soni",
           silverOwnerName:
-            data.silverOwnerName || "M/s Yogeshkumar and Brothers", // Added
+            data.silverOwnerName || "M/s Yogeshkumar and Brothers",
           logoUrl: data.logoUrl || "",
           ownerName: data.ownerName || "",
+
+          // Gold Bank Details
+          goldBankName:
+            data.goldBankName ||
+            "SardarGunj Mercantile Co. Operative Bank Ltd.",
+          goldBankBranch: data.goldBankBranch || "Anand",
+          goldBankIfsc: data.goldBankIfsc || "GSCB0USGUNJ",
+          goldBankAccountNo: data.goldBankAccountNo || "802001002002303",
+
+          // Silver Bank Details
+          silverBankName:
+            data.silverBankName ||
+            "SardarGunj Mercantile Co. Operative Bank Ltd.",
+          silverBankBranch: data.silverBankBranch || "Anand",
+          silverBankIfsc: data.silverBankIfsc || "GSCB0USGUNJ",
+          silverBankAccountNo: data.silverBankAccountNo || "802001002001532",
         });
       }
     } catch (error: any) {
       console.error("Failed to fetch shop settings:", error);
 
       if (error.response?.status === 404) {
-        // Redirect to NotFound page for 404 errors
         setNotFound(true);
         navigate("/404");
       } else {
@@ -118,11 +159,43 @@ export default function Settings() {
         return;
       }
 
+      // Validate IFSC code format
+      if (settings.goldBankIfsc && !isValidIFSC(settings.goldBankIfsc)) {
+        showToast.error("Please enter a valid IFSC code for Gold bank");
+        setIsSaving(false);
+        return;
+      }
+
+      if (settings.silverBankIfsc && !isValidIFSC(settings.silverBankIfsc)) {
+        showToast.error("Please enter a valid IFSC code for Silver bank");
+        setIsSaving(false);
+        return;
+      }
+
+      // Validate account numbers
+      if (
+        settings.goldBankAccountNo &&
+        !isValidAccountNumber(settings.goldBankAccountNo)
+      ) {
+        showToast.error("Please enter a valid account number for Gold");
+        setIsSaving(false);
+        return;
+      }
+
+      if (
+        settings.silverBankAccountNo &&
+        !isValidAccountNumber(settings.silverBankAccountNo)
+      ) {
+        showToast.error("Please enter a valid account number for Silver");
+        setIsSaving(false);
+        return;
+      }
+
       const response = await apiClient.put("/shop-settings", {
         shopName: settings.shopName,
         ownerName: settings.ownerName,
-        goldOwnerName: settings.goldOwnerName, // Added
-        silverOwnerName: settings.silverOwnerName, // Added
+        goldOwnerName: settings.goldOwnerName,
+        silverOwnerName: settings.silverOwnerName,
         address: settings.address,
         phone: settings.phone,
         goldGstNumber: settings.goldGstNumber,
@@ -130,6 +203,18 @@ export default function Settings() {
         goldPanNumber: settings.goldPanNumber,
         silverPanNumber: settings.silverPanNumber,
         logoUrl: settings.logoUrl,
+
+        // Gold Bank Details
+        goldBankName: settings.goldBankName,
+        goldBankBranch: settings.goldBankBranch,
+        goldBankIfsc: settings.goldBankIfsc,
+        goldBankAccountNo: settings.goldBankAccountNo,
+
+        // Silver Bank Details
+        silverBankName: settings.silverBankName,
+        silverBankBranch: settings.silverBankBranch,
+        silverBankIfsc: settings.silverBankIfsc,
+        silverBankAccountNo: settings.silverBankAccountNo,
       });
 
       showToast.success("Shop settings saved successfully!");
@@ -159,7 +244,7 @@ export default function Settings() {
 
   // GST number validation (basic format check)
   const isValidGST = (gstNumber: string): boolean => {
-    if (!gstNumber || gstNumber.trim() === "") return true; // Allow empty GST
+    if (!gstNumber || gstNumber.trim() === "") return true;
     const gstRegex =
       /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$/;
     return gstRegex.test(gstNumber);
@@ -167,14 +252,27 @@ export default function Settings() {
 
   // PAN number validation
   const isValidPAN = (panNumber: string): boolean => {
-    if (!panNumber || panNumber.trim() === "") return true; // Allow empty PAN
+    if (!panNumber || panNumber.trim() === "") return true;
     const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
     return panRegex.test(panNumber.toUpperCase());
   };
 
+  // IFSC code validation
+  const isValidIFSC = (ifscCode: string): boolean => {
+    if (!ifscCode || ifscCode.trim() === "") return true;
+    const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+    return ifscRegex.test(ifscCode.toUpperCase());
+  };
+
+  // Account number validation (basic check)
+  const isValidAccountNumber = (accountNo: string): boolean => {
+    if (!accountNo || accountNo.trim() === "") return true;
+    const accountRegex = /^[0-9]{9,18}$/;
+    return accountRegex.test(accountNo);
+  };
+
   const formatGSTForDisplay = (gstNumber: string): string => {
     if (!gstNumber || gstNumber.trim() === "") return "Not set";
-    // Format as XX-XXXXX-XXXX-X-X-X
     if (gstNumber.length >= 15) {
       return `${gstNumber.slice(0, 2)}-${gstNumber.slice(
         2,
@@ -190,6 +288,24 @@ export default function Settings() {
   const formatPANForDisplay = (panNumber: string): string => {
     if (!panNumber || panNumber.trim() === "") return "Not set";
     return panNumber.toUpperCase();
+  };
+
+  const formatAccountNoForDisplay = (accountNo: string): string => {
+    if (!accountNo || accountNo.trim() === "") return "Not set";
+    // Format as XXXX-XXXX-XXXX-XXXX or similar
+    const cleaned = accountNo.replace(/\D/g, "");
+    if (cleaned.length <= 4) return cleaned;
+
+    const parts = [];
+    for (let i = 0; i < cleaned.length; i += 4) {
+      parts.push(cleaned.slice(i, i + 4));
+    }
+    return parts.join("-");
+  };
+
+  const formatIFSCForDisplay = (ifscCode: string): string => {
+    if (!ifscCode || ifscCode.trim() === "") return "Not set";
+    return ifscCode.toUpperCase();
   };
 
   const isSaveDisabled = (): boolean => {
@@ -226,6 +342,40 @@ export default function Settings() {
       settings.silverPanNumber &&
       settings.silverPanNumber.trim() &&
       !isValidPAN(settings.silverPanNumber)
+    ) {
+      return true;
+    }
+
+    // Check if IFSC codes are valid if they exist
+    if (
+      settings.goldBankIfsc &&
+      settings.goldBankIfsc.trim() &&
+      !isValidIFSC(settings.goldBankIfsc)
+    ) {
+      return true;
+    }
+
+    if (
+      settings.silverBankIfsc &&
+      settings.silverBankIfsc.trim() &&
+      !isValidIFSC(settings.silverBankIfsc)
+    ) {
+      return true;
+    }
+
+    // Check if account numbers are valid if they exist
+    if (
+      settings.goldBankAccountNo &&
+      settings.goldBankAccountNo.trim() &&
+      !isValidAccountNumber(settings.goldBankAccountNo)
+    ) {
+      return true;
+    }
+
+    if (
+      settings.silverBankAccountNo &&
+      settings.silverBankAccountNo.trim() &&
+      !isValidAccountNumber(settings.silverBankAccountNo)
     ) {
       return true;
     }
@@ -429,6 +579,116 @@ export default function Settings() {
                     </p>
                   )}
               </div>
+
+              {/* Gold Bank Details */}
+              <div className="pt-4 border-t border-yellow-200">
+                <div className="flex items-center gap-2 mb-4">
+                  <MdAccountBalanceWallet className="text-yellow-600" />
+                  <h4 className="font-semibold text-gray-700 text-md">
+                    Gold Bank Details
+                  </h4>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Bank Name */}
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                      Bank Name
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.goldBankName || ""}
+                      onChange={(e) =>
+                        handleInputChange("goldBankName", e.target.value)
+                      }
+                      className="w-full px-4 py-3 transition-all duration-200 border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                      placeholder="Enter bank name"
+                    />
+                  </div>
+
+                  {/* Branch */}
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                      Branch
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.goldBankBranch || ""}
+                      onChange={(e) =>
+                        handleInputChange("goldBankBranch", e.target.value)
+                      }
+                      className="w-full px-4 py-3 transition-all duration-200 border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                      placeholder="Enter branch name"
+                    />
+                  </div>
+
+                  {/* IFSC Code */}
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                      IFSC Code
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.goldBankIfsc || ""}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "goldBankIfsc",
+                          e.target.value.toUpperCase()
+                        )
+                      }
+                      className="w-full px-4 py-3 transition-all duration-200 border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                      placeholder="GSCB0USGUNJ"
+                      maxLength={11}
+                    />
+                    {settings.goldBankIfsc &&
+                      settings.goldBankIfsc.trim() &&
+                      !isValidIFSC(settings.goldBankIfsc) && (
+                        <p className="mt-1 text-xs text-red-600">
+                          Please enter a valid IFSC code format (11 characters)
+                        </p>
+                      )}
+                    {settings.goldBankIfsc &&
+                      settings.goldBankIfsc.trim() &&
+                      isValidIFSC(settings.goldBankIfsc) && (
+                        <p className="mt-1 text-xs text-green-600">
+                          ✓ Valid IFSC:{" "}
+                          {formatIFSCForDisplay(settings.goldBankIfsc)}
+                        </p>
+                      )}
+                  </div>
+
+                  {/* Account Number */}
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                      Account Number
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.goldBankAccountNo || ""}
+                      onChange={(e) =>
+                        handleInputChange("goldBankAccountNo", e.target.value)
+                      }
+                      className="w-full px-4 py-3 transition-all duration-200 border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                      placeholder="802001002002303"
+                      maxLength={18}
+                    />
+                    {settings.goldBankAccountNo &&
+                      settings.goldBankAccountNo.trim() &&
+                      !isValidAccountNumber(settings.goldBankAccountNo) && (
+                        <p className="mt-1 text-xs text-red-600">
+                          Please enter a valid account number (9-18 digits)
+                        </p>
+                      )}
+                    {settings.goldBankAccountNo &&
+                      settings.goldBankAccountNo.trim() &&
+                      isValidAccountNumber(settings.goldBankAccountNo) && (
+                        <p className="mt-1 text-xs text-green-600">
+                          ✓ Valid account number
+                        </p>
+                      )}
+                  </div>
+                </div>
+              </div>
             </div>
           </motion.div>
 
@@ -546,15 +806,125 @@ export default function Settings() {
                     </p>
                   )}
               </div>
+
+              {/* Silver Bank Details */}
+              <div className="pt-4 border-t border-gray-300">
+                <div className="flex items-center gap-2 mb-4">
+                  <MdAccountBalanceWallet className="text-gray-500" />
+                  <h4 className="font-semibold text-gray-700 text-md">
+                    Silver Bank Details
+                  </h4>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Bank Name */}
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                      Bank Name
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.silverBankName || ""}
+                      onChange={(e) =>
+                        handleInputChange("silverBankName", e.target.value)
+                      }
+                      className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                      placeholder="Enter bank name"
+                    />
+                  </div>
+
+                  {/* Branch */}
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                      Branch
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.silverBankBranch || ""}
+                      onChange={(e) =>
+                        handleInputChange("silverBankBranch", e.target.value)
+                      }
+                      className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                      placeholder="Enter branch name"
+                    />
+                  </div>
+
+                  {/* IFSC Code */}
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                      IFSC Code
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.silverBankIfsc || ""}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "silverBankIfsc",
+                          e.target.value.toUpperCase()
+                        )
+                      }
+                      className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                      placeholder="GSCB0USGUNJ"
+                      maxLength={11}
+                    />
+                    {settings.silverBankIfsc &&
+                      settings.silverBankIfsc.trim() &&
+                      !isValidIFSC(settings.silverBankIfsc) && (
+                        <p className="mt-1 text-xs text-red-600">
+                          Please enter a valid IFSC code format (11 characters)
+                        </p>
+                      )}
+                    {settings.silverBankIfsc &&
+                      settings.silverBankIfsc.trim() &&
+                      isValidIFSC(settings.silverBankIfsc) && (
+                        <p className="mt-1 text-xs text-green-600">
+                          ✓ Valid IFSC:{" "}
+                          {formatIFSCForDisplay(settings.silverBankIfsc)}
+                        </p>
+                      )}
+                  </div>
+
+                  {/* Account Number */}
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                      Account Number
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.silverBankAccountNo || ""}
+                      onChange={(e) =>
+                        handleInputChange("silverBankAccountNo", e.target.value)
+                      }
+                      className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                      placeholder="802001002001532"
+                      maxLength={18}
+                    />
+                    {settings.silverBankAccountNo &&
+                      settings.silverBankAccountNo.trim() &&
+                      !isValidAccountNumber(settings.silverBankAccountNo) && (
+                        <p className="mt-1 text-xs text-red-600">
+                          Please enter a valid account number (9-18 digits)
+                        </p>
+                      )}
+                    {settings.silverBankAccountNo &&
+                      settings.silverBankAccountNo.trim() &&
+                      isValidAccountNumber(settings.silverBankAccountNo) && (
+                        <p className="mt-1 text-xs text-green-600">
+                          ✓ Valid account number
+                        </p>
+                      )}
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Note about GST & PAN */}
             <div className="p-3 mt-6 rounded-lg bg-gray-50">
               <p className="text-xs text-gray-600">
-                <strong>Note:</strong> Enter separate owner names, GST and PAN
-                numbers for Gold and Silver items. Different owner names allow
-                you to maintain separate legal entities or partnerships for
-                different metal types.
+                <strong>Note:</strong> Enter separate owner names, GST, PAN, and
+                bank details for Gold and Silver items. Different owner names
+                allow you to maintain separate legal entities or partnerships
+                for different metal types.
               </p>
             </div>
           </motion.div>
@@ -711,6 +1081,39 @@ export default function Settings() {
                 </p>
               </div>
 
+              {/* Gold Bank Preview */}
+              <div className="p-3 border border-yellow-200 rounded-lg bg-yellow-50">
+                <span className="block mb-1 text-xs font-medium text-yellow-700">
+                  Gold Bank:
+                </span>
+                <p className="font-medium text-gray-800">
+                  {settings.goldBankName || "Not set"}
+                </p>
+                {settings.goldBankBranch && (
+                  <p className="text-xs text-gray-600">
+                    Branch: {settings.goldBankBranch}
+                  </p>
+                )}
+                {settings.goldBankIfsc && (
+                  <p className="text-xs text-gray-600">
+                    IFSC: {formatIFSCForDisplay(settings.goldBankIfsc)}
+                    {settings.goldBankIfsc.trim() &&
+                      isValidIFSC(settings.goldBankIfsc) && (
+                        <span className="ml-2 text-xs text-green-600">✓</span>
+                      )}
+                  </p>
+                )}
+                {settings.goldBankAccountNo && (
+                  <p className="text-xs text-gray-600">
+                    A/C: {formatAccountNoForDisplay(settings.goldBankAccountNo)}
+                    {settings.goldBankAccountNo.trim() &&
+                      isValidAccountNumber(settings.goldBankAccountNo) && (
+                        <span className="ml-2 text-xs text-green-600">✓</span>
+                      )}
+                  </p>
+                )}
+              </div>
+
               {/* Silver Information */}
               <div className="p-3 bg-gray-100 border border-gray-300 rounded-lg">
                 <span className="block mb-1 text-xs font-medium text-gray-700">
@@ -769,6 +1172,40 @@ export default function Settings() {
                 </p>
               </div>
 
+              {/* Silver Bank Preview */}
+              <div className="p-3 border border-gray-200 rounded-lg bg-gray-50">
+                <span className="block mb-1 text-xs font-medium text-gray-700">
+                  Silver Bank:
+                </span>
+                <p className="font-medium text-gray-800">
+                  {settings.silverBankName || "Not set"}
+                </p>
+                {settings.silverBankBranch && (
+                  <p className="text-xs text-gray-600">
+                    Branch: {settings.silverBankBranch}
+                  </p>
+                )}
+                {settings.silverBankIfsc && (
+                  <p className="text-xs text-gray-600">
+                    IFSC: {formatIFSCForDisplay(settings.silverBankIfsc)}
+                    {settings.silverBankIfsc.trim() &&
+                      isValidIFSC(settings.silverBankIfsc) && (
+                        <span className="ml-2 text-xs text-green-600">✓</span>
+                      )}
+                  </p>
+                )}
+                {settings.silverBankAccountNo && (
+                  <p className="text-xs text-gray-600">
+                    A/C:{" "}
+                    {formatAccountNoForDisplay(settings.silverBankAccountNo)}
+                    {settings.silverBankAccountNo.trim() &&
+                      isValidAccountNumber(settings.silverBankAccountNo) && (
+                        <span className="ml-2 text-xs text-green-600">✓</span>
+                      )}
+                  </p>
+                )}
+              </div>
+
               <div className="p-3 rounded-lg bg-gray-50">
                 <span className="block mb-1 text-xs font-medium text-gray-500">
                   Phone:
@@ -806,6 +1243,10 @@ export default function Settings() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-1">•</span>
+                <span>Enter separate bank details for each metal type</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1">•</span>
                 <span>GST format: 15 characters (22AAAAA0000A1Z5)</span>
               </li>
               <li className="flex items-start gap-2">
@@ -814,7 +1255,7 @@ export default function Settings() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-1">•</span>
-                <span>Different owner names allow separate legal entities</span>
+                <span>IFSC format: 11 characters (GSCB0USGUNJ)</span>
               </li>
             </ul>
           </div>
@@ -828,10 +1269,10 @@ export default function Settings() {
               </h4>
             </div>
             <div className="text-sm text-yellow-700">
-              <p className="mb-2">Why separate owner names?</p>
+              <p className="mb-2">Why separate details?</p>
               <ul className="space-y-1">
                 <li>• Different legal entities for Gold and Silver</li>
-                <li>• Separate partnerships or proprietorships</li>
+                <li>• Separate bank accounts for each business</li>
                 <li>• Different tax registration requirements</li>
                 <li>• Separate accounting and compliance</li>
                 <li>• Allows for different business models</li>
