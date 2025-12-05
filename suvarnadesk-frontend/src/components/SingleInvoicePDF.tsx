@@ -9,7 +9,7 @@ import {
   Image,
 } from "@react-pdf/renderer";
 
-// Register fonts
+// Register fonts (keep as is)
 Font.register({
   family: "Helvetica",
   fonts: [
@@ -76,13 +76,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
     color: "#333",
-    marginBottom: 4, // Reduced margin
+    marginBottom: 4,
   },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 1, // Reduced margin
-    fontSize: 8, // Smaller font
+    marginBottom: 1,
+    fontSize: 8,
   },
   headerLabel: {
     fontWeight: "bold",
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     color: "#333",
     width: "65%",
     textAlign: "right",
-    fontSize: 8, // Smaller font
+    fontSize: 8,
   },
   boxesRow: {
     flexDirection: "row",
@@ -254,11 +254,11 @@ const styles = StyleSheet.create({
     minWidth: 80,
   },
   totalInWords: {
-    marginTop: 2, // Even smaller margin
-    padding: 2, // Minimal padding
-    fontSize: 8, // Smaller font
+    marginTop: 2,
+    padding: 2,
+    fontSize: 8,
     color: "#333",
-    lineHeight: 1.1, // Tight line height
+    lineHeight: 1.1,
     fontStyle: "italic",
     whiteSpace: "nowrap",
     overflow: "hidden",
@@ -309,6 +309,7 @@ interface InvoiceItem {
   pricePerGram: number;
   otherCharges: number;
   amount: number;
+  metalType?: "gold" | "silver"; // Add metal type to distinguish
 }
 
 interface InvoicePDFProps {
@@ -338,8 +339,26 @@ interface InvoicePDFProps {
       panNumber?: string;
       address: string;
       phone?: string;
-      bankDetails?: string;
+      bankDetails?: string; // Keep for backward compatibility
       logoUrl?: string;
+
+      // Gold Details
+      goldOwnerName?: string;
+      goldGstNumber?: string;
+      goldPanNumber?: string;
+      goldBankName?: string;
+      goldBankBranch?: string;
+      goldBankIfsc?: string;
+      goldBankAccountNo?: string;
+
+      // Silver Details
+      silverOwnerName?: string;
+      silverGstNumber?: string;
+      silverPanNumber?: string;
+      silverBankName?: string;
+      silverBankBranch?: string;
+      silverBankIfsc?: string;
+      silverBankAccountNo?: string;
     };
   };
 }
@@ -357,8 +376,141 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
     return `₹${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,")}`;
   };
 
+  // Helper function to detect metal type from description
+  const detectMetalType = (description: string): "gold" | "silver" => {
+    const desc = description.toLowerCase();
+    if (desc.includes("gold") || desc.includes("gd") || desc.includes("gld")) {
+      return "gold";
+    }
+    if (
+      desc.includes("silver") ||
+      desc.includes("slv") ||
+      desc.includes("sv")
+    ) {
+      return "silver";
+    }
+    // Default to gold if can't detect
+    return "gold";
+  };
+
+  // Determine which bank details to use based on items
+  const getBankDetailsForInvoice = () => {
+    // Check if all items are of the same metal type
+    const metalTypes = data.items.map(
+      (item) => item.metalType || detectMetalType(item.description)
+    );
+    const hasGold = metalTypes.includes("gold");
+    const hasSilver = metalTypes.includes("silver");
+
+    // If mixed items, use a combined message
+    if (hasGold && hasSilver) {
+      return "Multiple bank accounts - Refer to settings";
+    }
+
+    // If only gold or only silver
+    if (hasGold) {
+      const goldDetails = [];
+      if (data.shopSettings.goldBankName) {
+        goldDetails.push(`Bank: ${data.shopSettings.goldBankName}`);
+      }
+      if (data.shopSettings.goldBankBranch) {
+        goldDetails.push(`Branch: ${data.shopSettings.goldBankBranch}`);
+      }
+      if (data.shopSettings.goldBankIfsc) {
+        goldDetails.push(`IFSC: ${data.shopSettings.goldBankIfsc}`);
+      }
+      if (data.shopSettings.goldBankAccountNo) {
+        goldDetails.push(`A/C: ${data.shopSettings.goldBankAccountNo}`);
+      }
+      return goldDetails.join(", ");
+    }
+
+    if (hasSilver) {
+      const silverDetails = [];
+      if (data.shopSettings.silverBankName) {
+        silverDetails.push(`Bank: ${data.shopSettings.silverBankName}`);
+      }
+      if (data.shopSettings.silverBankBranch) {
+        silverDetails.push(`Branch: ${data.shopSettings.silverBankBranch}`);
+      }
+      if (data.shopSettings.silverBankIfsc) {
+        silverDetails.push(`IFSC: ${data.shopSettings.silverBankIfsc}`);
+      }
+      if (data.shopSettings.silverBankAccountNo) {
+        silverDetails.push(`A/C: ${data.shopSettings.silverBankAccountNo}`);
+      }
+      return silverDetails.join(", ");
+    }
+
+    // Fallback to old bankDetails field
+    return data.shopSettings.bankDetails || "To be added in settings";
+  };
+
+  // Determine which owner name to use based on items
+  const getOwnerNameForInvoice = () => {
+    const metalTypes = data.items.map(
+      (item) => item.metalType || detectMetalType(item.description)
+    );
+    const hasGold = metalTypes.includes("gold");
+    const hasSilver = metalTypes.includes("silver");
+
+    if (hasGold && !hasSilver && data.shopSettings.goldOwnerName) {
+      return data.shopSettings.goldOwnerName;
+    }
+    if (hasSilver && !hasGold && data.shopSettings.silverOwnerName) {
+      return data.shopSettings.silverOwnerName;
+    }
+
+    // Mixed or fallback
+    return data.shopSettings.ownerName || "Shop Owner";
+  };
+
+  // Determine which GST to use based on items
+  const getGSTForInvoice = () => {
+    const metalTypes = data.items.map(
+      (item) => item.metalType || detectMetalType(item.description)
+    );
+    const hasGold = metalTypes.includes("gold");
+    const hasSilver = metalTypes.includes("silver");
+
+    if (hasGold && !hasSilver && data.shopSettings.goldGstNumber) {
+      return data.shopSettings.goldGstNumber;
+    }
+    if (hasSilver && !hasGold && data.shopSettings.silverGstNumber) {
+      return data.shopSettings.silverGstNumber;
+    }
+
+    // Mixed or fallback
+    return data.shopSettings.gstNumber || "N/A";
+  };
+
+  // Determine which PAN to use based on items
+  const getPANForInvoice = () => {
+    const metalTypes = data.items.map(
+      (item) => item.metalType || detectMetalType(item.description)
+    );
+    const hasGold = metalTypes.includes("gold");
+    const hasSilver = metalTypes.includes("silver");
+
+    if (hasGold && !hasSilver && data.shopSettings.goldPanNumber) {
+      return data.shopSettings.goldPanNumber;
+    }
+    if (hasSilver && !hasGold && data.shopSettings.silverPanNumber) {
+      return data.shopSettings.silverPanNumber;
+    }
+
+    // Mixed or fallback
+    return data.shopSettings.panNumber || "N/A";
+  };
+
   const ITEMS_PER_PAGE = 10;
   const totalPages = Math.ceil(data.items.length / ITEMS_PER_PAGE);
+
+  // Get the appropriate values for this invoice
+  const bankDetails = getBankDetailsForInvoice();
+  const ownerName = getOwnerNameForInvoice();
+  const gstNumber = getGSTForInvoice();
+  const panNumber = getPANForInvoice();
 
   const renderPage = (pageIndex: number) => {
     const startIndex = pageIndex * ITEMS_PER_PAGE;
@@ -381,9 +533,7 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                 />
               </View>
               <View style={styles.leftHeader}>
-                <Text style={styles.shopName}>
-                  {data.shopSettings.ownerName}
-                </Text>
+                <Text style={styles.shopName}>{ownerName}</Text>
                 <Text style={styles.shopAddress}>
                   {data.shopSettings.address}
                 </Text>
@@ -409,16 +559,12 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
 
               <View style={styles.headerRow}>
                 <Text style={styles.headerLabel}>GSTIN:</Text>
-                <Text style={styles.headerValue}>
-                  {data.shopSettings.gstNumber || "N/A"}
-                </Text>
+                <Text style={styles.headerValue}>{gstNumber}</Text>
               </View>
 
               <View style={styles.headerRow}>
                 <Text style={styles.headerLabel}>PAN:</Text>
-                <Text style={styles.headerValue}>
-                  {data.shopSettings.panNumber || "N/A"}
-                </Text>
+                <Text style={styles.headerValue}>{panNumber}</Text>
               </View>
             </View>
           </View>
@@ -433,33 +579,25 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
               <View style={styles.boxBody}>
                 <View style={styles.boxRow}>
                   <Text style={styles.boxLabel}>Name:</Text>
-                  <Text style={styles.boxValue}>
-                    {data.shopSettings.ownerName}
-                  </Text>
+                  <Text style={styles.boxValue}>{ownerName}</Text>
                 </View>
                 <View style={styles.boxRow}>
                   <Text style={styles.boxLabel}>Address:</Text>
                   <Text style={styles.boxValue}>
-                    Near Ashok Stambh, Choksi Bazar, Anand 388001
+                    {data.shopSettings.address}
                   </Text>
                 </View>
                 <View style={styles.boxRow}>
                   <Text style={styles.boxLabel}>GSTIN:</Text>
-                  <Text style={styles.boxValue}>
-                    {data.shopSettings.gstNumber || "N/A"}
-                  </Text>
+                  <Text style={styles.boxValue}>{gstNumber}</Text>
                 </View>
                 <View style={styles.boxRow}>
                   <Text style={styles.boxLabel}>PAN:</Text>
-                  <Text style={styles.boxValue}>
-                    {data.shopSettings.panNumber || "N/A"}
-                  </Text>
+                  <Text style={styles.boxValue}>{panNumber}</Text>
                 </View>
                 <View style={styles.boxRow}>
                   <Text style={styles.boxLabel}>Bank Details:</Text>
-                  <Text style={styles.boxValue}>
-                    {data.shopSettings.bankDetails || "To be added in settings"}
-                  </Text>
+                  <Text style={styles.boxValue}>{bankDetails}</Text>
                 </View>
               </View>
             </View>
@@ -665,6 +803,9 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                     <Text style={styles.noteItem}>
                       • Subject to Anand jurisdiction
                     </Text>
+                    <Text style={styles.noteItem}>
+                      • Bank details are specific to metal type
+                    </Text>
                   </View>
                 </View>
                 <View style={styles.totalsBox}>
@@ -703,7 +844,7 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
                     </Text>
                   </View>
 
-                  {/* Total in Words moved below Grand Total */}
+                  {/* Total in Words */}
                   <View style={styles.totalInWords}>
                     <Text>Total in Words: {data.grandTotalInWords}</Text>
                   </View>

@@ -14,7 +14,7 @@ import {
 import { useMetalRates, MetalRate } from "../hooks/useMetalRates";
 import { useLiveRates, LiveRate } from "../hooks/useLiveRates";
 import { useCreateInvoice, LineItem } from "../hooks/useBilling";
-import CustomDropdown from "../components/CustomDropdown"; // Import CustomDropdown
+import CustomDropdown from "../components/CustomDropdown";
 import InvoiceQRCode from "../components/InvoiceQRCode";
 import { showToast } from "../components/CustomToast";
 import SingleInvoicePDF from "../components/SingleInvoicePDF";
@@ -22,6 +22,7 @@ import DateDropdown from "../components/DateDropdown";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import apiClient from "../api/apiClient";
 
+// PdfData interface
 interface PdfData {
   invoiceNumber: string;
   invoiceDate: string;
@@ -30,9 +31,9 @@ interface PdfData {
     address: string;
     email: string;
     phone: string;
-    hsnCode: string; // Changed from huid to hsnCode
-    gstin?: string; // Added
-    state?: string; // Added
+    hsnCode: string;
+    gstin?: string;
+    state?: string;
   };
   items: Array<{
     productNo: string;
@@ -49,14 +50,34 @@ interface PdfData {
   SGSTPercent: number;
   SGSTAmount: number;
   grandTotal: number;
-  grandTotalInWords: string; // Added
+  grandTotalInWords: string;
   shopSettings: {
     shopName: string;
     ownerName: string;
     gstNumber?: string;
     panNumber?: string;
     address: string;
+    phone?: string;
     bankDetails?: string;
+    logoUrl?: string;
+
+    // Gold Details
+    goldOwnerName?: string;
+    goldGstNumber?: string;
+    goldPanNumber?: string;
+    goldBankName?: string;
+    goldBankBranch?: string;
+    goldBankIfsc?: string;
+    goldBankAccountNo?: string;
+
+    // Silver Details
+    silverOwnerName?: string;
+    silverGstNumber?: string;
+    silverPanNumber?: string;
+    silverBankName?: string;
+    silverBankBranch?: string;
+    silverBankIfsc?: string;
+    silverBankAccountNo?: string;
   };
 }
 
@@ -695,10 +716,34 @@ export default function Billing() {
             gstNumber: shopSettings?.goldGstNumber || "",
             panNumber: shopSettings?.goldPanNumber || "",
             phone: shopSettings?.phone || "",
-            address: "Near Ashok Stambh, Choksi Bazar, Anand 388001",
-            bankDetails:
-              shopSettings?.bankDetails ||
-              "Bank details to be added in settings",
+            address:
+              shopSettings?.address ||
+              "Near Ashok Stambh, Choksi Bazar, Anand 388001",
+            logoUrl: shopSettings?.logoUrl || "",
+            bankDetails: `Bank: ${shopSettings?.goldBankName || ""}, Branch: ${
+              shopSettings?.goldBankBranch || ""
+            }, IFSC: ${shopSettings?.goldBankIfsc || ""}, A/C: ${
+              shopSettings?.goldBankAccountNo || ""
+            }`,
+
+            // Add all gold-specific settings
+            goldOwnerName:
+              shopSettings?.goldOwnerName || "Jay Krushna Haribhai Soni",
+            goldGstNumber: shopSettings?.goldGstNumber || "",
+            goldPanNumber: shopSettings?.goldPanNumber || "",
+            goldBankName: shopSettings?.goldBankName || "",
+            goldBankBranch: shopSettings?.goldBankBranch || "",
+            goldBankIfsc: shopSettings?.goldBankIfsc || "",
+            goldBankAccountNo: shopSettings?.goldBankAccountNo || "",
+
+            // Add silver settings for reference (optional)
+            silverOwnerName: shopSettings?.silverOwnerName || "",
+            silverGstNumber: shopSettings?.silverGstNumber || "",
+            silverPanNumber: shopSettings?.silverPanNumber || "",
+            silverBankName: shopSettings?.silverBankName || "",
+            silverBankBranch: shopSettings?.silverBankBranch || "",
+            silverBankIfsc: shopSettings?.silverBankIfsc || "",
+            silverBankAccountNo: shopSettings?.silverBankAccountNo || "",
           },
         };
         pdfDataArray.push(goldPdfData);
@@ -743,10 +788,34 @@ export default function Billing() {
             gstNumber: shopSettings?.silverGstNumber || "",
             panNumber: shopSettings?.silverPanNumber || "",
             phone: shopSettings?.phone || "",
-            address: "Near Ashok Stambh, Choksi Bazar, Anand 388001",
-            bankDetails:
-              shopSettings?.bankDetails ||
-              "Bank details to be added in settings",
+            address:
+              shopSettings?.address ||
+              "Near Ashok Stambh, Choksi Bazar, Anand 388001",
+            logoUrl: shopSettings?.logoUrl || "",
+            bankDetails: `Bank: ${
+              shopSettings?.silverBankName || ""
+            }, Branch: ${shopSettings?.silverBankBranch || ""}, IFSC: ${
+              shopSettings?.silverBankIfsc || ""
+            }, A/C: ${shopSettings?.silverBankAccountNo || ""}`,
+
+            // Add all silver-specific settings
+            silverOwnerName:
+              shopSettings?.silverOwnerName || "M/s Yogeshkumar and Brothers",
+            silverGstNumber: shopSettings?.silverGstNumber || "",
+            silverPanNumber: shopSettings?.silverPanNumber || "",
+            silverBankName: shopSettings?.silverBankName || "",
+            silverBankBranch: shopSettings?.silverBankBranch || "",
+            silverBankIfsc: shopSettings?.silverBankIfsc || "",
+            silverBankAccountNo: shopSettings?.silverBankAccountNo || "",
+
+            // Add gold settings for reference (optional)
+            goldOwnerName: shopSettings?.goldOwnerName || "",
+            goldGstNumber: shopSettings?.goldGstNumber || "",
+            goldPanNumber: shopSettings?.goldPanNumber || "",
+            goldBankName: shopSettings?.goldBankName || "",
+            goldBankBranch: shopSettings?.goldBankBranch || "",
+            goldBankIfsc: shopSettings?.goldBankIfsc || "",
+            goldBankAccountNo: shopSettings?.goldBankAccountNo || "",
           },
         };
         pdfDataArray.push(silverPdfData);
@@ -789,12 +858,31 @@ export default function Billing() {
               shopSettings?.ownerName ||
               shopSettings?.shopName ||
               "JEWELRY COMMERCIAL INVOICE",
-            gstNumber: "",
-            panNumber: "",
+            gstNumber: shopSettings?.gstNumber || "",
+            panNumber: shopSettings?.panNumber || "",
+            phone: shopSettings?.phone || "",
             address: shopSettings?.address || "Address not set",
+            logoUrl: shopSettings?.logoUrl || "",
             bankDetails:
               shopSettings?.bankDetails ||
               "Bank details to be added in settings",
+
+            // Add both gold and silver settings for reference
+            goldOwnerName: shopSettings?.goldOwnerName || "",
+            goldGstNumber: shopSettings?.goldGstNumber || "",
+            goldPanNumber: shopSettings?.goldPanNumber || "",
+            goldBankName: shopSettings?.goldBankName || "",
+            goldBankBranch: shopSettings?.goldBankBranch || "",
+            goldBankIfsc: shopSettings?.goldBankIfsc || "",
+            goldBankAccountNo: shopSettings?.goldBankAccountNo || "",
+
+            silverOwnerName: shopSettings?.silverOwnerName || "",
+            silverGstNumber: shopSettings?.silverGstNumber || "",
+            silverPanNumber: shopSettings?.silverPanNumber || "",
+            silverBankName: shopSettings?.silverBankName || "",
+            silverBankBranch: shopSettings?.silverBankBranch || "",
+            silverBankIfsc: shopSettings?.silverBankIfsc || "",
+            silverBankAccountNo: shopSettings?.silverBankAccountNo || "",
           },
         };
         pdfDataArray.push(otherPdfData);
