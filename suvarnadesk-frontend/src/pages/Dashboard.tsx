@@ -34,6 +34,7 @@ import LoadingSpinner from "../components/LoadingSpinner";
 interface Invoice {
   _id: string;
   invoiceNumber: string;
+  date: string;
   customerSnapshot: {
     name: string;
     email?: string;
@@ -68,12 +69,18 @@ interface Invoice {
   }>;
 }
 
-interface Customer {
+interface CustomerFromInvoice {
   _id: string;
   name: string;
   email?: string;
   phone: string;
-  createdAt: string;
+  address?: string;
+  huid?: string;
+  totalInvoices: number;
+  totalAmount: number;
+  firstPurchase: string;
+  lastPurchase: string;
+  invoices: Invoice[];
 }
 
 interface Rate {
@@ -117,7 +124,7 @@ interface RecentActivity {
   type: "invoice" | "payment" | "new_customer";
 }
 
-interface CustomerFromInvoice {
+interface TopCustomer {
   id: string;
   name: string;
   phone: string;
@@ -157,8 +164,9 @@ const Dashboard = () => {
   const [customersFromInvoices, setCustomersFromInvoices] = useState<
     CustomerFromInvoice[]
   >([]);
+  const [topCustomers, setTopCustomers] = useState<TopCustomer[]>([]);
 
-  // Helper function to get time ago string - moved outside useEffect
+  // Helper function to get time ago string
   const getTimeAgo = useCallback((date: Date): string => {
     const now = new Date();
     const diffInMinutes = Math.floor(
@@ -172,7 +180,7 @@ const Dashboard = () => {
     return `${Math.floor(diffInMinutes / 1440)} days ago`;
   }, []);
 
-  // Helper function to get period key - moved outside useEffect
+  // Helper function to get period key
   const getPeriodKey = useCallback((date: Date, range: string): string => {
     if (range === "monthly") {
       return date.toLocaleString("default", { month: "short" });
@@ -251,11 +259,11 @@ const Dashboard = () => {
     []
   );
 
-  // Generate chart data from actual invoices and customers
+  // Generate chart data from actual invoices
   const generateChartDataFromInvoices = useCallback(
     (
       invoices: Invoice[],
-      customers: Customer[],
+      customers: CustomerFromInvoice[],
       range: string
     ): ChartDataItem[] => {
       if (invoices.length === 0) return [];
@@ -283,11 +291,11 @@ const Dashboard = () => {
         }
       });
 
-      // Process customers for each period
+      // Process customers for each period (from invoices)
       periods.forEach((period) => {
         const periodCustomers = customers.filter((customer) => {
-          const customerDate = new Date(customer.createdAt);
-          return getPeriodKey(customerDate, range) === period.name;
+          const customerFirstDate = new Date(customer.firstPurchase);
+          return getPeriodKey(customerFirstDate, range) === period.name;
         });
         groupedData[period.name].customers = periodCustomers.length;
       });
@@ -331,9 +339,12 @@ const Dashboard = () => {
     []
   );
 
-  // Generate recent activities from invoices and customers
+  // Generate recent activities from invoices
   const generateRecentActivities = useCallback(
-    (invoices: Invoice[], customers: Customer[]): RecentActivity[] => {
+    (
+      invoices: Invoice[],
+      customers: CustomerFromInvoice[]
+    ): RecentActivity[] => {
       const activities: RecentActivity[] = [];
 
       // Add recent invoices (last 5)
@@ -342,7 +353,7 @@ const Dashboard = () => {
           (a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         )
-        .slice(0, 3);
+        .slice(0, 5);
 
       recentInvoices.forEach((invoice) => {
         activities.push({
@@ -357,26 +368,27 @@ const Dashboard = () => {
         });
       });
 
-      // Add recent customers (last 2)
+      // Add recent customers (last 3) - from invoices
       const recentCustomers = customers
         .sort(
           (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            new Date(b.firstPurchase).getTime() -
+            new Date(a.firstPurchase).getTime()
         )
-        .slice(0, 2);
+        .slice(0, 3);
 
       recentCustomers.forEach((customer) => {
         activities.push({
           id: customer._id,
           action: "New Customer",
           customer: customer.name,
-          amount: "-",
-          time: getTimeAgo(new Date(customer.createdAt)),
+          amount: `₹${customer.totalAmount.toLocaleString()}`,
+          time: getTimeAgo(new Date(customer.firstPurchase)),
           type: "new_customer",
         });
       });
 
-      // Sort all activities by time and take top 5
+      // Sort all activities by time and take top 8
       return activities
         .sort((a, b) => {
           const timeA = a.time.includes("min")
@@ -391,9 +403,78 @@ const Dashboard = () => {
             : parseInt(b.time) * 1440;
           return timeB - timeA;
         })
-        .slice(0, 5);
+        .slice(0, 8);
     },
     [getTimeAgo]
+  );
+
+  // Get top customers from invoices
+  const getTopCustomers = useCallback(
+    (customers: CustomerFromInvoice[]): TopCustomer[] => {
+      return customers
+        .sort((a, b) => b.totalAmount - a.totalAmount) // Sort by total spent
+        .slice(0, 10) // Get top 10
+        .map((customer) => ({
+          id: customer._id,
+          name: customer.name,
+          phone: customer.phone,
+          email: customer.email,
+          totalInvoices: customer.totalInvoices,
+          totalSpent: customer.totalAmount,
+          lastPurchase: customer.lastPurchase,
+        }));
+    },
+    []
+  );
+
+  // Fetch customers and their invoices
+  const fetchCustomersFromInvoices = useCallback(
+    async (invoices: Invoice[]): Promise<CustomerFromInvoice[]> => {
+      try {
+        // Group invoices by customer
+        const customerMap = new Map<string, CustomerFromInvoice>();
+
+        invoices.forEach((invoice) => {
+          const customerData = invoice.customerSnapshot;
+          const customerKey =
+            `${customerData.phone}-${customerData.email}`.toLowerCase();
+
+          if (!customerMap.has(customerKey)) {
+            customerMap.set(customerKey, {
+              _id: customerKey,
+              name: customerData.name,
+              email: customerData.email,
+              phone: customerData.phone,
+              address: customerData.address,
+              huid: customerData.huid,
+              totalInvoices: 0,
+              totalAmount: 0,
+              firstPurchase: invoice.createdAt,
+              lastPurchase: invoice.createdAt,
+              invoices: [],
+            });
+          }
+
+          const customer = customerMap.get(customerKey)!;
+          customer.totalInvoices += 1;
+          customer.totalAmount += invoice.totals.grandTotal;
+          customer.invoices.push(invoice);
+
+          if (new Date(invoice.createdAt) < new Date(customer.firstPurchase)) {
+            customer.firstPurchase = invoice.createdAt;
+          }
+          if (new Date(invoice.createdAt) > new Date(customer.lastPurchase)) {
+            customer.lastPurchase = invoice.createdAt;
+          }
+        });
+
+        return Array.from(customerMap.values());
+      } catch (error) {
+        console.error("Error fetching customers from invoices:", error);
+        return [];
+      }
+    },
+    []
   );
 
   useEffect(() => {
@@ -402,9 +483,8 @@ const Dashboard = () => {
         setLoading(true);
 
         // Fetch all data
-        const [invoicesRes, customersRes, metalRatesRes] = await Promise.all([
+        const [invoicesRes, metalRatesRes] = await Promise.all([
           apiClient.get("/invoices"),
-          apiClient.get("/customers"),
           apiClient.get("/metal-rates/active"),
         ]);
 
@@ -413,13 +493,19 @@ const Dashboard = () => {
           ? invoicesRes.data
           : invoicesRes.data?.data || [];
 
-        const customers: Customer[] = Array.isArray(customersRes.data)
-          ? customersRes.data
-          : customersRes.data?.data || [];
-
         const rates: Rate[] = Array.isArray(metalRatesRes.data)
           ? metalRatesRes.data
           : metalRatesRes.data?.data || [];
+
+        // Fetch customers from invoices
+        const customersFromInvoicesData = await fetchCustomersFromInvoices(
+          invoices
+        );
+        setCustomersFromInvoices(customersFromInvoicesData);
+
+        // Get top customers
+        const topCustomersData = getTopCustomers(customersFromInvoicesData);
+        setTopCustomers(topCustomersData);
 
         // Calculate stats from real data
         const totalRevenue = invoices.reduce(
@@ -462,13 +548,16 @@ const Dashboard = () => {
         const currentMonth = new Date().getMonth();
         const currentYear = new Date().getFullYear();
 
-        const newCustomersThisMonth = customers.filter((customer) => {
-          const customerDate = new Date(customer.createdAt);
-          return (
-            customerDate.getMonth() === currentMonth &&
-            customerDate.getFullYear() === currentYear
-          );
-        }).length;
+        // Get new customers this month from invoices
+        const newCustomersThisMonth = customersFromInvoicesData.filter(
+          (customer) => {
+            const customerDate = new Date(customer.firstPurchase);
+            return (
+              customerDate.getMonth() === currentMonth &&
+              customerDate.getFullYear() === currentYear
+            );
+          }
+        ).length;
 
         const revenueThisMonth = invoices
           .filter((invoice) => {
@@ -500,46 +589,8 @@ const Dashboard = () => {
             ? Math.max(...silverRates.map((r) => r.ratePerGram))
             : 0;
 
-        // Extract unique customers from invoices
-        const customerMap = new Map<string, CustomerFromInvoice>();
-        invoices.forEach((invoice) => {
-          const customerKey =
-            invoice.customerSnapshot?.phone ||
-            invoice.customerSnapshot?.huid ||
-            invoice._id;
-          const customerName =
-            invoice.customerSnapshot?.name || "Unknown Customer";
-          const customerPhone = invoice.customerSnapshot?.phone || "N/A";
-          const customerEmail = invoice.customerSnapshot?.email;
-          const invoiceAmount = invoice.totals?.grandTotal || 0;
-          const invoiceDate = new Date(invoice.createdAt);
-
-          if (customerMap.has(customerKey)) {
-            const existing = customerMap.get(customerKey)!;
-            existing.totalInvoices++;
-            existing.totalSpent += invoiceAmount;
-            if (invoiceDate > new Date(existing.lastPurchase)) {
-              existing.lastPurchase = invoice.createdAt;
-            }
-          } else {
-            customerMap.set(customerKey, {
-              id: customerKey,
-              name: customerName,
-              phone: customerPhone,
-              email: customerEmail,
-              totalInvoices: 1,
-              totalSpent: invoiceAmount,
-              lastPurchase: invoice.createdAt,
-            });
-          }
-        });
-
-        const customersFromInvoicesArray = Array.from(customerMap.values())
-          .sort((a, b) => b.totalSpent - a.totalSpent)
-          .slice(0, 10); // Get top 10 customers by spending
-
         setStats({
-          totalCustomers: customers.length,
+          totalCustomers: customersFromInvoicesData.length, // This is now from invoices
           totalInvoices: invoices.length,
           totalRevenue,
           cashPayments,
@@ -552,16 +603,13 @@ const Dashboard = () => {
           newCustomersThisMonth,
           revenueThisMonth,
           averageInvoiceValue,
-          uniqueCustomersFromInvoices: customerMap.size,
+          uniqueCustomersFromInvoices: customersFromInvoicesData.length,
         });
-
-        // Set customers from invoices
-        setCustomersFromInvoices(customersFromInvoicesArray);
 
         // Generate chart data from real invoices
         const dynamicChartData = generateChartDataFromInvoices(
           invoices,
-          customers,
+          customersFromInvoicesData,
           timeRange
         );
         setChartData(dynamicChartData);
@@ -570,8 +618,11 @@ const Dashboard = () => {
         const metalDist = calculateMetalDistribution(invoices);
         setMetalDistribution(metalDist);
 
-        // Generate recent activities from invoices and customers
-        const activities = generateRecentActivities(invoices, customers);
+        // Generate recent activities from invoices
+        const activities = generateRecentActivities(
+          invoices,
+          customersFromInvoicesData
+        );
         setRecentActivities(activities);
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
@@ -579,6 +630,7 @@ const Dashboard = () => {
         setRecentActivities([]);
         setMetalDistribution([]);
         setCustomersFromInvoices([]);
+        setTopCustomers([]);
       } finally {
         setLoading(false);
       }
@@ -590,6 +642,8 @@ const Dashboard = () => {
     generateChartDataFromInvoices,
     calculateMetalDistribution,
     generateRecentActivities,
+    fetchCustomersFromInvoices,
+    getTopCustomers,
   ]);
 
   // Enhanced Stats Cards with better design
@@ -609,13 +663,13 @@ const Dashboard = () => {
       {
         title: "Total Customers",
         value: stats.totalCustomers.toLocaleString(),
-        subtitle: "Registered Clients",
+        subtitle: "From Invoices",
         icon: <MdPeople className="text-3xl" />,
         color: "from-blue-500 to-indigo-600",
         bgColor: "bg-gradient-to-br from-blue-50 to-indigo-100",
         change: `${stats.newCustomersThisMonth} new this month`,
         trend: "up",
-        description: "Active customer base",
+        description: "Unique customers from invoices",
       },
       {
         title: "Cash Payments",
@@ -1016,19 +1070,27 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Bottom Row - Three Columns */}
+      {/* Bottom Row - Three Columns with Fixed Height and Scroll */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Metal Distribution */}
+        {/* Metal Distribution - Fixed Height with Scroll */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.8 }}
           className="p-6 bg-white border border-gray-200 shadow-sm rounded-2xl"
         >
-          <h3 className="mb-4 text-lg font-semibold text-gray-800">
-            Metal Distribution
-          </h3>
-          <div className="w-full h-64">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Metal Distribution
+            </h3>
+            {metalDistribution.length > 0 &&
+              metalDistribution[0].name !== "No Data" && (
+                <span className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">
+                  {metalDistribution.length} metals
+                </span>
+              )}
+          </div>
+          <div className="h-64 overflow-hidden">
             {metalDistribution.length > 0 &&
             metalDistribution[0].name !== "No Data" ? (
               <div className="w-full h-full min-w-0">
@@ -1061,7 +1123,13 @@ const Dashboard = () => {
                         boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
                       }}
                     />
-                    <Legend />
+                    <Legend
+                      wrapperStyle={{
+                        paddingTop: "10px",
+                        overflowY: "auto",
+                        maxHeight: "60px",
+                      }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -1071,50 +1139,89 @@ const Dashboard = () => {
               </div>
             )}
           </div>
+          {metalDistribution.length > 0 &&
+            metalDistribution[0].name !== "No Data" && (
+              <div className="pt-3 mt-3 border-t border-gray-100">
+                <div className="overflow-y-auto max-h-20">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {metalDistribution.map((metal, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-1.5 bg-gray-50 rounded"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{
+                              backgroundColor: COLORS[index % COLORS.length],
+                            }}
+                          />
+                          <span className="font-medium text-gray-700 truncate">
+                            {metal.name}
+                          </span>
+                        </div>
+                        <span className="font-bold text-gray-900">
+                          {metal.value}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
         </motion.div>
 
-        {/* Recent Activities */}
+        {/* Recent Activities - Fixed Height with Scroll */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 1 }}
           className="p-6 bg-white border border-gray-200 shadow-sm rounded-2xl"
         >
-          <h3 className="mb-4 text-lg font-semibold text-gray-800">
-            Recent Activities
-          </h3>
-          <div className="space-y-3">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Recent Activities
+            </h3>
+            {recentActivities.length > 0 && (
+              <span className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">
+                {recentActivities.length} activities
+              </span>
+            )}
+          </div>
+          <div className="h-64 pr-2 overflow-y-auto">
             {recentActivities.length > 0 ? (
-              recentActivities.map((activity) => (
-                <div
-                  key={`${activity.type}-${activity.id}`}
-                  className="flex items-center justify-between p-4 transition-all duration-200 bg-gray-50 rounded-xl hover:bg-gray-100 hover:shadow-sm"
-                >
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`w-3 h-3 rounded-full ${getActivityIconColor(
-                        activity.type
-                      )}`}
-                    ></div>
-                    <div>
-                      <p className="font-semibold text-gray-800">
-                        {activity.action}
+              <div className="space-y-3">
+                {recentActivities.map((activity) => (
+                  <div
+                    key={`${activity.type}-${activity.id}`}
+                    className="flex items-center justify-between p-4 transition-all duration-200 bg-gray-50 rounded-xl hover:bg-gray-100 hover:shadow-sm"
+                  >
+                    <div className="flex items-center min-w-0 gap-4">
+                      <div
+                        className={`w-3 h-3 rounded-full flex-shrink-0 ${getActivityIconColor(
+                          activity.type
+                        )}`}
+                      ></div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-gray-800 truncate">
+                          {activity.action}
+                        </p>
+                        <p className="text-sm text-gray-600 truncate">
+                          {activity.customer}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0 ml-2 text-right">
+                      <p className="text-lg font-bold text-gray-900">
+                        {activity.amount}
                       </p>
-                      <p className="text-sm text-gray-600">
-                        {activity.customer}
-                      </p>
+                      <p className="text-sm text-gray-500">{activity.time}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-gray-900">
-                      {activity.amount}
-                    </p>
-                    <p className="text-sm text-gray-500">{activity.time}</p>
-                  </div>
-                </div>
-              ))
+                ))}
+              </div>
             ) : (
-              <div className="p-8 text-center text-gray-500 bg-gray-50 rounded-xl">
+              <div className="flex flex-col items-center justify-center h-full text-gray-500">
                 <MdPersonAdd className="mx-auto mb-2 text-4xl text-gray-300" />
                 <p>No recent activities found</p>
               </div>
@@ -1122,7 +1229,7 @@ const Dashboard = () => {
           </div>
         </motion.div>
 
-        {/* Customers from Invoices */}
+        {/* Top Customers from Invoices - Fixed Height with Scroll */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1131,43 +1238,52 @@ const Dashboard = () => {
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-800">
-              Top Customers (From Invoices)
+              Top Customers
             </h3>
             <span className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">
               {stats.uniqueCustomersFromInvoices} unique
             </span>
           </div>
-          <div className="space-y-3">
-            {customersFromInvoices.length > 0 ? (
-              customersFromInvoices.map((customer, index) => (
-                <div
-                  key={customer.id}
-                  className="flex items-center justify-between p-4 transition-all duration-200 bg-gray-50 rounded-xl hover:bg-gray-100 hover:shadow-sm"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center justify-center w-10 h-10 font-semibold text-white rounded-full bg-gradient-to-r from-blue-500 to-indigo-600">
-                      {customer.name.charAt(0).toUpperCase()}
+          <div className="h-64 pr-2 overflow-y-auto">
+            {topCustomers.length > 0 ? (
+              <div className="space-y-3">
+                {topCustomers.map((customer, index) => (
+                  <div
+                    key={customer.id}
+                    className="flex items-center justify-between p-4 transition-all duration-200 bg-gray-50 rounded-xl hover:bg-gray-100 hover:shadow-sm"
+                  >
+                    <div className="flex items-center min-w-0 gap-4">
+                      <div className="flex items-center justify-center flex-shrink-0 w-10 h-10 font-semibold text-white rounded-full bg-gradient-to-r from-blue-500 to-indigo-600">
+                        {customer.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-gray-800 truncate">
+                          {customer.name}
+                        </p>
+                        <p className="text-sm text-gray-600 truncate">
+                          {customer.phone}
+                        </p>
+                        {customer.email && (
+                          <p className="text-xs text-gray-500 truncate">
+                            {customer.email}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold text-gray-800">
-                        {customer.name}
+                    <div className="flex-shrink-0 ml-2 text-right">
+                      <p className="font-bold text-gray-900">
+                        ₹{customer.totalSpent.toLocaleString()}
                       </p>
-                      <p className="text-sm text-gray-600">{customer.phone}</p>
+                      <p className="text-xs text-gray-500">
+                        {customer.totalInvoices} invoice
+                        {customer.totalInvoices > 1 ? "s" : ""}
+                      </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-gray-900">
-                      ₹{customer.totalSpent.toLocaleString()}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {customer.totalInvoices} invoice
-                      {customer.totalInvoices > 1 ? "s" : ""}
-                    </p>
-                  </div>
-                </div>
-              ))
+                ))}
+              </div>
             ) : (
-              <div className="p-8 text-center text-gray-500 bg-gray-50 rounded-xl">
+              <div className="flex flex-col items-center justify-center h-full text-gray-500">
                 <MdPeople className="mx-auto mb-2 text-4xl text-gray-300" />
                 <p>No customer data from invoices</p>
               </div>
