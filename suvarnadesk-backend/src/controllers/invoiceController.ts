@@ -131,6 +131,7 @@ export const createInvoice = async (req: Request, res: Response) => {
       pdfData,
       ratesSource,
       gstInfo,
+      downloadUrl,
     } = req.body;
 
     // Validate required fields
@@ -141,26 +142,99 @@ export const createInvoice = async (req: Request, res: Response) => {
       });
     }
 
+    // Validate line items
+    if (!Array.isArray(lineItems) || lineItems.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one line item is required',
+      });
+    }
+
+    // Validate totals structure
+    if (!totals.subtotal || !totals.grandTotal) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid totals structure',
+      });
+    }
+
     // Save/update customer
     let customerId = null;
     if (customerSnapshot) {
-      customerId = await saveCustomerFromInvoice(customerSnapshot);
+      customerId = await saveCustomerFromInvoice({
+        name: customerSnapshot.name,
+        phone: customerSnapshot.phone,
+        email: customerSnapshot.email,
+        address: customerSnapshot.address,
+        huid: customerSnapshot.huid,
+        gstNumber: customerSnapshot.gstin,
+      });
     }
 
-    // Create invoice with customerId
+    // Ensure totals have CGST/SGST structure
+    const validatedTotals = {
+      subtotal: totals.subtotal || 0,
+      CGSTPercent: totals.CGSTPercent || 1.5,
+      CGSTAmount: totals.CGSTAmount || 0,
+      SGSTPercent: totals.SGSTPercent || 1.5,
+      SGSTAmount: totals.SGSTAmount || 0,
+      totalGST: totals.totalGST || (totals.CGSTAmount || 0) + (totals.SGSTAmount || 0),
+      grandTotal: totals.grandTotal || 0,
+    };
+
+    // Create invoice object
     const invoiceData = {
       invoiceNumber,
       date,
       customerId: customerId || 'new-customer',
-      customerSnapshot,
-      lineItems,
-      totals,
-      paymentDetails,
-      QRCodeData,
-      pdfData,
-      ratesSource,
-      gstInfo,
+      customerSnapshot: {
+        name: customerSnapshot.name,
+        email: customerSnapshot.email || '',
+        phone: customerSnapshot.phone,
+        address: customerSnapshot.address || '',
+        huid: customerSnapshot.huid || '',
+        hsnCode: customerSnapshot.hsnCode || '',
+        gstin: customerSnapshot.gstin || '',
+        state: customerSnapshot.state || 'Gujarat',
+      },
+      lineItems: lineItems.map((item: any) => ({
+        itemType: item.itemType || 'gold',
+        purity: item.purity || '24K',
+        description: item.description || '',
+        weight: {
+          value: item.weight?.value || 0,
+          unit: item.weight?.unit || 'g',
+        },
+        ratePerGram: item.ratePerGram || 0,
+        labourChargeReferenceId: item.labourChargeReferenceId || '',
+        labourChargeType: item.labourChargeType || null,
+        labourChargeAmount: item.labourChargeAmount || 0,
+        makingChargesTotal: item.makingChargesTotal || 0,
+        otherCharges: item.otherCharges || 0,
+        itemTotal: item.itemTotal || 0,
+      })),
+      totals: validatedTotals,
+      paymentDetails: {
+        paymentMode: paymentDetails?.paymentMode || 'cash',
+        amountPaid: paymentDetails?.amountPaid || 0,
+        balanceDue: paymentDetails?.balanceDue || validatedTotals.grandTotal,
+      },
+      QRCodeData: QRCodeData || '',
+      pdfData: pdfData || [],
+      ratesSource: ratesSource || 'manual',
+      gstInfo: gstInfo || {},
+      downloadUrl: downloadUrl || '',
     };
+
+    // Check for duplicate invoice number
+    const existingInvoice = await Invoice.findOne({ invoiceNumber });
+    if (existingInvoice) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invoice number already exists',
+        error: 'Duplicate invoice number',
+      });
+    }
 
     // Save invoice
     const invoice = new Invoice(invoiceData);
@@ -179,7 +253,7 @@ export const createInvoice = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Error creating invoice:', error);
 
-    // Handle duplicate invoice number error
+    // Handle duplicate key error
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,

@@ -58,11 +58,31 @@ export function useCreateInvoice() {
 
     return useMutation({
         mutationFn: async (invoiceData: CreateInvoicePayload) => {
-            const response = await apiClient.post('/invoices', invoiceData);
-            return response.data;
+            try {
+                const response = await apiClient.post('/invoices', invoiceData);
+
+                if (response.data.success === false) {
+                    throw new Error(response.data.message || 'Failed to create invoice');
+                }
+
+                return response.data;
+            } catch (error: any) {
+                console.error('Invoice creation error:', error);
+
+                // Re-throw with better error message
+                throw new Error(
+                    error.response?.data?.message ||
+                    error.message ||
+                    'Failed to create invoice'
+                );
+            }
         },
-        onSuccess: () => {
+        onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['invoices'] });
+            queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
+        },
+        onError: (error: any) => {
+            console.error('Mutation error:', error);
         },
     });
 }

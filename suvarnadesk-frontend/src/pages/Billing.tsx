@@ -1,5 +1,5 @@
 // pages/Billing.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MdAdd,
@@ -9,10 +9,8 @@ import {
   MdCurrencyRupee,
   MdCalculate,
   MdDownload,
-  MdRefresh,
 } from "react-icons/md";
-import { useMetalRates, MetalRate } from "../hooks/useMetalRates";
-import { useLiveRates, LiveRate } from "../hooks/useLiveRates";
+import { useMetalRates } from "../hooks/useMetalRates"; // Removed MetalRate import
 import { useCreateInvoice, LineItem } from "../hooks/useBilling";
 import CustomDropdown from "../components/CustomDropdown";
 import InvoiceQRCode from "../components/InvoiceQRCode";
@@ -82,34 +80,28 @@ interface PdfData {
 }
 
 export default function Billing() {
-  const { data: metalRates } = useMetalRates();
-  const {
-    data: liveRates,
-    refetch: refetchLiveRates,
-    isLoading: liveRatesLoading,
-  } = useLiveRates();
+  const { data: metalRates } = useMetalRates(); // Keep this line even if unused - might be needed later
   const createInvoice = useCreateInvoice();
 
   const [invoiceDate, setInvoiceDate] = useState<string>(
     new Date().toISOString().substring(0, 10)
   );
   const [invoiceNumber, setInvoiceNumber] = useState<string>("");
-  const [customerHSNCode, setCustomerHSNCode] = useState<string>(""); // Changed from HUID to HSN Code
-  const [customerGSTIN, setCustomerGSTIN] = useState<string>(""); // Added
-  const [customerState, setCustomerState] = useState<string>("Gujarat"); // Added with default
+  const [customerHSNCode, setCustomerHSNCode] = useState<string>("");
+  const [customerGSTIN, setCustomerGSTIN] = useState<string>("");
+  const [customerState, setCustomerState] = useState<string>("Gujarat");
   const [customerName, setCustomerName] = useState<string>("");
   const [customerEmail, setCustomerEmail] = useState<string>("");
   const [customerPhone, setCustomerPhone] = useState<string>("");
   const [customerAddress, setCustomerAddress] = useState<string>("");
   const [generatingInvoiceNumber, setGeneratingInvoiceNumber] = useState(false);
-  const [useLiveRatesEnabled, setUseLiveRatesEnabled] = useState(true);
   const [lineItems, setLineItems] = useState<LineItem[]>([
     {
       itemType: "gold",
       purity: "24K",
       description: "",
       weight: { value: 0, unit: "g" },
-      ratePerGram: 0,
+      ratePerGram: 0, // Admin will enter this manually
       labourChargeReferenceId: "",
       labourChargeType: null,
       labourChargeAmount: 0,
@@ -126,7 +118,12 @@ export default function Billing() {
   const [shopSettings, setShopSettings] = useState<any>(null);
   const [labourChargeInput, setLabourChargeInput] = useState<{
     [key: number]: number;
-  }>({}); // Simple input for labour charges
+  }>({});
+
+  // Manual rate per gram for each line item
+  const [ratePerGramInput, setRatePerGramInput] = useState<{
+    [key: number]: number;
+  }>({});
 
   // Fetch shop settings and generate invoice number on component mount
   React.useEffect(() => {
@@ -175,13 +172,6 @@ export default function Billing() {
       setGeneratingInvoiceNumber(false);
     }
   };
-
-  // Auto-refresh live rates when component mounts
-  useEffect(() => {
-    if (useLiveRatesEnabled) {
-      refetchLiveRates();
-    }
-  }, [useLiveRatesEnabled, refetchLiveRates]);
 
   const hsnCodeOptions = [
     { value: "7113", label: "7113 - Silver" },
@@ -235,7 +225,6 @@ export default function Billing() {
         ...updatedItems[0],
         itemType: "gold",
         purity: "24K",
-        ratePerGram: getRateForItem("gold", "24K"),
       };
       setLineItems(updatedItems);
     } else if (value === "7113" && lineItems.length > 0) {
@@ -244,7 +233,6 @@ export default function Billing() {
         ...updatedItems[0],
         itemType: "silver",
         purity: "Standard",
-        ratePerGram: getRateForItem("silver", "Standard"),
       };
       setLineItems(updatedItems);
     }
@@ -265,26 +253,6 @@ export default function Billing() {
     }
   };
 
-  // Get rate for item - uses live rates if enabled, falls back to metal rates
-  const getRateForItem = (itemType: string, purity: string): number => {
-    if (useLiveRatesEnabled && liveRates && liveRates.length > 0) {
-      const liveRate = liveRates.find(
-        (rate: LiveRate) =>
-          rate.metalType === itemType && rate.purity === purity && rate.isActive
-      );
-      if (liveRate) {
-        return liveRate.ratePerGram;
-      }
-    }
-
-    // Fallback to metal rates
-    const metalRate = metalRates?.find(
-      (rate: MetalRate) =>
-        rate.metalType === itemType && rate.purity === purity && rate.isActive
-    );
-    return metalRate?.ratePerGram || 0;
-  };
-
   const subtotal: number = lineItems.reduce(
     (acc, item) => acc + item.itemTotal,
     0
@@ -300,12 +268,11 @@ export default function Billing() {
     phone: string;
     email?: string;
     address?: string;
-    hsnCode?: string; // Changed from huid
+    hsnCode?: string;
     gstin?: string;
     state?: string;
   }) => {
     try {
-      // Call customer upsert endpoint
       const response = await apiClient.post("/customers/upsert", customerData);
       showToast.success("Customer saved successfully");
       return response.data.data;
@@ -314,6 +281,34 @@ export default function Billing() {
       showToast.error("Could not save customer details");
       return { _id: "temp-customer-id", ...customerData };
     }
+  };
+
+  const calculateItemTotal = (index: number): number => {
+    const item = lineItems[index];
+    const weightInGrams = convertToGrams(item.weight.value, item.weight.unit);
+    const ratePerGram = ratePerGramInput[index] || 0;
+    const labourChargeAmount = labourChargeInput[index] || 0;
+    const otherCharges = item.otherCharges || 0;
+
+    return weightInGrams * ratePerGram + labourChargeAmount + otherCharges;
+  };
+
+  // Update the handleRatePerGramChange function
+  const handleRatePerGramChange = (index: number, value: string) => {
+    const numericValue = parseFloat(value) || 0;
+    setRatePerGramInput((prev) => ({
+      ...prev,
+      [index]: numericValue,
+    }));
+
+    const updatedItems = [...lineItems];
+    updatedItems[index] = {
+      ...updatedItems[index],
+      ratePerGram: numericValue,
+      itemTotal: calculateItemTotal(index),
+    };
+
+    setLineItems(updatedItems);
   };
 
   const handleLineItemChange = (
@@ -328,12 +323,10 @@ export default function Billing() {
       if (field === "weightValue") item.weight.value = Number(value) || 0;
       else if (typeof value === "string") item.weight.unit = value;
 
-      item.ratePerGram = getRateForItem(item.itemType, item.purity);
-
       const weightInGrams = convertToGrams(item.weight.value, item.weight.unit);
-      const metalPrice = weightInGrams * item.ratePerGram;
+      const ratePerGram = ratePerGramInput[index] || 0;
+      const metalPrice = weightInGrams * ratePerGram;
 
-      // Get labour charge from input field
       const labourChargeAmount = labourChargeInput[index] || 0;
 
       item.labourChargeAmount = labourChargeAmount;
@@ -344,7 +337,8 @@ export default function Billing() {
     if (field === "otherCharges") {
       item.otherCharges = Number(value) || 0;
       const weightInGrams = convertToGrams(item.weight.value, item.weight.unit);
-      const metalPrice = weightInGrams * item.ratePerGram;
+      const ratePerGram = ratePerGramInput[index] || 0;
+      const metalPrice = weightInGrams * ratePerGram;
       const labourChargeAmount = labourChargeInput[index] || 0;
       item.itemTotal = metalPrice + labourChargeAmount + item.otherCharges;
     }
@@ -366,13 +360,12 @@ export default function Billing() {
     }));
 
     const updatedItems = [...lineItems];
-    const item = updatedItems[index];
-    const weightInGrams = convertToGrams(item.weight.value, item.weight.unit);
-    const metalPrice = weightInGrams * item.ratePerGram;
-
-    item.labourChargeAmount = numericValue;
-    item.makingChargesTotal = numericValue;
-    item.itemTotal = metalPrice + numericValue + item.otherCharges;
+    updatedItems[index] = {
+      ...updatedItems[index],
+      labourChargeAmount: numericValue,
+      makingChargesTotal: numericValue,
+      itemTotal: calculateItemTotal(index),
+    };
 
     setLineItems(updatedItems);
   };
@@ -385,7 +378,7 @@ export default function Billing() {
         purity: "24K",
         description: "",
         weight: { value: 0, unit: "g" },
-        ratePerGram: getRateForItem("gold", "24K"),
+        ratePerGram: 0,
         labourChargeReferenceId: "",
         labourChargeType: null,
         labourChargeAmount: 0,
@@ -401,30 +394,17 @@ export default function Billing() {
       const updatedItems = lineItems.filter((_, i) => i !== index);
       setLineItems(updatedItems);
 
-      // Remove labour charge input for this index
       const newLabourChargeInput = { ...labourChargeInput };
       delete newLabourChargeInput[index];
       setLabourChargeInput(newLabourChargeInput);
 
+      const newRatePerGramInput = { ...ratePerGramInput };
+      delete newRatePerGramInput[index];
+      setRatePerGramInput(newRatePerGramInput);
+
       showToast.success("Item removed");
     } else {
       showToast.error("At least one item is required");
-    }
-  };
-
-  // Refresh rates manually
-  const handleRefreshRates = async () => {
-    try {
-      await refetchLiveRates();
-      showToast.success("Rates refreshed successfully");
-
-      const updatedItems = lineItems.map((item) => ({
-        ...item,
-        ratePerGram: getRateForItem(item.itemType, item.purity),
-      }));
-      setLineItems(updatedItems);
-    } catch (error) {
-      showToast.error("Failed to refresh rates");
     }
   };
 
@@ -514,122 +494,6 @@ export default function Billing() {
     return result + " Rupees Only";
   };
 
-  // Live Rates Status Indicator
-  const renderLiveRatesIndicator = () => {
-    if (!useLiveRatesEnabled) return null;
-
-    const lastUpdated =
-      liveRates && liveRates.length > 0
-        ? new Date(liveRates[0].lastUpdated)
-        : null;
-
-    const minutesAgo = lastUpdated
-      ? Math.floor((new Date().getTime() - lastUpdated.getTime()) / 60000)
-      : null;
-
-    const availableMetals = liveRates
-      ? Array.from(new Set(liveRates.map((rate) => rate.metalType)))
-      : [];
-
-    return (
-      <div className="p-4 mt-4 bg-white border border-blue-100 rounded-lg">
-        <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600">Connection Status:</span>
-            <div className="flex items-center gap-2">
-              <div
-                className={`w-2 h-2 rounded-full ${
-                  liveRatesLoading
-                    ? "bg-yellow-500 animate-pulse"
-                    : liveRates && liveRates.length > 0
-                    ? "bg-green-500"
-                    : "bg-red-500"
-                }`}
-              />
-              <span
-                className={`font-medium ${
-                  liveRatesLoading
-                    ? "text-yellow-600"
-                    : liveRates && liveRates.length > 0
-                    ? "text-green-600"
-                    : "text-red-600"
-                }`}
-              >
-                {liveRatesLoading
-                  ? "Connecting..."
-                  : liveRates && liveRates.length > 0
-                  ? "Connected"
-                  : "Disconnected"}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600">Last Update:</span>
-            <span className="font-medium text-gray-800">
-              {minutesAgo !== null
-                ? `${minutesAgo} minute${minutesAgo !== 1 ? "s" : ""} ago`
-                : "Never"}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600">Available Metals:</span>
-            <div className="flex gap-2">
-              {availableMetals.length > 0 ? (
-                availableMetals.map((metal) => (
-                  <span
-                    key={metal}
-                    className="px-2 py-1 text-xs font-medium text-blue-800 capitalize bg-blue-100 rounded"
-                  >
-                    {metal}
-                  </span>
-                ))
-              ) : (
-                <span className="text-xs text-red-500">No rates loaded</span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600">Active Rates:</span>
-            <span className="font-medium text-gray-800">
-              {liveRates ? liveRates.length : 0}
-            </span>
-          </div>
-        </div>
-
-        {liveRates && liveRates.length > 0 && (
-          <div className="pt-3 mt-3 border-t border-gray-100">
-            <h4 className="mb-2 text-xs font-semibold text-gray-700">
-              Current Rates:
-            </h4>
-            <div className="grid grid-cols-2 gap-2">
-              {liveRates.slice(0, 4).map((rate, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-2 text-xs rounded bg-gray-50"
-                >
-                  <span className="text-gray-600 capitalize">
-                    {rate.metalType} {rate.purity}
-                  </span>
-                  <span className="font-semibold text-green-600">
-                    ₹{rate.ratePerGram.toLocaleString()}
-                  </span>
-                </div>
-              ))}
-            </div>
-            {liveRates.length > 4 && (
-              <div className="mt-2 text-xs text-center text-gray-500">
-                +{liveRates.length - 4} more rates available
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   // Fixed handleSubmit function
   const handleSubmit = async () => {
     if (!customerName.trim()) {
@@ -644,6 +508,18 @@ export default function Billing() {
 
     if (lineItems.some((item) => item.weight.value === 0)) {
       showToast.error("Please enter weight for all items");
+      return;
+    }
+
+    // Check if rate per gram is entered for all items
+    if (lineItems.some((item, index) => (ratePerGramInput[index] || 0) === 0)) {
+      showToast.error("Please enter Rate/Gram for all items");
+      return;
+    }
+
+    // Validate item totals
+    if (lineItems.some((item) => item.itemTotal <= 0)) {
+      showToast.error("Please check item calculations");
       return;
     }
 
@@ -950,9 +826,10 @@ export default function Billing() {
           type: item.itemType,
           purity: item.purity,
           weight: item.weight,
+          ratePerGram: item.ratePerGram,
           total: item.itemTotal,
         })),
-        ratesSource: useLiveRatesEnabled ? "live" : "manual",
+        ratesSource: "manual",
         gstNumbers: {
           gold: shopSettings?.goldGstNumber,
           silver: shopSettings?.silverGstNumber,
@@ -968,10 +845,6 @@ export default function Billing() {
         goldTotals.grandTotal +
         silverTotals.grandTotal +
         otherTotals.grandTotal;
-
-      const ratesSource: "live" | "manual" = useLiveRatesEnabled
-        ? "live"
-        : "manual";
 
       const invoicePayload = {
         invoiceNumber: finalInvoiceNumber,
@@ -1006,7 +879,7 @@ export default function Billing() {
         QRCodeData: qrCodeData,
         QRCodeUrl: qrCodeUrl,
         pdfData: pdfDataArray,
-        ratesSource,
+        ratesSource: "manual" as const,
         gstInfo: {
           goldUsed: goldItems.length > 0,
           silverUsed: silverItems.length > 0,
@@ -1051,7 +924,7 @@ export default function Billing() {
               purity: "24K",
               description: "",
               weight: { value: 0, unit: "g" },
-              ratePerGram: getRateForItem("gold", "24K"),
+              ratePerGram: 0,
               labourChargeReferenceId: "",
               labourChargeType: null,
               labourChargeAmount: 0,
@@ -1061,6 +934,7 @@ export default function Billing() {
             },
           ]);
           setLabourChargeInput({});
+          setRatePerGramInput({});
 
           setTimeout(() => {
             showToast.info(
@@ -1114,103 +988,9 @@ export default function Billing() {
           <div>
             <h2 className="text-2xl font-bold text-gray-800">Create Invoice</h2>
             <p className="text-gray-600">
-              Generate new invoices with live metal rates
+              Generate new invoices - Enter rate/gram manually for each item
             </p>
           </div>
-        </div>
-
-        {/* Live Rates Toggle and Status */}
-        <div className="p-6 mb-6 border border-blue-200 shadow-sm bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3">
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    title="Use Live Metal Rates"
-                    type="checkbox"
-                    checked={useLiveRatesEnabled}
-                    onChange={(e) => setUseLiveRatesEnabled(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-0 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
-                <label className="text-sm font-semibold text-gray-800 cursor-pointer select-none">
-                  Live Metal Rates
-                </label>
-              </div>
-
-              {useLiveRatesEnabled && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 border border-green-200 rounded-full">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs font-medium text-green-700">
-                    Live Active
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center gap-4">
-              {useLiveRatesEnabled && (
-                <div className="flex items-center gap-2 text-sm">
-                  <div
-                    className={`flex items-center gap-1.5 ${
-                      liveRatesLoading
-                        ? "text-yellow-600"
-                        : liveRates && liveRates.length > 0
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    <div
-                      className={`w-2 h-2 rounded-full ${
-                        liveRatesLoading
-                          ? "bg-yellow-500 animate-pulse"
-                          : liveRates && liveRates.length > 0
-                          ? "bg-green-500 animate-pulse"
-                          : "bg-red-500"
-                      }`}
-                    ></div>
-                    <span className="font-medium">
-                      {liveRatesLoading
-                        ? "Updating rates..."
-                        : liveRates && liveRates.length > 0
-                        ? "Rates synced"
-                        : "No rates available"}
-                    </span>
-                  </div>
-
-                  {liveRates && liveRates.length > 0 && !liveRatesLoading && (
-                    <span className="text-xs text-gray-500">
-                      {(() => {
-                        const lastUpdated = new Date(liveRates[0].lastUpdated);
-                        const minutesAgo = Math.floor(
-                          (new Date().getTime() - lastUpdated.getTime()) / 60000
-                        );
-                        return `Updated ${minutesAgo} min ago`;
-                      })()}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {useLiveRatesEnabled && (
-                <button
-                  onClick={handleRefreshRates}
-                  disabled={liveRatesLoading}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 transition-all duration-200 bg-white border border-blue-200 rounded-lg shadow-sm hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
-                >
-                  <MdRefresh
-                    className={`text-lg transition-transform ${
-                      liveRatesLoading ? "animate-spin" : "hover:rotate-180"
-                    }`}
-                  />
-                  {liveRatesLoading ? "Refreshing..." : "Refresh"}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {useLiveRatesEnabled && renderLiveRatesIndicator()}
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -1418,129 +1198,187 @@ export default function Billing() {
               </div>
 
               <AnimatePresence>
-                {lineItems.map((item, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.3 }}
-                    className="p-4 mb-4 transition-colors border border-gray-200 rounded-lg bg-gray-50 hover:bg-white"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-gray-700">
-                        Item : {index + 1}
-                      </h4>
-                      {lineItems.length > 1 && (
-                        <motion.button
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => removeLineItem(index)}
-                          className="p-2 text-red-500 transition-colors rounded-lg hover:bg-red-50 focus:outline-none focus:ring-0"
-                          title="Remove item"
-                        >
-                          <MdDelete className="text-lg" />
-                        </motion.button>
-                      )}
-                    </div>
+                {lineItems.map((item, index) => {
+                  const weightInGrams = convertToGrams(
+                    item.weight.value,
+                    item.weight.unit
+                  );
+                  const metalPrice =
+                    weightInGrams * (ratePerGramInput[index] || 0);
+                  const labourChargeAmount = labourChargeInput[index] || 0;
 
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                      {/* Item Type - CustomDropdown */}
-                      <div className="min-w-0">
-                        <label className="block mb-1 text-sm font-medium text-gray-700">
-                          Item Type
-                        </label>
-                        <CustomDropdown
-                          options={itemTypeOptions}
-                          value={item.itemType}
-                          onChange={(value) =>
-                            handleLineItemChange(index, "itemType", value)
-                          }
-                          aria-label="Select item type"
-                        />
+                  return (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                      className="p-4 mb-4 transition-colors border border-gray-200 rounded-lg bg-gray-50 hover:bg-white"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-medium text-gray-700">
+                          Item : {index + 1}
+                        </h4>
+                        {lineItems.length > 1 && (
+                          <motion.button
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => removeLineItem(index)}
+                            className="p-2 text-red-500 transition-colors rounded-lg hover:bg-red-50 focus:outline-none focus:ring-0"
+                            title="Remove item"
+                          >
+                            <MdDelete className="text-lg" />
+                          </motion.button>
+                        )}
                       </div>
 
-                      {/* Purity - CustomDropdown */}
-                      <div className="min-w-0">
-                        <label className="block mb-1 text-sm font-medium text-gray-700">
-                          Purity
-                        </label>
-                        <CustomDropdown
-                          options={
-                            purityOptions[
-                              item.itemType as keyof typeof purityOptions
-                            ] || purityOptions.other
-                          }
-                          value={item.purity}
-                          onChange={(value) =>
-                            handleLineItemChange(index, "purity", value)
-                          }
-                          aria-label="Select purity"
-                        />
-                      </div>
-
-                      {/* Labour Charge - Simple input field */}
-                      <div className="min-w-0">
-                        <label className="block mb-1 text-sm font-medium text-gray-700">
-                          Labour Charge
-                        </label>
-                        <div className="relative">
-                          <span className="absolute text-gray-500 transform -translate-y-1/2 left-3 top-1/2">
-                            ₹
-                          </span>
-                          <input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={labourChargeInput[index] || 0}
-                            onChange={(e) =>
-                              handleLabourChargeChange(index, e.target.value)
-                            }
-                            className="w-full px-3 py-3 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="0.00"
-                            aria-label="Enter labour charge"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Weight */}
-                      <div className="min-w-0">
-                        <label className="block mb-1 text-sm font-medium text-gray-700">
-                          Weight
-                        </label>
-                        <div className="flex w-full gap-2">
-                          <input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={item.weight.value}
-                            onChange={(e) =>
-                              handleLineItemChange(
-                                index,
-                                "weightValue",
-                                e.target.value
-                              )
-                            }
-                            className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="0.00"
-                            aria-label="Enter weight value"
-                          />
-                          {/* Weight Unit - CustomDropdown */}
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+                        {/* Item Type */}
+                        <div className="min-w-0">
+                          <label className="block mb-1 text-sm font-medium text-gray-700">
+                            Item Type
+                          </label>
                           <CustomDropdown
-                            options={weightUnitOptions}
-                            value={item.weight.unit}
+                            options={itemTypeOptions}
+                            value={item.itemType}
                             onChange={(value) =>
-                              handleLineItemChange(index, "weightUnit", value)
+                              handleLineItemChange(index, "itemType", value)
                             }
-                            className="w-24"
-                            aria-label="Select weight unit"
+                            aria-label="Select item type"
                           />
                         </div>
-                      </div>
-                    </div>
 
-                    {/* Description */}
-                    <div className="grid grid-cols-1 gap-4 mt-3 md:grid-cols-2">
-                      <div>
+                        {/* Purity */}
+                        <div className="min-w-0">
+                          <label className="block mb-1 text-sm font-medium text-gray-700">
+                            Purity
+                          </label>
+                          <CustomDropdown
+                            options={
+                              purityOptions[
+                                item.itemType as keyof typeof purityOptions
+                              ] || purityOptions.other
+                            }
+                            value={item.purity}
+                            onChange={(value) =>
+                              handleLineItemChange(index, "purity", value)
+                            }
+                            aria-label="Select purity"
+                          />
+                        </div>
+
+                        {/* Rate per Gram */}
+                        <div className="min-w-0">
+                          <label className="block mb-1 text-sm font-medium text-gray-700">
+                            Rate/Gram *
+                          </label>
+                          <div className="relative">
+                            <span className="absolute text-gray-500 transform -translate-y-1/2 left-3 top-1/2">
+                              ₹
+                            </span>
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={ratePerGramInput[index] || ""}
+                              onChange={(e) =>
+                                handleRatePerGramChange(index, e.target.value)
+                              }
+                              className="w-full px-4 py-3 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="0.00"
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        {/* Labour Charge */}
+                        <div className="min-w-0">
+                          <label className="block mb-1 text-sm font-medium text-gray-700">
+                            Labour Charge
+                          </label>
+                          <div className="relative">
+                            <span className="absolute text-gray-500 transform -translate-y-1/2 left-3 top-1/2">
+                              ₹
+                            </span>
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={labourChargeInput[index] || 0}
+                              onChange={(e) =>
+                                handleLabourChargeChange(index, e.target.value)
+                              }
+                              className="w-full px-4 py-3 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="0.00"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Weight */}
+                        <div className="min-w-0">
+                          <label className="block mb-1 text-sm font-medium text-gray-700">
+                            Weight
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.1"
+                              value={item.weight.value}
+                              onChange={(e) =>
+                                handleLineItemChange(
+                                  index,
+                                  "weightValue",
+                                  e.target.value
+                                )
+                              }
+                              className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="0.000"
+                            />
+                            <CustomDropdown
+                              options={weightUnitOptions}
+                              value={item.weight.unit}
+                              onChange={(value) =>
+                                handleLineItemChange(index, "weightUnit", value)
+                              }
+                              className="w-20"
+                            />
+                          </div>
+                          <div className="mt-1 text-xs text-gray-500">
+                            {weightInGrams.toFixed(3)} g
+                          </div>
+                        </div>
+
+                        {/* Other Charges */}
+                        <div className="min-w-0">
+                          <label className="block mb-1 text-sm font-medium text-gray-700">
+                            Other Charges
+                          </label>
+                          <div className="relative">
+                            <span className="absolute text-gray-500 transform -translate-y-1/2 left-3 top-1/2">
+                              ₹
+                            </span>
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={item.otherCharges || 0}
+                              onChange={(e) =>
+                                handleLineItemChange(
+                                  index,
+                                  "otherCharges",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full px-4 py-3 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="0.00"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <div className="mt-3">
                         <label className="block mb-1 text-sm font-medium text-gray-700">
                           Description
                         </label>
@@ -1554,76 +1392,43 @@ export default function Billing() {
                               e.target.value
                             )
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Item description"
-                          aria-label="Enter item description"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="e.g., Gold Chain, Silver Ring, etc."
                         />
                       </div>
 
-                      <div>
-                        <label className="block mb-1 text-sm font-medium text-gray-700">
-                          Other Charges
-                        </label>
-                        <div className="relative">
-                          <span className="absolute text-gray-500 transform -translate-y-1/2 left-3 top-1/2">
-                            ₹
-                          </span>
-                          <input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={item.otherCharges || 0}
-                            onChange={(e) =>
-                              handleLineItemChange(
-                                index,
-                                "otherCharges",
-                                e.target.value
-                              )
-                            }
-                            className="w-full px-3 py-2 pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="0.00"
-                            aria-label="Enter other charges"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Item Summary */}
-                    <div className="p-3 mt-3 bg-white border rounded-lg">
-                      <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
-                        <div>
-                          <span className="text-gray-600">Rate/Gram:</span>
-                          <span className="ml-1 font-medium">
-                            ₹{item.ratePerGram.toFixed(2)}
-                          </span>
-                          {useLiveRatesEnabled && (
-                            <span className="ml-1 text-xs text-green-600">
-                              (Live)
+                      {/* Item Summary */}
+                      <div className="p-3 mt-3 bg-white border rounded-lg">
+                        <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-5">
+                          <div>
+                            <span className="text-gray-600">Weight:</span>
+                            <span className="ml-1 font-medium">
+                              {item.weight.value} {item.weight.unit}
                             </span>
-                          )}
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Making Charges:</span>
-                          <span className="ml-1 font-medium">
-                            ₹{(labourChargeInput[index] || 0).toFixed(2)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Other Charges:</span>
-                          <span className="ml-1 font-medium">
-                            ₹{(item.otherCharges || 0).toFixed(2)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Item Total:</span>
-                          <span className="ml-1 font-medium text-green-600">
-                            ₹{item.itemTotal.toFixed(2)}
-                          </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Rate/Gram:</span>
+                            <span className="ml-1 font-medium">
+                              ₹{(ratePerGramInput[index] || 0).toFixed(2)}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Metal Value:</span>
+                            <span className="ml-1 font-medium">
+                              ₹{metalPrice.toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="text-right md:text-left">
+                            <span className="text-gray-600">Item Total:</span>
+                            <span className="ml-1 font-medium text-green-600">
+                              ₹{item.itemTotal.toFixed(2)}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  );
+                })}
               </AnimatePresence>
             </motion.div>
 

@@ -572,7 +572,6 @@ const Dashboard = () => {
         const averageInvoiceValue =
           invoices.length > 0 ? totalRevenue / invoices.length : 0;
 
-        // Get current gold and silver rates
         const goldRates = rates.filter(
           (rate) => rate.metalType === "gold" && rate.isActive
         );

@@ -26,7 +26,7 @@ export const getActiveMetalRates = async (req: Request, res: Response) => {
 // Create new metal rate
 export const createMetalRate = async (req: Request, res: Response) => {
     try {
-        const { metalType, purity, ratePerGram, effectiveFrom, source } = req.body;
+        const { metalType, purity, ratePerGram, effectiveFrom } = req.body;
 
         // Validate required fields
         if (!metalType || !purity || !ratePerGram || !effectiveFrom) {
@@ -45,7 +45,7 @@ export const createMetalRate = async (req: Request, res: Response) => {
             purity,
             ratePerGram,
             effectiveFrom: new Date(effectiveFrom),
-            source: source || 'manual',
+            source: 'manual', // Always manual
             isActive: true
         });
 

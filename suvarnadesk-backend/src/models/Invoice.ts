@@ -28,12 +28,18 @@ export interface IInvoice extends Document {
         phone: string;
         address?: string;
         huid?: string;
+        hsnCode?: string;
+        gstin?: string;
+        state?: string;
     };
     lineItems: ILineItem[];
     totals: {
         subtotal: number;
-        GSTPercent: number;
-        GSTAmount: number;
+        CGSTPercent: number;
+        CGSTAmount: number;
+        SGSTPercent: number;
+        SGSTAmount: number;
+        totalGST: number;
         grandTotal: number;
     };
     paymentDetails: {
@@ -42,8 +48,18 @@ export interface IInvoice extends Document {
         balanceDue: number;
     };
     QRCodeData?: string;
+    pdfData?: any[];
+    ratesSource?: "live" | "manual";
+    gstInfo?: any;
+    downloadUrl?: string;
     createdAt: Date;
     updatedAt: Date;
+
+    // Methods
+    getDownloadUrl(): string;
+
+    // Virtuals
+    qrCodeUrl: string;
 }
 
 const LineItemSchema = new Schema<ILineItem>(
@@ -73,39 +89,57 @@ const InvoiceSchema = new Schema<IInvoice>(
         customerId: { type: String, required: true },
         customerSnapshot: {
             name: { type: String, required: true },
-            email: { type: String },
+            email: { type: String, default: "" },
             phone: { type: String, required: true },
-            address: { type: String },
-            huid: { type: String },
+            address: { type: String, default: "" },
+            huid: { type: String, default: "" },
+            hsnCode: { type: String, default: "" },
+            gstin: { type: String, default: "" },
+            state: { type: String, default: "Gujarat" },
         },
         lineItems: { type: [LineItemSchema], required: true },
         totals: {
-            subtotal: { type: Number, required: true },
-            CGSTPercent: { type: Number, required: true },
-            CGSTAmount: { type: Number, required: true },
-            SGSTPercent: { type: Number, required: true },
-            SGSTAmount: { type: Number, required: true },
-            grandTotal: { type: Number, required: true },
+            subtotal: { type: Number, required: true, min: 0 },
+            CGSTPercent: { type: Number, required: true, min: 0, max: 100 },
+            CGSTAmount: { type: Number, required: true, min: 0 },
+            SGSTPercent: { type: Number, required: true, min: 0, max: 100 },
+            SGSTAmount: { type: Number, required: true, min: 0 },
+            totalGST: { type: Number, required: true, min: 0 },
+            grandTotal: { type: Number, required: true, min: 0 },
         },
         paymentDetails: {
             paymentMode: { type: String, required: true },
-            amountPaid: { type: Number, required: true },
-            balanceDue: { type: Number, required: true },
+            amountPaid: { type: Number, required: true, min: 0 },
+            balanceDue: { type: Number, required: true, min: 0 },
         },
-        QRCodeData: { type: String },
+        QRCodeData: { type: String, default: "" },
+        pdfData: { type: Schema.Types.Mixed, default: [] },
+        ratesSource: {
+            type: String,
+            enum: ['live', 'manual'],
+            default: 'manual'
+        },
+        gstInfo: { type: Schema.Types.Mixed, default: {} },
+        downloadUrl: { type: String, default: "" },
     },
     { timestamps: true }
 );
 
+// Method: Get download URL
 InvoiceSchema.methods.getDownloadUrl = function (): string {
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     return `${baseUrl}/api/invoices/download/${this.invoiceNumber}?auto=1`;
 };
 
-// Add virtual for QR code URL
-InvoiceSchema.virtual('qrCodeUrl').get(function () {
-    return `${process.env.FRONTEND_URL || 'http://localhost:3000'}/api/invoices/download/${this.invoiceNumber}?auto=1`;
+// Virtual: QR code URL
+InvoiceSchema.virtual('qrCodeUrl').get(function (this: IInvoice) {
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    return `${baseUrl}/api/invoices/download/${this.invoiceNumber}?auto=1`;
 });
+
+// Ensure virtuals are included in JSON output
+InvoiceSchema.set('toJSON', { virtuals: true });
+InvoiceSchema.set('toObject', { virtuals: true });
 
 // Export the model
 const Invoice = mongoose.model<IInvoice>("Invoice", InvoiceSchema);
