@@ -1,16 +1,17 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   MdDashboard,
   MdPeople,
   MdTrendingUp,
   MdAccountBalanceWallet,
-  MdCalendarToday,
   MdAttachMoney,
   MdPersonAdd,
   MdCreditCard,
   MdCurrencyExchange,
   MdSmartphone,
+  MdDownload,
+  MdCalendarToday,
 } from "react-icons/md";
 import {
   BarChart,
@@ -29,6 +30,10 @@ import {
 } from "recharts";
 import apiClient from "../api/apiClient";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { showToast } from "../components/CustomToast";
+import DateRangeDropdown from "../components/DateRangeDropdown";
+import { pdf } from "@react-pdf/renderer";
+import DashboardReportPDF from "../components/DashboardReportPDF";
 
 // Define types for data
 interface Invoice {
@@ -96,6 +101,7 @@ interface ChartDataItem {
   revenue: number;
   invoices: number;
   customers: number;
+  averageTicket: number;
 }
 
 interface Stats {
@@ -107,12 +113,18 @@ interface Stats {
   upiPayments: number;
   exchangePayments: number;
   creditPayments: number;
+  bankTransferPayments: number;
   goldRate: number;
   silverRate: number;
   newCustomersThisMonth: number;
+  newCustomersThisPeriod: number;
   revenueThisMonth: number;
+  revenueThisPeriod: number;
   averageInvoiceValue: number;
   uniqueCustomersFromInvoices: number;
+  peakDay: string;
+  periodLabel: string;
+  topMetal: string;
 }
 
 interface RecentActivity {
@@ -132,6 +144,20 @@ interface TopCustomer {
   totalInvoices: number;
   totalSpent: number;
   lastPurchase: string;
+  frequency: number;
+}
+
+interface DateRange {
+  startDate: string;
+  endDate: string;
+}
+
+interface PaymentDistribution {
+  name: string;
+  value: number;
+  color: string;
+  count: number;
+  amount: number;
 }
 
 const Dashboard = () => {
@@ -144,27 +170,43 @@ const Dashboard = () => {
     upiPayments: 0,
     exchangePayments: 0,
     creditPayments: 0,
+    bankTransferPayments: 0,
     goldRate: 0,
     silverRate: 0,
     newCustomersThisMonth: 0,
+    newCustomersThisPeriod: 0,
     revenueThisMonth: 0,
+    revenueThisPeriod: 0,
     averageInvoiceValue: 0,
     uniqueCustomersFromInvoices: 0,
+    peakDay: "",
+    periodLabel: "",
+    topMetal: "",
   });
 
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const [chartData, setChartData] = useState<ChartDataItem[]>([]);
-  const [timeRange, setTimeRange] = useState("monthly");
+  const [timeRange, setTimeRange] = useState<"daily" | "weekly" | "monthly">(
+    "monthly"
+  );
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>(
     []
   );
   const [metalDistribution, setMetalDistribution] = useState<
     { name: string; value: number }[]
   >([]);
-  const [customersFromInvoices, setCustomersFromInvoices] = useState<
-    CustomerFromInvoice[]
+  const [paymentDistribution, setPaymentDistribution] = useState<
+    PaymentDistribution[]
   >([]);
   const [topCustomers, setTopCustomers] = useState<TopCustomer[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange>({
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+      .toISOString()
+      .split("T")[0],
+    endDate: new Date().toISOString().split("T")[0],
+  });
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Helper function to get time ago string
   const getTimeAgo = useCallback((date: Date): string => {
@@ -188,7 +230,34 @@ const Dashboard = () => {
       const weekNumber = Math.ceil(date.getDate() / 7);
       return `Week ${weekNumber}`;
     } else {
-      return date.toLocaleDateString();
+      return date.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      });
+    }
+  }, []);
+
+  // Helper function to get period label
+  const getPeriodLabel = useCallback((range: string): string => {
+    const now = new Date();
+    if (range === "daily") {
+      return `Today (${now.toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      })})`;
+    } else if (range === "weekly") {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      return `This Week (${startOfWeek.toLocaleDateString()} - ${endOfWeek.toLocaleDateString()})`;
+    } else {
+      return `This Month (${now.toLocaleDateString("default", {
+        month: "long",
+        year: "numeric",
+      })})`;
     }
   }, []);
 
@@ -203,7 +272,23 @@ const Dashboard = () => {
           for (let i = count - 1; i >= 0; i--) {
             const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
             periods.push({
-              name: date.toLocaleString("default", { month: "short" }),
+              name: getPeriodKey(date, range),
+            });
+          }
+        } else if (range === "weekly") {
+          for (let i = count - 1; i >= 0; i--) {
+            const date = new Date(now);
+            date.setDate(date.getDate() - i * 7);
+            periods.push({
+              name: getPeriodKey(date, range),
+            });
+          }
+        } else {
+          for (let i = count - 1; i >= 0; i--) {
+            const date = new Date(now);
+            date.setDate(date.getDate() - i);
+            periods.push({
+              name: getPeriodKey(date, range),
             });
           }
         }
@@ -233,7 +318,7 @@ const Dashboard = () => {
         ) {
           const date = new Date(currentYear, currentMonth, 1);
           periods.push({
-            name: date.toLocaleString("default", { month: "short" }),
+            name: getPeriodKey(date, range),
           });
 
           currentMonth++;
@@ -244,67 +329,117 @@ const Dashboard = () => {
         }
 
         return periods.slice(-count);
-      }
+      } else if (range === "weekly") {
+        const startDate = new Date(minDate);
+        const endDate = new Date(maxDate);
 
-      const now = new Date();
-      for (let i = count - 1; i >= 0; i--) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        periods.push({
-          name: date.toLocaleString("default", { month: "short" }),
-        });
-      }
+        while (startDate <= endDate) {
+          periods.push({
+            name: getPeriodKey(startDate, range),
+          });
+          startDate.setDate(startDate.getDate() + 7);
+        }
 
-      return periods;
+        return periods.slice(-count);
+      } else {
+        const startDate = new Date(minDate);
+        const endDate = new Date(maxDate);
+
+        for (let i = 0; i < count && startDate <= endDate; i++) {
+          periods.push({
+            name: getPeriodKey(startDate, range),
+          });
+          startDate.setDate(startDate.getDate() + 1);
+        }
+
+        return periods;
+      }
     },
-    []
+    [getPeriodKey]
   );
 
-  // Generate chart data from actual invoices
+  // Generate chart data from actual invoices with date filtering
   const generateChartDataFromInvoices = useCallback(
     (
       invoices: Invoice[],
       customers: CustomerFromInvoice[],
-      range: string
+      range: string,
+      startDate?: Date,
+      endDate?: Date
     ): ChartDataItem[] => {
-      if (invoices.length === 0) return [];
+      // Filter invoices by date range if provided
+      let filteredInvoices = invoices;
+      if (startDate && endDate) {
+        filteredInvoices = invoices.filter((invoice) => {
+          const invoiceDate = new Date(invoice.createdAt);
+          return invoiceDate >= startDate && invoiceDate <= endDate;
+        });
+      }
 
+      if (filteredInvoices.length === 0) return [];
+
+      const periods = getLastPeriods(
+        range === "daily" ? 7 : range === "weekly" ? 4 : 6,
+        range,
+        filteredInvoices
+      );
       const groupedData: { [key: string]: ChartDataItem } = {};
 
-      const periods = getLastPeriods(6, range, invoices);
+      // Initialize periods
       periods.forEach((period) => {
         groupedData[period.name] = {
           name: period.name,
           revenue: 0,
           invoices: 0,
           customers: 0,
+          averageTicket: 0,
         };
       });
 
       // Process invoices
-      invoices.forEach((invoice) => {
+      const customerCountByPeriod: { [key: string]: Set<string> } = {};
+      const revenueByPeriod: { [key: string]: number[] } = {};
+
+      periods.forEach((period) => {
+        customerCountByPeriod[period.name] = new Set();
+        revenueByPeriod[period.name] = [];
+      });
+
+      filteredInvoices.forEach((invoice) => {
         const date = new Date(invoice.createdAt);
         const periodKey = getPeriodKey(date, range);
 
         if (groupedData[periodKey]) {
-          groupedData[periodKey].revenue += invoice.totals?.grandTotal || 0;
+          const total = invoice.totals?.grandTotal || 0;
+          groupedData[periodKey].revenue += total;
           groupedData[periodKey].invoices += 1;
+          revenueByPeriod[periodKey].push(total);
+
+          // Track unique customers by phone
+          if (invoice.customerSnapshot?.phone) {
+            customerCountByPeriod[periodKey].add(
+              invoice.customerSnapshot.phone
+            );
+          }
         }
       });
 
-      // Process customers for each period (from invoices)
+      // Calculate customers and average ticket
       periods.forEach((period) => {
-        const periodCustomers = customers.filter((customer) => {
-          const customerFirstDate = new Date(customer.firstPurchase);
-          return getPeriodKey(customerFirstDate, range) === period.name;
-        });
-        groupedData[period.name].customers = periodCustomers.length;
+        const periodData = groupedData[period.name];
+        if (periodData) {
+          periodData.customers = customerCountByPeriod[period.name]?.size || 0;
+
+          // Calculate average ticket for the period
+          const revenues = revenueByPeriod[period.name] || [];
+          periodData.averageTicket =
+            revenues.length > 0
+              ? revenues.reduce((sum, rev) => sum + rev, 0) / revenues.length
+              : 0;
+        }
       });
 
-      return periods
-        .map((period) => groupedData[period.name])
-        .filter(
-          (item) => item.revenue > 0 || item.invoices > 0 || item.customers > 0
-        );
+      return periods.map((period) => groupedData[period.name]);
     },
     [getLastPeriods, getPeriodKey]
   );
@@ -339,6 +474,54 @@ const Dashboard = () => {
     []
   );
 
+  // Calculate payment distribution from invoices
+  const calculatePaymentDistribution = useCallback(
+    (invoices: Invoice[]): PaymentDistribution[] => {
+      if (invoices.length === 0) return [];
+
+      const paymentCount: { [key: string]: { count: number; amount: number } } =
+        {};
+      let totalCount = 0;
+
+      invoices.forEach((invoice) => {
+        const paymentMethod = invoice.paymentDetails?.paymentMethod || "cash";
+        const amount = invoice.totals?.grandTotal || 0;
+
+        if (!paymentCount[paymentMethod]) {
+          paymentCount[paymentMethod] = { count: 0, amount: 0 };
+        }
+        paymentCount[paymentMethod].count += 1;
+        paymentCount[paymentMethod].amount += amount;
+        totalCount += 1;
+      });
+
+      if (totalCount === 0) return [];
+
+      // Define colors for each payment mode
+      const paymentColors: { [key: string]: string } = {
+        cash: "#22c55e", // green-500
+        card: "#8b5cf6", // violet-500
+        upi: "#3b82f6", // blue-500
+        bank_transfer: "#06b6d4", // cyan-500
+        cheque: "#f59e0b", // amber-500
+        other: "#9ca3af", // gray-400
+        exchange: "#f97316", // orange-500
+        credit: "#ef4444", // red-500
+      };
+
+      return Object.entries(paymentCount)
+        .map(([name, data]) => ({
+          name: name.charAt(0).toUpperCase() + name.slice(1).replace("_", " "),
+          value: Math.round((data.count / totalCount) * 100),
+          color: paymentColors[name] || paymentColors.other,
+          count: data.count,
+          amount: data.amount,
+        }))
+        .sort((a, b) => b.value - a.value);
+    },
+    []
+  );
+
   // Generate recent activities from invoices
   const generateRecentActivities = useCallback(
     (
@@ -347,20 +530,21 @@ const Dashboard = () => {
     ): RecentActivity[] => {
       const activities: RecentActivity[] = [];
 
-      // Add recent invoices (last 5)
+      // Add recent invoices (last 8)
       const recentInvoices = invoices
         .sort(
           (a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         )
-        .slice(0, 5);
+        .slice(0, 8);
 
       recentInvoices.forEach((invoice) => {
+        const paymentMethod = invoice.paymentDetails?.paymentMethod || "cash";
         activities.push({
           id: invoice._id,
-          action: `New Invoice (${
-            invoice.paymentDetails?.paymentMethod?.toUpperCase() || "CASH"
-          })`,
+          action: `Invoice #${
+            invoice.invoiceNumber
+          } (${paymentMethod.toUpperCase()})`,
           customer: invoice.customerSnapshot?.name || "Unknown Customer",
           amount: `₹${(invoice.totals?.grandTotal || 0).toLocaleString()}`,
           time: getTimeAgo(new Date(invoice.createdAt)),
@@ -368,42 +552,7 @@ const Dashboard = () => {
         });
       });
 
-      // Add recent customers (last 3) - from invoices
-      const recentCustomers = customers
-        .sort(
-          (a, b) =>
-            new Date(b.firstPurchase).getTime() -
-            new Date(a.firstPurchase).getTime()
-        )
-        .slice(0, 3);
-
-      recentCustomers.forEach((customer) => {
-        activities.push({
-          id: customer._id,
-          action: "New Customer",
-          customer: customer.name,
-          amount: `₹${customer.totalAmount.toLocaleString()}`,
-          time: getTimeAgo(new Date(customer.firstPurchase)),
-          type: "new_customer",
-        });
-      });
-
-      // Sort all activities by time and take top 8
-      return activities
-        .sort((a, b) => {
-          const timeA = a.time.includes("min")
-            ? parseInt(a.time)
-            : a.time.includes("hour")
-            ? parseInt(a.time) * 60
-            : parseInt(a.time) * 1440;
-          const timeB = b.time.includes("min")
-            ? parseInt(b.time)
-            : b.time.includes("hour")
-            ? parseInt(b.time) * 60
-            : parseInt(b.time) * 1440;
-          return timeB - timeA;
-        })
-        .slice(0, 8);
+      return activities.slice(0, 8);
     },
     [getTimeAgo]
   );
@@ -422,228 +571,399 @@ const Dashboard = () => {
           totalInvoices: customer.totalInvoices,
           totalSpent: customer.totalAmount,
           lastPurchase: customer.lastPurchase,
+          frequency: customer.totalInvoices, // Using totalInvoices as frequency
         }));
     },
     []
   );
 
-  // Fetch customers and their invoices
-  const fetchCustomersFromInvoices = useCallback(
-    async (invoices: Invoice[]): Promise<CustomerFromInvoice[]> => {
-      try {
-        // Group invoices by customer
-        const customerMap = new Map<string, CustomerFromInvoice>();
+  // Calculate peak day from invoices
+  const calculatePeakDay = useCallback((invoices: Invoice[]): string => {
+    if (invoices.length === 0) return "N/A";
 
-        invoices.forEach((invoice) => {
-          const customerData = invoice.customerSnapshot;
-          const customerKey =
-            `${customerData.phone}-${customerData.email}`.toLowerCase();
+    const dayCount: { [key: string]: number } = {};
 
-          if (!customerMap.has(customerKey)) {
-            customerMap.set(customerKey, {
-              _id: customerKey,
-              name: customerData.name,
-              email: customerData.email,
-              phone: customerData.phone,
-              address: customerData.address,
-              huid: customerData.huid,
-              totalInvoices: 0,
-              totalAmount: 0,
-              firstPurchase: invoice.createdAt,
-              lastPurchase: invoice.createdAt,
-              invoices: [],
-            });
-          }
+    invoices.forEach((invoice) => {
+      const date = new Date(invoice.createdAt);
+      const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
+      dayCount[dayName] = (dayCount[dayName] || 0) + 1;
+    });
 
-          const customer = customerMap.get(customerKey)!;
-          customer.totalInvoices += 1;
-          customer.totalAmount += invoice.totals.grandTotal;
-          customer.invoices.push(invoice);
+    let peakDay = "";
+    let maxCount = 0;
 
-          if (new Date(invoice.createdAt) < new Date(customer.firstPurchase)) {
-            customer.firstPurchase = invoice.createdAt;
-          }
-          if (new Date(invoice.createdAt) > new Date(customer.lastPurchase)) {
-            customer.lastPurchase = invoice.createdAt;
-          }
-        });
-
-        return Array.from(customerMap.values());
-      } catch (error) {
-        console.error("Error fetching customers from invoices:", error);
-        return [];
+    Object.entries(dayCount).forEach(([day, count]) => {
+      if (count > maxCount) {
+        maxCount = count;
+        peakDay = day;
       }
+    });
+
+    return peakDay;
+  }, []);
+
+  // Calculate top metal from metal distribution
+  const calculateTopMetal = useCallback(
+    (metalDistribution: { name: string; value: number }[]): string => {
+      if (
+        metalDistribution.length === 0 ||
+        metalDistribution[0].name === "No Data"
+      ) {
+        return "N/A";
+      }
+
+      // Find the metal with highest percentage
+      return metalDistribution.reduce((prev, current) =>
+        prev.value > current.value ? prev : current
+      ).name;
     },
     []
   );
 
+  // Fetch all dashboard data - FIXED: Remove dependencies that cause infinite loop
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      const startDate = new Date(dateRange.startDate);
+      const endDate = new Date(dateRange.endDate);
+      endDate.setHours(23, 59, 59, 999); // Include entire end day
+
+      // Fetch all invoices
+      const invoicesRes = await apiClient.get("/invoices");
+      const allInvoices: Invoice[] = Array.isArray(invoicesRes.data)
+        ? invoicesRes.data
+        : invoicesRes.data?.data || [];
+
+      // Filter invoices by date range
+      const filteredInvoices = allInvoices.filter((invoice) => {
+        const invoiceDate = new Date(invoice.createdAt);
+        return invoiceDate >= startDate && invoiceDate <= endDate;
+      });
+
+      // Fetch metal rates
+      const metalRatesRes = await apiClient.get("/metal-rates/active");
+      const rates: Rate[] = Array.isArray(metalRatesRes.data)
+        ? metalRatesRes.data
+        : metalRatesRes.data?.data || [];
+
+      // Fetch customers from invoices
+      const customerMap = new Map<string, CustomerFromInvoice>();
+
+      filteredInvoices.forEach((invoice) => {
+        const customerData = invoice.customerSnapshot;
+        const customerKey =
+          `${customerData.phone}-${customerData.email}`.toLowerCase();
+
+        if (!customerMap.has(customerKey)) {
+          customerMap.set(customerKey, {
+            _id: customerKey,
+            name: customerData.name,
+            email: customerData.email,
+            phone: customerData.phone,
+            address: customerData.address,
+            huid: customerData.huid,
+            totalInvoices: 0,
+            totalAmount: 0,
+            firstPurchase: invoice.createdAt,
+            lastPurchase: invoice.createdAt,
+            invoices: [],
+          });
+        }
+
+        const customer = customerMap.get(customerKey)!;
+        customer.totalInvoices += 1;
+        customer.totalAmount += invoice.totals?.grandTotal || 0;
+        customer.invoices.push(invoice);
+
+        const invoiceDate = new Date(invoice.createdAt);
+        const firstPurchase = new Date(customer.firstPurchase);
+        const lastPurchase = new Date(customer.lastPurchase);
+
+        if (invoiceDate < firstPurchase) {
+          customer.firstPurchase = invoice.createdAt;
+        }
+        if (invoiceDate > lastPurchase) {
+          customer.lastPurchase = invoice.createdAt;
+        }
+      });
+
+      const customersFromInvoicesData = Array.from(customerMap.values());
+
+      // Get top customers
+      const topCustomersData = getTopCustomers(customersFromInvoicesData);
+      setTopCustomers(topCustomersData);
+
+      // Calculate stats from filtered data
+      const totalRevenue = filteredInvoices.reduce(
+        (sum, invoice) => sum + (invoice.totals?.grandTotal || 0),
+        0
+      );
+
+      // Calculate payment type distributions
+      const paymentStats = {
+        cashPayments: 0,
+        cardPayments: 0,
+        upiPayments: 0,
+        exchangePayments: 0,
+        creditPayments: 0,
+        bankTransferPayments: 0,
+        otherPayments: 0,
+      };
+
+      filteredInvoices.forEach((invoice) => {
+        const paymentMethod =
+          invoice.paymentDetails?.paymentMethod?.toLowerCase() || "cash";
+        switch (paymentMethod) {
+          case "cash":
+            paymentStats.cashPayments++;
+            break;
+          case "card":
+          case "credit card":
+          case "debit card":
+            paymentStats.cardPayments++;
+            break;
+          case "upi":
+          case "qr":
+            paymentStats.upiPayments++;
+            break;
+          case "exchange":
+          case "metalexchange":
+            paymentStats.exchangePayments++;
+            break;
+          case "credit":
+            paymentStats.creditPayments++;
+            break;
+          case "bank_transfer":
+          case "banktransfer":
+          case "bank transfer":
+            paymentStats.bankTransferPayments++;
+            break;
+          default:
+            paymentStats.otherPayments++;
+        }
+      });
+
+      // Get new customers in this period
+      const newCustomersThisMonth = customersFromInvoicesData.filter(
+        (customer) => {
+          const customerDate = new Date(customer.firstPurchase);
+          return customerDate >= startDate && customerDate <= endDate;
+        }
+      ).length;
+
+      const revenueThisMonth = totalRevenue;
+
+      const averageInvoiceValue =
+        filteredInvoices.length > 0
+          ? totalRevenue / filteredInvoices.length
+          : 0;
+
+      // Get metal rates
+      const goldRates = rates.filter(
+        (rate) => rate.metalType === "gold" && rate.isActive
+      );
+      const silverRates = rates.filter(
+        (rate) => rate.metalType === "silver" && rate.isActive
+      );
+
+      const goldRate =
+        goldRates.length > 0
+          ? Math.max(...goldRates.map((r) => r.ratePerGram))
+          : 0;
+      const silverRate =
+        silverRates.length > 0
+          ? Math.max(...silverRates.map((r) => r.ratePerGram))
+          : 0;
+
+      // Calculate peak day
+      const peakDay = calculatePeakDay(filteredInvoices);
+
+      // Generate distributions first
+      const metalDist = calculateMetalDistribution(filteredInvoices);
+      setMetalDistribution(metalDist);
+
+      // Calculate top metal
+      const topMetal = calculateTopMetal(metalDist);
+
+      // Generate chart data
+      const dynamicChartData = generateChartDataFromInvoices(
+        filteredInvoices,
+        customersFromInvoicesData,
+        timeRange,
+        startDate,
+        endDate
+      );
+      setChartData(dynamicChartData);
+
+      // Generate payment distribution
+      const paymentDist = calculatePaymentDistribution(filteredInvoices);
+      setPaymentDistribution(paymentDist);
+
+      // Generate recent activities
+      const activities = generateRecentActivities(
+        filteredInvoices,
+        customersFromInvoicesData
+      );
+      setRecentActivities(activities);
+
+      // Update stats - do this last to avoid dependency issues
+      setStats({
+        totalCustomers: customersFromInvoicesData.length,
+        totalInvoices: filteredInvoices.length,
+        totalRevenue,
+        cashPayments: paymentStats.cashPayments,
+        cardPayments: paymentStats.cardPayments,
+        upiPayments: paymentStats.upiPayments,
+        exchangePayments: paymentStats.exchangePayments,
+        creditPayments: paymentStats.creditPayments,
+        bankTransferPayments: paymentStats.bankTransferPayments,
+        goldRate,
+        silverRate,
+        newCustomersThisMonth,
+        newCustomersThisPeriod: newCustomersThisMonth,
+        revenueThisMonth,
+        revenueThisPeriod: revenueThisMonth,
+        averageInvoiceValue,
+        uniqueCustomersFromInvoices: customersFromInvoicesData.length,
+        peakDay,
+        periodLabel: getPeriodLabel(timeRange),
+        topMetal,
+      });
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error);
+      showToast.error("Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+    }
+    // Only depend on dateRange and timeRange to prevent infinite loops
+  }, [dateRange, timeRange]);
+
+  // Load data on initial render and when dateRange or timeRange changes
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
-        // Fetch all data
-        const [invoicesRes, metalRatesRes] = await Promise.all([
-          apiClient.get("/invoices"),
-          apiClient.get("/metal-rates/active"),
-        ]);
+  // Download PDF report from backend
+const downloadPDFReport = async () => {
+  try {
+    setDownloading(true);
 
-        // Handle different response formats
-        const invoices: Invoice[] = Array.isArray(invoicesRes.data)
-          ? invoicesRes.data
-          : invoicesRes.data?.data || [];
-
-        const rates: Rate[] = Array.isArray(metalRatesRes.data)
-          ? metalRatesRes.data
-          : metalRatesRes.data?.data || [];
-
-        // Fetch customers from invoices
-        const customersFromInvoicesData = await fetchCustomersFromInvoices(
-          invoices
-        );
-        setCustomersFromInvoices(customersFromInvoicesData);
-
-        // Get top customers
-        const topCustomersData = getTopCustomers(customersFromInvoicesData);
-        setTopCustomers(topCustomersData);
-
-        // Calculate stats from real data
-        const totalRevenue = invoices.reduce(
-          (sum: number, invoice: Invoice) =>
-            sum + (invoice.totals?.grandTotal || 0),
-          0
-        );
-
-        // Calculate payment type distributions
-        let cashPayments = 0;
-        let cardPayments = 0;
-        let upiPayments = 0;
-        let exchangePayments = 0;
-        let creditPayments = 0;
-
-        invoices.forEach((invoice: Invoice) => {
-          const paymentMethod = invoice.paymentDetails?.paymentMethod || "cash";
-          switch (paymentMethod) {
-            case "cash":
-              cashPayments++;
-              break;
-            case "card":
-              cardPayments++;
-              break;
-            case "upi":
-              upiPayments++;
-              break;
-            case "exchange":
-              exchangePayments++;
-              break;
-            case "credit":
-              creditPayments++;
-              break;
-            default:
-              cashPayments++;
-          }
-        });
-
-        // Get current month for calculations
-        const currentMonth = new Date().getMonth();
-        const currentYear = new Date().getFullYear();
-
-        // Get new customers this month from invoices
-        const newCustomersThisMonth = customersFromInvoicesData.filter(
-          (customer) => {
-            const customerDate = new Date(customer.firstPurchase);
-            return (
-              customerDate.getMonth() === currentMonth &&
-              customerDate.getFullYear() === currentYear
-            );
-          }
-        ).length;
-
-        const revenueThisMonth = invoices
-          .filter((invoice) => {
-            const invoiceDate = new Date(invoice.createdAt);
-            return (
-              invoiceDate.getMonth() === currentMonth &&
-              invoiceDate.getFullYear() === currentYear
-            );
-          })
-          .reduce((sum, invoice) => sum + (invoice.totals?.grandTotal || 0), 0);
-
-        const averageInvoiceValue =
-          invoices.length > 0 ? totalRevenue / invoices.length : 0;
-
-        const goldRates = rates.filter(
-          (rate) => rate.metalType === "gold" && rate.isActive
-        );
-        const silverRates = rates.filter(
-          (rate) => rate.metalType === "silver" && rate.isActive
-        );
-
-        const goldRate =
-          goldRates.length > 0
-            ? Math.max(...goldRates.map((r) => r.ratePerGram))
-            : 0;
-        const silverRate =
-          silverRates.length > 0
-            ? Math.max(...silverRates.map((r) => r.ratePerGram))
-            : 0;
-
-        setStats({
-          totalCustomers: customersFromInvoicesData.length, // This is now from invoices
-          totalInvoices: invoices.length,
-          totalRevenue,
-          cashPayments,
-          cardPayments,
-          upiPayments,
-          exchangePayments,
-          creditPayments,
-          goldRate,
-          silverRate,
-          newCustomersThisMonth,
-          revenueThisMonth,
-          averageInvoiceValue,
-          uniqueCustomersFromInvoices: customersFromInvoicesData.length,
-        });
-
-        // Generate chart data from real invoices
-        const dynamicChartData = generateChartDataFromInvoices(
-          invoices,
-          customersFromInvoicesData,
-          timeRange
-        );
-        setChartData(dynamicChartData);
-
-        // Generate metal distribution from invoices
-        const metalDist = calculateMetalDistribution(invoices);
-        setMetalDistribution(metalDist);
-
-        // Generate recent activities from invoices
-        const activities = generateRecentActivities(
-          invoices,
-          customersFromInvoicesData
-        );
-        setRecentActivities(activities);
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-        setChartData([]);
-        setRecentActivities([]);
-        setMetalDistribution([]);
-        setCustomersFromInvoices([]);
-        setTopCustomers([]);
-      } finally {
-        setLoading(false);
-      }
+    // Prepare report data
+    const reportData = {
+      timeRange,
+      dateRange,
+      chartData,
+      stats,
+      metalDistribution,
+      paymentDistribution,
+      topCustomers: topCustomers.slice(0, 10),
+      recentActivities: recentActivities.slice(0, 10),
     };
 
-    fetchDashboardData();
-  }, [
+    // Call backend API
+    const response = await apiClient.post("/reports/generate-pdf", reportData, {
+      responseType: "blob",
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    // Handle the blob response
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    
+    const start = new Date(dateRange.startDate)
+      .toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+      .replace(/\//g, "-");
+
+    const end = new Date(dateRange.endDate)
+      .toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+      .replace(/\//g, "-");
+
+    link.download = `Dashboard_Report_${start}_to_${end}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+
+    showToast.success("PDF report downloaded successfully!");
+  } catch (error: any) {
+    console.error("Error downloading PDF:", error);
+    
+    if (error.response?.status === 404 || error.response?.status === 500) {
+      // Fallback to frontend generation if backend fails
+      showToast.info("Using frontend PDF generation...");
+      await downloadPDFFrontend();
+    } else {
+      showToast.error("Failed to download PDF report.");
+    }
+  } finally {
+    setDownloading(false);
+  }
+};
+
+// Frontend fallback function
+const downloadPDFFrontend = async () => {
+  const reportData = {
     timeRange,
-    generateChartDataFromInvoices,
-    calculateMetalDistribution,
-    generateRecentActivities,
-    fetchCustomersFromInvoices,
-    getTopCustomers,
-  ]);
+    dateRange,
+    stats,
+    paymentDistribution,
+    topCustomers: topCustomers.slice(0, 5),
+  };
+
+  const pdfDoc = <DashboardReportPDF data={reportData} />;
+  const blob = await pdf(pdfDoc).toBlob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  
+  const start = new Date(dateRange.startDate)
+    .toLocaleDateString("en-IN")
+    .replace(/\//g, "-");
+  const end = new Date(dateRange.endDate)
+    .toLocaleDateString("en-IN")
+    .replace(/\//g, "-");
+    
+  link.download = `Dashboard_Report_${start}_to_${end}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
+
+  // Handle date range change from DateRangeDropdown
+  const handleDateRangeChange = (startDate: string, endDate: string) => {
+    setDateRange({ startDate, endDate });
+  };
+
+  // Reset to default date range (current month)
+  const resetDateRange = () => {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    setDateRange({
+      startDate: firstDay.toISOString().split("T")[0],
+      endDate: today.toISOString().split("T")[0],
+    });
+    setTimeRange("monthly");
+    setShowDatePicker(false);
+    // Use setTimeout to ensure state updates before fetching
+    setTimeout(() => {
+      fetchDashboardData();
+    }, 100);
+  };
 
   // Enhanced Stats Cards with better design
   const statCards = useMemo(
@@ -651,11 +971,11 @@ const Dashboard = () => {
       {
         title: "Total Revenue",
         value: `₹${stats.totalRevenue.toLocaleString()}`,
-        subtitle: "Lifetime Earnings",
+        subtitle: getPeriodLabel(timeRange),
         icon: <MdAccountBalanceWallet className="text-3xl" />,
         color: "from-emerald-500 to-teal-600",
         bgColor: "bg-gradient-to-br from-emerald-50 to-teal-100",
-        change: `₹${stats.revenueThisMonth.toLocaleString()} this month`,
+        change: `₹${stats.revenueThisMonth.toLocaleString()} this period`,
         trend: "up",
         description: "Total revenue from all invoices",
       },
@@ -666,7 +986,7 @@ const Dashboard = () => {
         icon: <MdPeople className="text-3xl" />,
         color: "from-blue-500 to-indigo-600",
         bgColor: "bg-gradient-to-br from-blue-50 to-indigo-100",
-        change: `${stats.newCustomersThisMonth} new this month`,
+        change: `${stats.newCustomersThisMonth} new this period`,
         trend: "up",
         description: "Unique customers from invoices",
       },
@@ -723,7 +1043,7 @@ const Dashboard = () => {
         description: "Number of exchange transactions",
       },
     ],
-    [stats]
+    [stats, timeRange, getPeriodLabel]
   );
 
   const COLORS = [
@@ -790,6 +1110,12 @@ const Dashboard = () => {
     }
   };
 
+  // Function to get percentage value from change string
+  const getPercentageFromChange = (change: string): number => {
+    const match = change.match(/(\d+)%/);
+    return match ? parseInt(match[1]) : 0;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -803,67 +1129,139 @@ const Dashboard = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="space-y-6"
+      className="space-y-4 md:space-y-6"
     >
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-blue-100 rounded-xl">
-            <MdDashboard className="text-2xl text-blue-600" />
+      {/* Header with Date Range Picker - Responsive Design */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="p-2 bg-blue-100 sm:p-3 rounded-xl">
+            <MdDashboard className="text-xl text-blue-600 sm:text-2xl" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
-            <p className="text-gray-600">
-              Real-time jewelry shop management overview
+            <h2 className="text-xl font-bold text-gray-800 sm:text-2xl">
+              Dashboard
+            </h2>
+            <p className="text-sm text-gray-600 sm:text-base">
+              {getPeriodLabel(timeRange)} - {dateRange.startDate} to{" "}
+              {dateRange.endDate}
             </p>
           </div>
         </div>
 
-        <div className="flex gap-2">
-          {["monthly", "weekly"].map((range) => (
-            <button
-              key={range}
-              onClick={() => setTimeRange(range)}
-              className={`px-3 py-1 text-sm rounded-lg transition-colors focus:outline-none focus:ring-0 ${
-                timeRange === range
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              {range.charAt(0).toUpperCase() + range.slice(1)}
-            </button>
-          ))}
+        <div className="flex flex-wrap gap-1 sm:gap-2">
+          {/* Time Range Buttons - Responsive */}
+          <div className="flex gap-1 sm:gap-2">
+            {(["daily", "weekly", "monthly"] as const).map((range) => (
+              <button
+                key={range}
+                onClick={() => {
+                  setTimeRange(range);
+                  // Fetch data after state update
+                  setTimeout(() => fetchDashboardData(), 100);
+                }}
+                className={`px-2 py-1 text-xs sm:px-3 sm:py-1 sm:text-sm rounded-lg transition-colors focus:outline-none focus:ring-0 ${
+                  timeRange === range
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+              >
+                {range.charAt(0).toUpperCase() + range.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {/* Date Range Button */}
+          <button
+            onClick={() => setShowDatePicker(!showDatePicker)}
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-700 transition-colors bg-gray-100 rounded-lg sm:gap-2 sm:px-4 sm:py-2 sm:text-sm hover:bg-gray-200 focus:outline-none focus:ring-0"
+            aria-label="Select date range"
+          >
+            <MdCalendarToday className="text-sm sm:text-base" />
+            <span className="hidden sm:inline">Date Range</span>
+            <span className="sm:hidden">Date</span>
+          </button>
+
+          {/* Download Report Button - Responsive */}
+          <button
+            onClick={downloadPDFReport}
+            disabled={downloading}
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-white transition-colors bg-blue-600 rounded-lg sm:gap-2 sm:px-4 sm:py-2 sm:text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
+          >
+            <MdDownload className="text-sm sm:text-base" />
+            <span className="hidden sm:inline">
+              {downloading ? "Generating..." : "Download PDF"}
+            </span>
+            <span className="sm:hidden">{downloading ? "..." : "PDF"}</span>
+          </button>
         </div>
       </div>
 
-      {/* Enhanced Stats Grid - Bigger Cards */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {statCards.map((stat, index) => (
+      {/* Date Range Picker Modal */}
+      {showDatePicker && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-3 bg-white border border-gray-200 rounded-lg shadow-lg sm:p-4"
+        >
+          <div className="mb-3 sm:mb-4">
+            <h3 className="mb-2 text-sm font-medium text-gray-700 sm:text-base">
+              Select Date Range
+            </h3>
+            <DateRangeDropdown
+              startDate={dateRange.startDate}
+              endDate={dateRange.endDate}
+              onChange={handleDateRangeChange}
+              placeholder="Select date range"
+            />
+          </div>
+          <div className="flex justify-end gap-1 sm:gap-2">
+            <button
+              onClick={resetDateRange}
+              className="px-3 py-1 text-xs font-medium text-gray-700 transition-colors bg-gray-200 rounded-lg sm:px-4 sm:py-2 sm:text-sm hover:bg-gray-300 focus:outline-none focus:ring-0"
+            >
+              Reset
+            </button>
+            <button
+              onClick={() => {
+                setShowDatePicker(false);
+                fetchDashboardData();
+              }}
+              className="px-3 py-1 text-xs font-medium text-white transition-colors bg-blue-600 rounded-lg sm:px-4 sm:py-2 sm:text-sm hover:bg-blue-700 focus:outline-none focus:ring-0"
+            >
+              Apply
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Enhanced Stats Grid - Responsive Cards */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4 lg:gap-6">
+        {statCards.slice(0, 4).map((stat, index) => (
           <motion.div
             key={stat.title}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: index * 0.1 }}
-            className="relative p-6 transition-all duration-300 bg-white border border-gray-200 shadow-sm rounded-2xl hover:shadow-lg group"
+            className="relative p-4 transition-all duration-300 bg-white border border-gray-200 shadow-sm sm:p-5 md:p-6 rounded-xl md:rounded-2xl hover:shadow-md md:hover:shadow-lg group"
           >
             {/* Background Gradient */}
             <div
-              className={`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-5 rounded-2xl group-hover:opacity-10 transition-opacity`}
+              className={`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-5 rounded-xl md:rounded-2xl group-hover:opacity-10 transition-opacity`}
             ></div>
 
             <div className="relative">
               {/* Header */}
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <div
-                  className={`p-3 rounded-xl bg-gradient-to-r ${stat.color} text-white shadow-md`}
+                  className={`p-2 rounded-lg md:rounded-xl bg-gradient-to-r ${stat.color} text-white shadow-md sm:p-3`}
                 >
                   {stat.icon}
                 </div>
                 <div className="text-right">
-                  <div className="flex items-center gap-1 text-sm font-medium text-gray-600">
+                  <div className="flex items-center gap-1 text-xs font-medium text-gray-600 sm:text-sm">
                     {getTrendIcon(stat.trend)}
                     <span
-                      className={`${
+                      className={`hidden xs:inline ${
                         stat.trend === "up"
                           ? "text-green-600"
                           : stat.trend === "down"
@@ -878,12 +1276,16 @@ const Dashboard = () => {
               </div>
 
               {/* Main Content */}
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold tracking-wide text-gray-600 uppercase">
+              <div className="space-y-1 sm:space-y-2">
+                <h3 className="text-xs font-semibold tracking-wide text-gray-600 uppercase sm:text-sm">
                   {stat.title}
                 </h3>
-                <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
-                <p className="text-sm text-gray-500">{stat.subtitle}</p>
+                <p className="text-2xl font-bold text-gray-900 sm:text-3xl">
+                  {stat.value}
+                </p>
+                <p className="text-xs text-gray-500 sm:text-sm">
+                  {stat.subtitle}
+                </p>
               </div>
 
               {/* Progress Bar for payment cards */}
@@ -891,14 +1293,14 @@ const Dashboard = () => {
                 stat.title === "Card Payments" ||
                 stat.title === "UPI Payments" ||
                 stat.title === "Exchange") && (
-                <div className="mt-4">
+                <div className="mt-3 sm:mt-4">
                   <div className="flex justify-between mb-1 text-xs text-gray-500">
                     <span>Percentage</span>
-                    <span>{stat.change}</span>
+                    <span className="text-xs">{stat.change}</span>
                   </div>
-                  <div className="w-full h-2 overflow-hidden bg-gray-200 rounded-full">
+                  <div className="w-full h-1.5 sm:h-2 overflow-hidden bg-gray-200 rounded-full">
                     <div
-                      className={`h-2 transition-all duration-300 ${
+                      className={`h-1.5 sm:h-2 transition-all duration-300 ${
                         stat.title === "Cash Payments"
                           ? "bg-green-500"
                           : stat.title === "Card Payments"
@@ -906,10 +1308,9 @@ const Dashboard = () => {
                           : stat.title === "UPI Payments"
                           ? "bg-blue-500"
                           : "bg-orange-500"
-                      }`}
+                      } rounded-full`}
                       style={{
-                        // Use inline style for dynamic width
-                        width: stat.change.split("%")[0] + "%",
+                        width: `${getPercentageFromChange(stat.change)}%`,
                       }}
                     ></div>
                   </div>
@@ -917,7 +1318,7 @@ const Dashboard = () => {
               )}
 
               {/* Description */}
-              <div className="pt-3 mt-4 border-t border-gray-100">
+              <div className="pt-2 mt-3 border-t border-gray-100 sm:pt-3 sm:mt-4">
                 <p className="text-xs text-gray-500">{stat.description}</p>
               </div>
             </div>
@@ -925,27 +1326,119 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* Charts Grid - FIXED CONTAINERS WITH EXPLICIT DIMENSIONS */}
+      {/* Additional Stats Cards - Responsive */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-2 sm:gap-4 lg:gap-6">
+        {statCards.slice(4).map((stat, index) => (
+          <motion.div
+            key={stat.title}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: index * 0.1 }}
+            className="relative p-4 transition-all duration-300 bg-white border border-gray-200 shadow-sm sm:p-5 md:p-6 rounded-xl md:rounded-2xl hover:shadow-md md:hover:shadow-lg group"
+          >
+            {/* Background Gradient */}
+            <div
+              className={`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-5 rounded-xl md:rounded-2xl group-hover:opacity-10 transition-opacity`}
+            ></div>
+
+            <div className="relative">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <div
+                  className={`p-2 rounded-lg md:rounded-xl bg-gradient-to-r ${stat.color} text-white shadow-md sm:p-3`}
+                >
+                  {stat.icon}
+                </div>
+                <div className="text-right">
+                  <div className="flex items-center gap-1 text-xs font-medium text-gray-600 sm:text-sm">
+                    {getTrendIcon(stat.trend)}
+                    <span
+                      className={`hidden xs:inline ${
+                        stat.trend === "up"
+                          ? "text-green-600"
+                          : stat.trend === "down"
+                          ? "text-red-600"
+                          : "text-gray-600"
+                      }`}
+                    >
+                      {stat.change}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Main Content */}
+              <div className="space-y-1 sm:space-y-2">
+                <h3 className="text-xs font-semibold tracking-wide text-gray-600 uppercase sm:text-sm">
+                  {stat.title}
+                </h3>
+                <p className="text-2xl font-bold text-gray-900 sm:text-3xl">
+                  {stat.value}
+                </p>
+                <p className="text-xs text-gray-500 sm:text-sm">
+                  {stat.subtitle}
+                </p>
+              </div>
+
+              {/* Progress Bar for payment cards */}
+              {(stat.title === "Cash Payments" ||
+                stat.title === "Card Payments" ||
+                stat.title === "UPI Payments" ||
+                stat.title === "Exchange") && (
+                <div className="mt-3 sm:mt-4">
+                  <div className="flex justify-between mb-1 text-xs text-gray-500">
+                    <span>Percentage</span>
+                    <span className="text-xs">{stat.change}</span>
+                  </div>
+                  <div className="w-full h-1.5 sm:h-2 overflow-hidden bg-gray-200 rounded-full">
+                    <div
+                      className={`h-1.5 sm:h-2 transition-all duration-300 ${
+                        stat.title === "Cash Payments"
+                          ? "bg-green-500"
+                          : stat.title === "Card Payments"
+                          ? "bg-purple-500"
+                          : stat.title === "UPI Payments"
+                          ? "bg-blue-500"
+                          : "bg-orange-500"
+                      } rounded-full`}
+                      style={{
+                        width: `${getPercentageFromChange(stat.change)}%`,
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Description */}
+              <div className="pt-2 mt-3 border-t border-gray-100 sm:pt-3 sm:mt-4">
+                <p className="text-xs text-gray-500">{stat.description}</p>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Charts Grid - Responsive Containers */}
       {(chartData.length > 0 || stats.totalInvoices > 0) && (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
           {/* Revenue Trend */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
-            className="p-6 bg-white border border-gray-200 shadow-sm rounded-2xl"
+            className="p-4 bg-white border border-gray-200 shadow-sm sm:p-5 md:p-6 rounded-xl md:rounded-2xl"
           >
-            <h3 className="mb-4 text-lg font-semibold text-gray-800">
+            <h3 className="mb-3 text-base font-semibold text-gray-800 sm:text-lg">
               Revenue Trend ({timeRange})
             </h3>
-            <div className="w-full h-80">
+            <div className="w-full h-64 sm:h-72 md:h-80">
               {chartData.length > 0 ? (
                 <div className="w-full h-full min-w-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="name" stroke="#666" />
-                      <YAxis stroke="#666" />
+                      <XAxis dataKey="name" stroke="#666" fontSize={12} />
+                      <YAxis stroke="#666" fontSize={12} />
                       <Tooltip
                         formatter={(value: number) => [
                           `₹${value.toLocaleString()}`,
@@ -956,9 +1449,10 @@ const Dashboard = () => {
                           border: "1px solid #e5e7eb",
                           borderRadius: "8px",
                           boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                          fontSize: "12px",
                         }}
                       />
-                      <Legend />
+                      <Legend wrapperStyle={{ fontSize: "12px" }} />
                       <Area
                         type="monotone"
                         dataKey="revenue"
@@ -990,7 +1484,7 @@ const Dashboard = () => {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-full text-gray-500">
+                <div className="flex items-center justify-center h-full text-sm text-gray-500 sm:text-base">
                   No revenue data available
                 </div>
               )}
@@ -1002,28 +1496,29 @@ const Dashboard = () => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.6 }}
-            className="p-6 bg-white border border-gray-200 shadow-sm rounded-2xl"
+            className="p-4 bg-white border border-gray-200 shadow-sm sm:p-5 md:p-6 rounded-xl md:rounded-2xl"
           >
-            <h3 className="mb-4 text-lg font-semibold text-gray-800">
+            <h3 className="mb-3 text-base font-semibold text-gray-800 sm:text-lg">
               Business Metrics ({timeRange})
             </h3>
-            <div className="w-full h-80">
+            <div className="w-full h-64 sm:h-72 md:h-80">
               {chartData.length > 0 ? (
                 <div className="w-full h-full min-w-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="name" stroke="#666" />
-                      <YAxis stroke="#666" />
+                      <XAxis dataKey="name" stroke="#666" fontSize={12} />
+                      <YAxis stroke="#666" fontSize={12} />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "white",
                           border: "1px solid #e5e7eb",
                           borderRadius: "8px",
                           boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                          fontSize: "12px",
                         }}
                       />
-                      <Legend />
+                      <Legend wrapperStyle={{ fontSize: "12px" }} />
                       <Bar
                         dataKey="invoices"
                         fill="#00C49F"
@@ -1038,7 +1533,7 @@ const Dashboard = () => {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-full text-gray-500">
+                <div className="flex items-center justify-center h-full text-sm text-gray-500 sm:text-base">
                   No business data available
                 </div>
               )}
@@ -1047,27 +1542,27 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Bottom Row - Three Columns with Fixed Height and Scroll */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      {/* Bottom Row - Three Columns with Fixed Height and Scroll - Responsive */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
         {/* Metal Distribution - Fixed Height with Scroll */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.8 }}
-          className="p-6 bg-white border border-gray-200 shadow-sm rounded-2xl"
+          className="p-4 bg-white border border-gray-200 shadow-sm sm:p-5 md:p-6 rounded-xl md:rounded-2xl"
         >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h3 className="text-base font-semibold text-gray-800 sm:text-lg">
               Metal Distribution
             </h3>
             {metalDistribution.length > 0 &&
               metalDistribution[0].name !== "No Data" && (
-                <span className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">
+                <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full sm:px-3 sm:py-1">
                   {metalDistribution.length} metals
                 </span>
               )}
           </div>
-          <div className="h-64 overflow-hidden">
+          <div className="h-56 overflow-hidden sm:h-60 md:h-64">
             {metalDistribution.length > 0 &&
             metalDistribution[0].name !== "No Data" ? (
               <div className="w-full h-full min-w-0">
@@ -1077,9 +1572,9 @@ const Dashboard = () => {
                       data={metalDistribution}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
+                      innerRadius={50}
+                      outerRadius={70}
+                      paddingAngle={3}
                       dataKey="value"
                       label={renderCustomizedLabel}
                       labelLine={false}
@@ -1098,46 +1593,48 @@ const Dashboard = () => {
                         border: "1px solid #e5e7eb",
                         borderRadius: "8px",
                         boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                        fontSize: "12px",
                       }}
                     />
                     <Legend
                       wrapperStyle={{
-                        paddingTop: "10px",
+                        paddingTop: "8px",
                         overflowY: "auto",
-                        maxHeight: "60px",
+                        maxHeight: "50px",
+                        fontSize: "12px",
                       }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
+              <div className="flex items-center justify-center h-full text-sm text-gray-500 sm:text-base">
                 No metal distribution data
               </div>
             )}
           </div>
           {metalDistribution.length > 0 &&
             metalDistribution[0].name !== "No Data" && (
-              <div className="pt-3 mt-3 border-t border-gray-100">
-                <div className="overflow-y-auto max-h-20">
-                  <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="pt-2 mt-2 border-t border-gray-100 sm:pt-3 sm:mt-3">
+                <div className="overflow-y-auto max-h-16 sm:max-h-20">
+                  <div className="grid grid-cols-2 gap-1 text-xs sm:gap-2">
                     {metalDistribution.map((metal, index) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between p-1.5 bg-gray-50 rounded"
+                        className="flex items-center justify-between p-1 bg-gray-50 rounded sm:p-1.5"
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 sm:gap-2">
                           <div
-                            className="w-3 h-3 rounded-full"
+                            className="w-2 h-2 rounded-full sm:w-3 sm:h-3"
                             style={{
                               backgroundColor: COLORS[index % COLORS.length],
                             }}
                           />
-                          <span className="font-medium text-gray-700 truncate">
+                          <span className="text-xs font-medium text-gray-700 truncate sm:text-sm">
                             {metal.name}
                           </span>
                         </div>
-                        <span className="font-bold text-gray-900">
+                        <span className="text-xs font-bold text-gray-900 sm:text-sm">
                           {metal.value}%
                         </span>
                       </div>
@@ -1153,54 +1650,58 @@ const Dashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 1 }}
-          className="p-6 bg-white border border-gray-200 shadow-sm rounded-2xl"
+          className="p-4 bg-white border border-gray-200 shadow-sm sm:p-5 md:p-6 rounded-xl md:rounded-2xl"
         >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h3 className="text-base font-semibold text-gray-800 sm:text-lg">
               Recent Activities
             </h3>
             {recentActivities.length > 0 && (
-              <span className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">
+              <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full sm:px-3 sm:py-1">
                 {recentActivities.length} activities
               </span>
             )}
           </div>
-          <div className="h-64 pr-2 overflow-y-auto">
+          <div className="h-56 pr-1 overflow-y-auto sm:h-60 md:h-64 sm:pr-2">
             {recentActivities.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {recentActivities.map((activity) => (
                   <div
                     key={`${activity.type}-${activity.id}`}
-                    className="flex items-center justify-between p-4 transition-all duration-200 bg-gray-50 rounded-xl hover:bg-gray-100 hover:shadow-sm"
+                    className="flex items-center justify-between p-3 transition-all duration-200 rounded-lg bg-gray-50 sm:p-4 md:rounded-xl hover:bg-gray-100 hover:shadow-sm"
                   >
-                    <div className="flex items-center min-w-0 gap-4">
+                    <div className="flex items-center min-w-0 gap-2 sm:gap-3 md:gap-4">
                       <div
-                        className={`w-3 h-3 rounded-full flex-shrink-0 ${getActivityIconColor(
+                        className={`w-2 h-2 rounded-full flex-shrink-0 sm:w-3 sm:h-3 ${getActivityIconColor(
                           activity.type
                         )}`}
                       ></div>
                       <div className="min-w-0">
-                        <p className="font-semibold text-gray-800 truncate">
+                        <p className="text-sm font-semibold text-gray-800 truncate sm:text-base">
                           {activity.action}
                         </p>
-                        <p className="text-sm text-gray-600 truncate">
+                        <p className="text-xs text-gray-600 truncate sm:text-sm">
                           {activity.customer}
                         </p>
                       </div>
                     </div>
-                    <div className="flex-shrink-0 ml-2 text-right">
-                      <p className="text-lg font-bold text-gray-900">
+                    <div className="flex-shrink-0 ml-1 text-right sm:ml-2">
+                      <p className="text-base font-bold text-gray-900 sm:text-lg">
                         {activity.amount}
                       </p>
-                      <p className="text-sm text-gray-500">{activity.time}</p>
+                      <p className="text-xs text-gray-500 sm:text-sm">
+                        {activity.time}
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                <MdPersonAdd className="mx-auto mb-2 text-4xl text-gray-300" />
-                <p>No recent activities found</p>
+                <MdPersonAdd className="mx-auto mb-1 text-3xl text-gray-300 sm:mb-2 sm:text-4xl" />
+                <p className="text-sm text-center sm:text-base">
+                  No recent activities found
+                </p>
               </div>
             )}
           </div>
@@ -1211,33 +1712,33 @@ const Dashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 1.2 }}
-          className="p-6 bg-white border border-gray-200 shadow-sm rounded-2xl"
+          className="p-4 bg-white border border-gray-200 shadow-sm sm:p-5 md:p-6 rounded-xl md:rounded-2xl"
         >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h3 className="text-base font-semibold text-gray-800 sm:text-lg">
               Top Customers
             </h3>
-            <span className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">
+            <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full sm:px-3 sm:py-1">
               {stats.uniqueCustomersFromInvoices} unique
             </span>
           </div>
-          <div className="h-64 pr-2 overflow-y-auto">
+          <div className="h-56 pr-1 overflow-y-auto sm:h-60 md:h-64 sm:pr-2">
             {topCustomers.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {topCustomers.map((customer, index) => (
                   <div
                     key={customer.id}
-                    className="flex items-center justify-between p-4 transition-all duration-200 bg-gray-50 rounded-xl hover:bg-gray-100 hover:shadow-sm"
+                    className="flex items-center justify-between p-3 transition-all duration-200 rounded-lg bg-gray-50 sm:p-4 md:rounded-xl hover:bg-gray-100 hover:shadow-sm"
                   >
-                    <div className="flex items-center min-w-0 gap-4">
-                      <div className="flex items-center justify-center flex-shrink-0 w-10 h-10 font-semibold text-white rounded-full bg-gradient-to-r from-blue-500 to-indigo-600">
+                    <div className="flex items-center min-w-0 gap-2 sm:gap-3 md:gap-4">
+                      <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 font-semibold text-white rounded-full sm:w-9 sm:h-9 md:w-10 md:h-10 bg-gradient-to-r from-blue-500 to-indigo-600">
                         {customer.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold text-gray-800 truncate">
+                        <p className="text-sm font-semibold text-gray-800 truncate sm:text-base">
                           {customer.name}
                         </p>
-                        <p className="text-sm text-gray-600 truncate">
+                        <p className="text-xs text-gray-600 truncate sm:text-sm">
                           {customer.phone}
                         </p>
                         {customer.email && (
@@ -1247,8 +1748,8 @@ const Dashboard = () => {
                         )}
                       </div>
                     </div>
-                    <div className="flex-shrink-0 ml-2 text-right">
-                      <p className="font-bold text-gray-900">
+                    <div className="flex-shrink-0 ml-1 text-right sm:ml-2">
+                      <p className="text-base font-bold text-gray-900 sm:text-lg">
                         ₹{customer.totalSpent.toLocaleString()}
                       </p>
                       <p className="text-xs text-gray-500">
@@ -1261,8 +1762,10 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                <MdPeople className="mx-auto mb-2 text-4xl text-gray-300" />
-                <p>No customer data from invoices</p>
+                <MdPeople className="mx-auto mb-1 text-3xl text-gray-300 sm:mb-2 sm:text-4xl" />
+                <p className="text-sm text-center sm:text-base">
+                  No customer data from invoices
+                </p>
               </div>
             )}
           </div>

@@ -54,95 +54,55 @@ const DateRangeDropdown: React.FC<DateRangeDropdownProps> = ({
     });
   };
 
-  // State for start date selection
+  // Parse dates from props
   const startSelectedDate = startDate ? new Date(startDate) : null;
-  const [startSelectedYear, setStartSelectedYear] = useState<number | null>(
+  const endSelectedDate = endDate ? new Date(endDate) : null;
+
+  // Track temporary selections that haven't been applied yet
+  const [tempStartYear, setTempStartYear] = useState<number | null>(
     startSelectedDate?.getFullYear() || null
   );
-  const [startSelectedMonth, setStartSelectedMonth] = useState<number | null>(
+  const [tempStartMonth, setTempStartMonth] = useState<number | null>(
     startSelectedDate?.getMonth() || null
   );
-  const [startSelectedDay, setStartSelectedDay] = useState<number | null>(
+  const [tempStartDay, setTempStartDay] = useState<number | null>(
     startSelectedDate?.getDate() || null
   );
 
-  // State for end date selection
-  const endSelectedDate = endDate ? new Date(endDate) : null;
-  const [endSelectedYear, setEndSelectedYear] = useState<number | null>(
+  const [tempEndYear, setTempEndYear] = useState<number | null>(
     endSelectedDate?.getFullYear() || null
   );
-  const [endSelectedMonth, setEndSelectedMonth] = useState<number | null>(
+  const [tempEndMonth, setTempEndMonth] = useState<number | null>(
     endSelectedDate?.getMonth() || null
   );
-  const [endSelectedDay, setEndSelectedDay] = useState<number | null>(
+  const [tempEndDay, setTempEndDay] = useState<number | null>(
     endSelectedDate?.getDate() || null
   );
 
-  // Update start date when all components are selected
-  useEffect(() => {
-    if (
-      startSelectedYear !== null &&
-      startSelectedMonth !== null &&
-      startSelectedDay !== null
-    ) {
-      const newDate = new Date(
-        startSelectedYear,
-        startSelectedMonth,
-        startSelectedDay
-      );
-      const newDateString = newDate.toISOString().split("T")[0];
-
-      if (newDateString !== startDate) {
-        // Validate that start date is not after end date
-        if (endDate && newDate > new Date(endDate)) {
-          showTemporaryError("Start date cannot be after end date");
-          return;
-        }
-        onChange(newDateString, endDate);
-      }
-    }
-  }, [
-    startSelectedYear,
-    startSelectedMonth,
-    startSelectedDay,
-    startDate,
-    endDate,
-    onChange,
-  ]);
-
-  // Update end date when all components are selected
-  useEffect(() => {
-    if (
-      endSelectedYear !== null &&
-      endSelectedMonth !== null &&
-      endSelectedDay !== null
-    ) {
-      const newDate = new Date(
-        endSelectedYear,
-        endSelectedMonth,
-        endSelectedDay
-      );
-      const newDateString = newDate.toISOString().split("T")[0];
-
-      if (newDateString !== endDate) {
-        // Validate that end date is not before start date
-        if (startDate && newDate < new Date(startDate)) {
-          showTemporaryError("End date cannot be before start date");
-          return;
-        }
-        onChange(startDate, newDateString);
-      }
-    }
-  }, [
-    endSelectedYear,
-    endSelectedMonth,
-    endSelectedDay,
-    startDate,
-    endDate,
-    onChange,
-  ]);
-
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Reset temp selections when props change (but not when dropdown opens)
+  useEffect(() => {
+    if (startSelectedDate) {
+      setTempStartYear(startSelectedDate.getFullYear());
+      setTempStartMonth(startSelectedDate.getMonth());
+      setTempStartDay(startSelectedDate.getDate());
+    } else {
+      setTempStartYear(null);
+      setTempStartMonth(null);
+      setTempStartDay(null);
+    }
+
+    if (endSelectedDate) {
+      setTempEndYear(endSelectedDate.getFullYear());
+      setTempEndMonth(endSelectedDate.getMonth());
+      setTempEndDay(endSelectedDate.getDate());
+    } else {
+      setTempEndYear(null);
+      setTempEndMonth(null);
+      setTempEndDay(null);
+    }
+  }, [startDate, endDate]);
 
   const showTemporaryError = (message: string) => {
     setErrorMessage(message);
@@ -161,35 +121,121 @@ const DateRangeDropdown: React.FC<DateRangeDropdownProps> = ({
   ) => {
     switch (type) {
       case "start-year":
-        setStartSelectedYear(selectedValue);
+        setTempStartYear(selectedValue);
+        setTempStartMonth(null);
+        setTempStartDay(null);
         break;
       case "start-month":
-        setStartSelectedMonth(selectedValue);
-        setStartSelectedDay(null);
+        setTempStartMonth(selectedValue);
+        setTempStartDay(null);
         break;
       case "start-day":
-        setStartSelectedDay(selectedValue);
+        setTempStartDay(selectedValue);
+        // Auto-apply when start date is complete
+        if (
+          tempStartYear !== null &&
+          tempStartMonth !== null &&
+          selectedValue !== null
+        ) {
+          const newStartDate = new Date(
+            tempStartYear,
+            tempStartMonth,
+            selectedValue
+          );
+          const newStartDateString = newStartDate.toISOString().split("T")[0];
+
+          // Validate that start date is not after end date
+          if (endDate && newStartDate > new Date(endDate)) {
+            showTemporaryError("Start date cannot be after end date");
+            return;
+          }
+
+          // Only update if different from current
+          if (newStartDateString !== startDate) {
+            onChange(newStartDateString, endDate);
+          }
+        }
         break;
       case "end-year":
-        setEndSelectedYear(selectedValue);
+        setTempEndYear(selectedValue);
+        setTempEndMonth(null);
+        setTempEndDay(null);
         break;
       case "end-month":
-        setEndSelectedMonth(selectedValue);
-        setEndSelectedDay(null);
+        setTempEndMonth(selectedValue);
+        setTempEndDay(null);
         break;
       case "end-day":
-        setEndSelectedDay(selectedValue);
+        setTempEndDay(selectedValue);
+        // Auto-apply when end date is complete
+        if (
+          tempEndYear !== null &&
+          tempEndMonth !== null &&
+          selectedValue !== null
+        ) {
+          const newEndDate = new Date(tempEndYear, tempEndMonth, selectedValue);
+          const newEndDateString = newEndDate.toISOString().split("T")[0];
+
+          // Validate that end date is not before start date
+          if (startDate && newEndDate < new Date(startDate)) {
+            showTemporaryError("End date cannot be before start date");
+            return;
+          }
+
+          // Only update if different from current
+          if (newEndDateString !== endDate) {
+            onChange(startDate, newEndDateString);
+          }
+        }
         break;
     }
   };
 
+  const applySelection = () => {
+    // Validate and apply start date if complete
+    if (
+      tempStartYear !== null &&
+      tempStartMonth !== null &&
+      tempStartDay !== null
+    ) {
+      const newStartDate = new Date(
+        tempStartYear,
+        tempStartMonth,
+        tempStartDay
+      );
+      const newStartDateString = newStartDate.toISOString().split("T")[0];
+
+      // Validate that start date is not after end date
+      if (endDate && newStartDate > new Date(endDate)) {
+        showTemporaryError("Start date cannot be after end date");
+        return;
+      }
+
+      if (newStartDateString !== startDate) {
+        onChange(newStartDateString, endDate);
+      }
+    }
+
+    // Validate and apply end date if complete
+    if (tempEndYear !== null && tempEndMonth !== null && tempEndDay !== null) {
+      const newEndDate = new Date(tempEndYear, tempEndMonth, tempEndDay);
+      const newEndDateString = newEndDate.toISOString().split("T")[0];
+
+      // Validate that end date is not before start date
+      if (startDate && newEndDate < new Date(startDate)) {
+        showTemporaryError("End date cannot be before start date");
+        return;
+      }
+
+      if (newEndDateString !== endDate) {
+        onChange(startDate, newEndDateString);
+      }
+    }
+
+    setIsOpen(false);
+  };
+
   const clearSelection = () => {
-    setStartSelectedYear(null);
-    setStartSelectedMonth(null);
-    setStartSelectedDay(null);
-    setEndSelectedYear(null);
-    setEndSelectedMonth(null);
-    setEndSelectedDay(null);
     onChange("", "");
     setIsOpen(false);
   };
@@ -209,17 +255,17 @@ const DateRangeDropdown: React.FC<DateRangeDropdownProps> = ({
   }, []);
 
   const startDays =
-    startSelectedYear !== null && startSelectedMonth !== null
+    tempStartYear !== null && tempStartMonth !== null
       ? Array.from(
-          { length: getDaysInMonth(startSelectedYear, startSelectedMonth) },
+          { length: getDaysInMonth(tempStartYear, tempStartMonth) },
           (_, i) => i + 1
         )
       : [];
 
   const endDays =
-    endSelectedYear !== null && endSelectedMonth !== null
+    tempEndYear !== null && tempEndMonth !== null
       ? Array.from(
-          { length: getDaysInMonth(endSelectedYear, endSelectedMonth) },
+          { length: getDaysInMonth(tempEndYear, tempEndMonth) },
           (_, i) => i + 1
         )
       : [];
@@ -229,6 +275,16 @@ const DateRangeDropdown: React.FC<DateRangeDropdownProps> = ({
     if (startDate && !endDate) return `From ${formatDate(startDate)}`;
     if (!startDate && endDate) return `To ${formatDate(endDate)}`;
     return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+  };
+
+  const isSelectionComplete = () => {
+    const isStartComplete =
+      tempStartYear !== null &&
+      tempStartMonth !== null &&
+      tempStartDay !== null;
+    const isEndComplete =
+      tempEndYear !== null && tempEndMonth !== null && tempEndDay !== null;
+    return isStartComplete || isEndComplete;
   };
 
   return (
@@ -301,12 +357,22 @@ const DateRangeDropdown: React.FC<DateRangeDropdownProps> = ({
                   <span className="text-xs font-medium text-gray-700 sm:text-sm">
                     Select Date Range
                   </span>
-                  <button
-                    onClick={clearSelection}
-                    className="text-xs text-blue-600 transition-colors sm:text-sm hover:text-blue-800 focus:outline-none focus:ring-0"
-                  >
-                    Clear
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={clearSelection}
+                      className="text-xs text-blue-600 transition-colors sm:text-sm hover:text-blue-800 focus:outline-none focus:ring-0"
+                    >
+                      Clear
+                    </button>
+                    {isSelectionComplete() && (
+                      <button
+                        onClick={applySelection}
+                        className="text-xs text-green-600 transition-colors sm:text-sm hover:text-green-800 focus:outline-none focus:ring-0"
+                      >
+                        Apply
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -330,7 +396,7 @@ const DateRangeDropdown: React.FC<DateRangeDropdownProps> = ({
                             w-full px-2 sm:px-3 py-1 sm:py-2 text-left text-xs sm:text-sm 
                             transition-colors duration-200 rounded focus:outline-none focus:ring-0
                             ${
-                              startSelectedYear === year
+                              tempStartYear === year
                                 ? "bg-blue-50 text-blue-600"
                                 : "text-gray-700"
                             }
@@ -352,17 +418,17 @@ const DateRangeDropdown: React.FC<DateRangeDropdownProps> = ({
                           onClick={() =>
                             handleDateSelect("start-month", month.value)
                           }
-                          disabled={startSelectedYear === null}
+                          disabled={tempStartYear === null}
                           className={`
                             w-full px-2 sm:px-3 py-1 sm:py-2 text-left text-xs sm:text-sm 
                             transition-colors duration-200 rounded focus:outline-none focus:ring-0
                             ${
-                              startSelectedMonth === month.value
+                              tempStartMonth === month.value
                                 ? "bg-blue-50 text-blue-600"
                                 : "text-gray-700"
                             }
                             ${
-                              startSelectedYear === null
+                              tempStartYear === null
                                 ? "opacity-50 cursor-not-allowed"
                                 : ""
                             }
@@ -383,20 +449,18 @@ const DateRangeDropdown: React.FC<DateRangeDropdownProps> = ({
                           whileHover={{ backgroundColor: "#f3f4f6" }}
                           onClick={() => handleDateSelect("start-day", day)}
                           disabled={
-                            startSelectedMonth === null ||
-                            startSelectedYear === null
+                            tempStartMonth === null || tempStartYear === null
                           }
                           className={`
                             w-full px-2 sm:px-3 py-1 sm:py-2 text-left text-xs sm:text-sm 
                             transition-colors duration-200 rounded focus:outline-none focus:ring-0
                             ${
-                              startSelectedDay === day
+                              tempStartDay === day
                                 ? "bg-blue-50 text-blue-600"
                                 : "text-gray-700"
                             }
                             ${
-                              startSelectedMonth === null ||
-                              startSelectedYear === null
+                              tempStartMonth === null || tempStartYear === null
                                 ? "opacity-50 cursor-not-allowed"
                                 : ""
                             }
@@ -428,7 +492,7 @@ const DateRangeDropdown: React.FC<DateRangeDropdownProps> = ({
                             w-full px-2 sm:px-3 py-1 sm:py-2 text-left text-xs sm:text-sm 
                             transition-colors duration-200 rounded focus:outline-none focus:ring-0
                             ${
-                              endSelectedYear === year
+                              tempEndYear === year
                                 ? "bg-blue-50 text-blue-600"
                                 : "text-gray-700"
                             }
@@ -450,17 +514,17 @@ const DateRangeDropdown: React.FC<DateRangeDropdownProps> = ({
                           onClick={() =>
                             handleDateSelect("end-month", month.value)
                           }
-                          disabled={endSelectedYear === null}
+                          disabled={tempEndYear === null}
                           className={`
                             w-full px-2 sm:px-3 py-1 sm:py-2 text-left text-xs sm:text-sm 
                             transition-colors duration-200 rounded focus:outline-none focus:ring-0
                             ${
-                              endSelectedMonth === month.value
+                              tempEndMonth === month.value
                                 ? "bg-blue-50 text-blue-600"
                                 : "text-gray-700"
                             }
                             ${
-                              endSelectedYear === null
+                              tempEndYear === null
                                 ? "opacity-50 cursor-not-allowed"
                                 : ""
                             }
@@ -481,20 +545,18 @@ const DateRangeDropdown: React.FC<DateRangeDropdownProps> = ({
                           whileHover={{ backgroundColor: "#f3f4f6" }}
                           onClick={() => handleDateSelect("end-day", day)}
                           disabled={
-                            endSelectedMonth === null ||
-                            endSelectedYear === null
+                            tempEndMonth === null || tempEndYear === null
                           }
                           className={`
                             w-full px-2 sm:px-3 py-1 sm:py-2 text-left text-xs sm:text-sm 
                             transition-colors duration-200 rounded focus:outline-none focus:ring-0
                             ${
-                              endSelectedDay === day
+                              tempEndDay === day
                                 ? "bg-blue-50 text-blue-600"
                                 : "text-gray-700"
                             }
                             ${
-                              endSelectedMonth === null ||
-                              endSelectedYear === null
+                              tempEndMonth === null || tempEndYear === null
                                 ? "opacity-50 cursor-not-allowed"
                                 : ""
                             }
