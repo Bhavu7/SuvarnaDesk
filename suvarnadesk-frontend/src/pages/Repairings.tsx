@@ -40,11 +40,11 @@ export default function Repairings() {
     paymentMethod: "cash",
     customerName: "",
     customerAddress: "",
-    companyName: "SuvarnaDesk AC Services",
-    companyAddress: "123 Tech Park, Anand, Gujarat 388001",
+    companyName: "",
+    companyAddress: "",
     items: [],
     salespersonName: "",
-    tax: 18,
+    tax: 5,
   });
 
   const [currentItem, setCurrentItem] = useState<RepairItem>({
@@ -123,7 +123,7 @@ export default function Repairings() {
       companyAddress: "123 Tech Park, Anand, Gujarat 388001",
       items: [],
       salespersonName: "",
-      tax: 18,
+      tax: 5,
     });
     showToast.success("Form reset successfully");
   };
