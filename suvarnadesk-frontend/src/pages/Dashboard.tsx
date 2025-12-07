@@ -722,28 +722,6 @@ const Dashboard = () => {
         trend: "neutral",
         description: "Number of exchange transactions",
       },
-      {
-        title: "Gold Rate",
-        value: stats.goldRate > 0 ? `₹${stats.goldRate}/g` : "N/A",
-        subtitle: "Current Market",
-        icon: <MdTrendingUp className="text-3xl" />,
-        color: "from-yellow-500 to-amber-600",
-        bgColor: "bg-gradient-to-br from-yellow-50 to-amber-100",
-        change: "Live gold price",
-        trend: "neutral",
-        description: "Current gold rate per gram",
-      },
-      {
-        title: "Silver Rate",
-        value: stats.silverRate > 0 ? `₹${stats.silverRate}/g` : "N/A",
-        subtitle: "Current Market",
-        icon: <MdCalendarToday className="text-3xl" />,
-        color: "from-gray-500 to-slate-600",
-        bgColor: "bg-gradient-to-br from-gray-50 to-slate-100",
-        change: "Live silver price",
-        trend: "neutral",
-        description: "Current silver rate per gram",
-      },
     ],
     [stats]
   );
