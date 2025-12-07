@@ -547,7 +547,7 @@ const SingleInvoicePDF: React.FC<InvoicePDFProps> = ({ data }) => {
 
             <View style={styles.rightHeader}>
               <Text style={styles.invoiceNumber}>
-                INVOICE: {data.invoiceNumber}
+                TAX INVOICE: {data.invoiceNumber}
               </Text>
 
               <View style={styles.headerRow}>
