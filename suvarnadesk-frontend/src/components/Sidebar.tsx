@@ -3,7 +3,6 @@ import { NavLink } from "react-router-dom";
 import {
   MdDashboard,
   MdReceipt,
-  MdCurrencyRupee,
   MdSettings,
   MdPeople,
   MdClose,
@@ -152,12 +151,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       show: true,
     },
     { to: "/stock", label: "Stock", icon: <MdInventory />, show: true },
-    {
-      to: "/rates",
-      label: "Live Rates",
-      icon: <MdCurrencyRupee />,
-      show: true,
-    },
     {
       to: "/repairings",
       label: "AC Receipt",
