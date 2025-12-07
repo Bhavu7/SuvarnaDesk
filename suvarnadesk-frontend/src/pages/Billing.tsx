@@ -124,6 +124,7 @@ export default function Billing() {
   const [showQRCode, setShowQRCode] = useState<boolean>(false);
   const [invoiceData, setInvoiceData] = useState<PdfData[] | null>(null);
   const [shopSettings, setShopSettings] = useState<any>(null);
+  const [customHSNCode, setCustomHSNCode] = useState<string>("");
   const [labourChargeInput, setLabourChargeInput] = useState<{
     [key: number]: number;
   }>({}); // Simple input for labour charges
@@ -183,6 +184,12 @@ export default function Billing() {
     }
   }, [useLiveRatesEnabled, refetchLiveRates]);
 
+  const hsnCodeOptions = [
+    { value: "7113", label: "7113 - Silver" },
+    { value: "7114", label: "7114 - Gold" },
+    { value: "other", label: "Other" },
+  ];
+
   // Custom dropdown options
   const itemTypeOptions = [
     { value: "gold", label: "Gold" },
@@ -219,6 +226,36 @@ export default function Billing() {
     { value: "bankTransfer", label: "Bank Transfer" },
     { value: "other", label: "Other" },
   ];
+
+  const handleHSNCodeChange = (value: string) => {
+    if (value === "other") {
+      setCustomerHSNCode("");
+      // Don't auto-set item type for "other"
+    } else {
+      setCustomerHSNCode(value);
+
+      // Auto-select item type based on HSN code
+      if (value === "7114" && lineItems.length > 0) {
+        const updatedItems = [...lineItems];
+        updatedItems[0] = {
+          ...updatedItems[0],
+          itemType: "gold",
+          purity: "24K",
+          ratePerGram: getRateForItem("gold", "24K"),
+        };
+        setLineItems(updatedItems);
+      } else if (value === "7113" && lineItems.length > 0) {
+        const updatedItems = [...lineItems];
+        updatedItems[0] = {
+          ...updatedItems[0],
+          itemType: "silver",
+          purity: "Standard",
+          ratePerGram: getRateForItem("silver", "Standard"),
+        };
+        setLineItems(updatedItems);
+      }
+    }
+  };
 
   const convertToGrams = (value: number, unit: string): number => {
     switch (unit) {
@@ -636,7 +673,7 @@ export default function Billing() {
         phone: customerPhone,
         email: customerEmail || undefined,
         address: customerAddress || undefined,
-        hsnCode: customerHSNCode || undefined,
+        hsnCode: customerHSNCode || customHSNCode || undefined,
         gstin: customerGSTIN || undefined,
         state: customerState || "Gujarat",
       });
@@ -686,7 +723,10 @@ export default function Billing() {
             address: customerAddress,
             email: customerEmail,
             phone: customerPhone,
-            hsnCode: customerHSNCode,
+            hsnCode:
+              customerHSNCode === "7114"
+                ? "7114"
+                : customerHSNCode || customHSNCode || "",
             gstin: customerGSTIN,
             state: customerState,
           },
@@ -758,7 +798,10 @@ export default function Billing() {
             address: customerAddress,
             email: customerEmail,
             phone: customerPhone,
-            hsnCode: customerHSNCode,
+            hsnCode:
+              customerHSNCode === "7114"
+                ? "7114"
+                : customerHSNCode || customHSNCode || "",
             gstin: customerGSTIN,
             state: customerState,
           },
@@ -830,7 +873,7 @@ export default function Billing() {
             address: customerAddress,
             email: customerEmail,
             phone: customerPhone,
-            hsnCode: customerHSNCode,
+            hsnCode: customerHSNCode || customHSNCode || "",
             gstin: customerGSTIN,
             state: customerState,
           },
@@ -1290,14 +1333,40 @@ export default function Billing() {
                   >
                     HSN Code
                   </label>
-                  <input
-                    id="customer-hsn"
-                    type="text"
-                    value={customerHSNCode}
-                    onChange={(e) => setCustomerHSNCode(e.target.value)}
-                    className="w-full px-4 py-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter HSN code"
+                  <CustomDropdown
+                    options={hsnCodeOptions}
+                    value={customerHSNCode || "other"}
+                    onChange={handleHSNCodeChange}
+                    placeholder="Select HSN Code"
+                    aria-label="Select HSN code"
                   />
+
+                  {customerHSNCode === "7114" && (
+                    <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                      <span>Gold and articles thereof</span>
+                    </div>
+                  )}
+
+                  {customerHSNCode === "7113" && (
+                    <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                      <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                      <span>Silver and articles thereof</span>
+                    </div>
+                  )}
+
+                  {(customerHSNCode === "" || customerHSNCode === "other") && (
+                    <input
+                      type="text"
+                      value={customHSNCode}
+                      onChange={(e) => {
+                        setCustomHSNCode(e.target.value);
+                        setCustomerHSNCode(e.target.value);
+                      }}
+                      className="w-full px-3 py-2 mt-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter custom HSN code (e.g., 7115, 7116)"
+                    />
+                  )}
                 </div>
 
                 <div>
