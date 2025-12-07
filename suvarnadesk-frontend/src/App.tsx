@@ -6,7 +6,6 @@ import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Billing from "./pages/Billing";
-import Rates from "./pages/Rates";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
@@ -44,7 +43,6 @@ const withErrorBoundary = <P extends ComponentProps>(
 // Wrap all page components with error boundary
 const DashboardWithErrorBoundary = withErrorBoundary(Dashboard);
 const BillingWithErrorBoundary = withErrorBoundary(Billing);
-const RatesWithErrorBoundary = withErrorBoundary(Rates);
 const SettingsWithErrorBoundary = withErrorBoundary(Settings);
 const ProfileWithErrorBoundary = withErrorBoundary(Profile);
 const RepairingsWithErrorBoundary = withErrorBoundary(Repairings);
@@ -114,7 +112,6 @@ function App() {
                     path="/manage-customers"
                     element={<ManageCustomersWithErrorBoundary />}
                   />
-                  <Route path="rates" element={<RatesWithErrorBoundary />} />
                   <Route
                     path="repairings"
                     element={<RepairingsWithErrorBoundary />}
