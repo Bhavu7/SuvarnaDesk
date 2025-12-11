@@ -440,19 +440,6 @@ const ReceiptPDF: React.FC<ReceiptPDFProps> = ({ data }) => {
 
   const shopDetails = getShopDetails();
 
-  // Calculate weight totals by type
-  const calculateWeightByType = (type: string) => {
-    return data.items
-      .filter((item: RepairItem) => item.itemType === type)
-      .reduce(
-        (total: number, item: RepairItem) => total + (item.weight || 0),
-        0
-      );
-  };
-
-  const goldWeight = calculateWeightByType("gold");
-  const silverWeight = calculateWeightByType("silver");
-
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -500,24 +487,6 @@ const ReceiptPDF: React.FC<ReceiptPDFProps> = ({ data }) => {
             </View>
           </View>
 
-          {/* Meta Info Row */}
-          <View style={styles.metaInfoRow}>
-            <View style={styles.metaInfoItem}>
-              <Text style={styles.metaLabel}>Receipt Number:</Text>
-              <Text style={styles.metaValue}>{data.receiptNumber}</Text>
-            </View>
-            <View style={styles.metaInfoItem}>
-              <Text style={styles.metaLabel}>Payment Method:</Text>
-              <Text style={styles.metaValue}>
-                {getPaymentMethodText(data.paymentMethod)}
-              </Text>
-            </View>
-            <View style={styles.metaInfoItem}>
-              <Text style={styles.metaLabel}>Salesperson:</Text>
-              <Text style={styles.metaValue}>{data.salespersonName}</Text>
-            </View>
-          </View>
-
           {/* Customer & Seller Boxes */}
           <View style={styles.boxesRow}>
             <View style={styles.box}>
@@ -527,6 +496,9 @@ const ReceiptPDF: React.FC<ReceiptPDFProps> = ({ data }) => {
               <View style={styles.boxBody}>
                 <Text>{data.customerName}</Text>
                 <Text>{data.customerAddress}</Text>
+                <Text>
+                  Payment Method:{getPaymentMethodText(data.paymentMethod)}
+                </Text>
               </View>
             </View>
 
@@ -535,46 +507,15 @@ const ReceiptPDF: React.FC<ReceiptPDFProps> = ({ data }) => {
                 <Text>Seller</Text>
               </View>
               <View style={styles.boxBody}>
-                <Text>{shopDetails.shopName}</Text>
-                <Text>{shopDetails.address}</Text>
+                <Text>Salesperson:{data.salespersonName}</Text>
                 {shopDetails.phone && <Text>Phone: {shopDetails.phone}</Text>}
-                <Text>GSTIN: {shopDetails.gst}</Text>
-                <Text>PAN: {shopDetails.pan}</Text>
+                <Text>GSTIN: </Text>
                 {shopDetails.bankDetails && (
                   <Text>Bank: {shopDetails.bankDetails}</Text>
                 )}
               </View>
             </View>
           </View>
-
-          {/* Weight Summary */}
-          {(goldWeight > 0 || silverWeight > 0) && (
-            <View
-              style={{
-                marginBottom: 8,
-                padding: 8,
-                backgroundColor: "#f8f8f8",
-                border: "1 solid #ddd",
-                borderRadius: 4,
-              }}
-            >
-              <Text
-                style={{ fontSize: 9, fontWeight: "bold", marginBottom: 4 }}
-              >
-                Weight Summary:
-              </Text>
-              {goldWeight > 0 && (
-                <Text style={{ fontSize: 8 }}>
-                  • Gold Weight: {goldWeight.toFixed(2)} g
-                </Text>
-              )}
-              {silverWeight > 0 && (
-                <Text style={{ fontSize: 8 }}>
-                  • Silver Weight: {silverWeight.toFixed(2)} g
-                </Text>
-              )}
-            </View>
-          )}
 
           {/* Updated Table with new columns */}
           <View style={styles.tableSection}>
