@@ -21,6 +21,7 @@ import metalRateRoutes from "./routes/metalRateRoutes";
 import shopSettingsRoutes from "./routes/settingsRoutes";
 import pdfRoutes from "./routes/pdfRoutes";
 import productRoutes from "./routes/productRoutes";
+import repairReceiptRoutes from './routes/repairReceiptRoutes';
 
 // Connect to MongoDB
 mongoose
@@ -45,6 +46,7 @@ app.use("/api/shop-settings", shopSettingsRoutes);
 app.use("/api/pdf", pdfRoutes);
 app.use('/api/customers', customerRoutes);
 app.use("/api/products", productRoutes);
+app.use('/api/repair-receipts', repairReceiptRoutes);
 
 // Basic healthcheck route
 app.get("/", (req, res) => {

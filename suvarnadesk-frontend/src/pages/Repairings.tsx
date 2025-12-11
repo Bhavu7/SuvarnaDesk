@@ -1,23 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import {
-  MdAdd,
-  MdDownload,
-  MdDelete,
-  // MdReceipt,
-  // MdPhone,
-  // MdEmail,
-} from "react-icons/md";
+import { MdAdd, MdDownload, MdDelete } from "react-icons/md";
 import { pdf } from "@react-pdf/renderer";
 import { showToast } from "../components/CustomToast";
 import CustomDropdown from "../components/CustomDropdown";
 import ReceiptPDF from "../components/ReceiptPDF";
 import DateTimeDropdown from "../components/DateTimeDropdown";
+import apiClient from "../api/apiClient";
 
+// Updated interfaces
 interface RepairItem {
   description: string;
   quantity: number;
   unitPrice: number;
+  weight?: number;
+  itemType?: "gold" | "silver" | "other";
 }
 
 interface RepairingReceipt {
@@ -31,6 +28,28 @@ interface RepairingReceipt {
   items: RepairItem[];
   salespersonName: string;
   tax: number;
+  logoUrl?: string;
+  shopSettings?: {
+    shopName?: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    panNumber?: string;
+    gstNumber?: string;
+    // Gold-specific
+    goldOwnerName?: string;
+    goldGstNumber?: string;
+    goldPanNumber?: string;
+    // Silver-specific
+    silverOwnerName?: string;
+    silverGstNumber?: string;
+    silverPanNumber?: string;
+    // Bank details
+    bankName?: string;
+    bankBranch?: string;
+    bankIfsc?: string;
+    bankAccountNo?: string;
+  };
 }
 
 export default function Repairings() {
@@ -40,18 +59,43 @@ export default function Repairings() {
     paymentMethod: "cash",
     customerName: "",
     customerAddress: "",
-    companyName: "",
-    companyAddress: "",
+    companyName: "SuvarnaDesk AC Services",
+    companyAddress: "123 Tech Park, Anand, Gujarat 388001",
     items: [],
     salespersonName: "",
     tax: 5,
+    shopSettings: undefined,
   });
 
   const [currentItem, setCurrentItem] = useState<RepairItem>({
     description: "",
     quantity: 1,
     unitPrice: 0,
+    weight: 0,
+    itemType: "gold",
   });
+
+  // Fetch shop settings on mount
+  useEffect(() => {
+    fetchShopSettings();
+  }, []);
+
+  const fetchShopSettings = async () => {
+    try {
+      const response = await apiClient.get("/shop-settings");
+      if (response.data) {
+        setFormData((prev) => ({
+          ...prev,
+          shopSettings: response.data,
+          companyName: response.data.shopName || prev.companyName,
+          companyAddress: response.data.address || prev.companyAddress,
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to fetch shop settings:", error);
+      showToast.error("Could not load shop settings");
+    }
+  };
 
   const handleAddItem = () => {
     if (!currentItem.description || currentItem.unitPrice <= 0) {
@@ -62,7 +106,13 @@ export default function Repairings() {
       ...prev,
       items: [...prev.items, { ...currentItem }],
     }));
-    setCurrentItem({ description: "", quantity: 1, unitPrice: 0 });
+    setCurrentItem({
+      description: "",
+      quantity: 1,
+      unitPrice: 0,
+      weight: 0,
+      itemType: "gold",
+    });
     showToast.success("Item added");
   };
 
@@ -124,8 +174,27 @@ export default function Repairings() {
       items: [],
       salespersonName: "",
       tax: 5,
+      shopSettings: formData.shopSettings, // Keep shop settings
+    });
+    setCurrentItem({
+      description: "",
+      quantity: 1,
+      unitPrice: 0,
+      weight: 0,
+      itemType: "gold",
     });
     showToast.success("Form reset successfully");
+  };
+
+  // API function to save receipt to database
+  const saveReceiptToDatabase = async (receiptData: any) => {
+    try {
+      const response = await apiClient.post("/repair-receipts", receiptData);
+      return response.data;
+    } catch (error) {
+      console.error("Failed to save receipt to database:", error);
+      throw error;
+    }
   };
 
   const generatePDF = async () => {
@@ -138,6 +207,25 @@ export default function Repairings() {
     showToast.loading("Generating PDF, please wait...");
 
     try {
+      // Prepare data for database
+      const receiptData = {
+        ...formData,
+        subtotal: calculateSubtotal(),
+        taxAmount: calculateTax(),
+        total: calculateTotal(),
+        createdAt: new Date().toISOString(),
+      };
+
+      // Save to database
+      try {
+        await saveReceiptToDatabase(receiptData);
+        showToast.success("Receipt saved to database");
+      } catch (saveError) {
+        console.error("Failed to save receipt to database:", saveError);
+        showToast.warning("Receipt generated but not saved to database");
+      }
+
+      // Generate PDF
       const blob = await pdf(<ReceiptPDF data={formData} />).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -391,7 +479,7 @@ export default function Repairings() {
             </motion.div>
           </div>
 
-          {/* Items Section */}
+          {/* Items Section with Weight and Item Type */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -401,7 +489,50 @@ export default function Repairings() {
             <h3 className="mb-4 text-lg font-semibold text-gray-800">
               Add Service Items
             </h3>
-            <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-5">
+              {/* Item Type */}
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700">
+                  Item Type
+                </label>
+                <CustomDropdown
+                  options={[
+                    { value: "gold", label: "Gold" },
+                    { value: "silver", label: "Silver" },
+                    { value: "other", label: "Other" },
+                  ]}
+                  value={currentItem.itemType || "gold"}
+                  onChange={(value) =>
+                    setCurrentItem((prev) => ({
+                      ...prev,
+                      itemType: value as "gold" | "silver" | "other",
+                    }))
+                  }
+                />
+              </div>
+
+              {/* Weight */}
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-700">
+                  Weight (g)
+                </label>
+                <input
+                  type="number"
+                  value={currentItem.weight || 0}
+                  onChange={(e) =>
+                    setCurrentItem((prev) => ({
+                      ...prev,
+                      weight: Number(e.target.value),
+                    }))
+                  }
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Description */}
               <div>
                 <label className="block mb-2 text-sm font-medium text-gray-700">
                   Description
@@ -424,6 +555,8 @@ export default function Repairings() {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
+
+              {/* Quantity */}
               <div>
                 <label className="block mb-2 text-sm font-medium text-gray-700">
                   Quantity
@@ -442,6 +575,8 @@ export default function Repairings() {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
+
+              {/* Unit Price */}
               <div>
                 <label className="block mb-2 text-sm font-medium text-gray-700">
                   Unit Price (₹)
@@ -460,7 +595,9 @@ export default function Repairings() {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              <div className="flex items-end">
+
+              {/* Add Button */}
+              <div className="flex items-end md:col-span-5">
                 <motion.button
                   whileTap={{ scale: 0.98 }}
                   onClick={handleAddItem}
@@ -472,7 +609,7 @@ export default function Repairings() {
               </div>
             </div>
 
-            {/* Items List */}
+            {/* Items List - Updated */}
             {formData.items.length > 0 && (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -480,6 +617,12 @@ export default function Repairings() {
                     <tr>
                       <th className="px-4 py-3 font-semibold text-left text-gray-700">
                         Description
+                      </th>
+                      <th className="px-4 py-3 font-semibold text-center text-gray-700">
+                        Type
+                      </th>
+                      <th className="px-4 py-3 font-semibold text-center text-gray-700">
+                        Weight (g)
                       </th>
                       <th className="px-4 py-3 font-semibold text-center text-gray-700">
                         Qty
@@ -500,6 +643,12 @@ export default function Repairings() {
                       <tr key={index} className="border-b border-gray-100">
                         <td className="px-4 py-3 text-gray-700">
                           {item.description}
+                        </td>
+                        <td className="px-4 py-3 text-center text-gray-700">
+                          {item.itemType?.toUpperCase() || "N/A"}
+                        </td>
+                        <td className="px-4 py-3 text-center text-gray-700">
+                          {item.weight?.toFixed(2) || "0.00"}
                         </td>
                         <td className="px-4 py-3 text-center text-gray-700">
                           {item.quantity}
@@ -602,6 +751,20 @@ export default function Repairings() {
                 <p className="text-xs text-blue-700">
                   <strong>Payment:</strong>{" "}
                   {getPaymentMethodText(formData.paymentMethod)}
+                </p>
+                <p className="text-xs text-blue-700">
+                  <strong>Gold Items:</strong>{" "}
+                  {
+                    formData.items.filter((item) => item.itemType === "gold")
+                      .length
+                  }
+                </p>
+                <p className="text-xs text-blue-700">
+                  <strong>Silver Items:</strong>{" "}
+                  {
+                    formData.items.filter((item) => item.itemType === "silver")
+                      .length
+                  }
                 </p>
               </div>
             </div>
