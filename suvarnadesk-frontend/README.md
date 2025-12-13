@@ -244,6 +244,12 @@ Copy code
 
 ---
 
+## Developed and maintained by Bhavesh Bhoi.
+
+Full-stack developer specializing in scalable web applications and clean system architecture.
+
+---
+
 ## License
 
 This project is licensed under the MIT License.
