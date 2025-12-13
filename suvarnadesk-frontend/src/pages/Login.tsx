@@ -184,6 +184,7 @@ const Login: React.FC = () => {
           <div className="pt-2 pb-2 mt-4 text-sm text-center text-yellow-800 border-t border-yellow-200 rounded-b-xl bg-yellow-50/80">
             <p className="font-semibold">Only authorized admins may sign in.</p>
             <p>Please contact your administrator if you need access.</p>
+            <p>Developed and maintained by <a href="https://developer-bhavesh.netlify.app/" className="text-blue-500">Bhavesh Bhoi</a>.</p>
           </div>
         </form>
       </motion.div>
